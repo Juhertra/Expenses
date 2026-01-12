@@ -6,7 +6,7 @@ import {
   calculateInsights,
   getFrequentExpenses,
 } from '../calculations';
-import type { Expense, HouseholdSettings } from '../types';
+import type { Expense, HouseholdSettings, Settlement } from '../types';
 
 describe('calculateTotals', () => {
   it('should calculate totals correctly for mixed transactions', () => {
@@ -163,6 +163,56 @@ describe('calculateBalance', () => {
     expect(result.totalSharedExpenses).toBe(100);
     expect(result.partner1Balance).toBe(50); // Paid 100, should pay 50
     expect(result.partner2Balance).toBe(-50); // Paid 0, should pay 50
+  });
+
+  it('should apply settlements by moving payer up and receiver down', () => {
+    const expenses: Expense[] = [
+      {
+        id: '1',
+        description: 'Rent',
+        amount: 7000,
+        category: 'Housing',
+        type: 'expense',
+        date: '2026-01-01',
+        paidBy: 'partner1',
+      },
+      {
+        id: '2',
+        description: 'Groceries',
+        amount: 1000,
+        category: 'Food',
+        type: 'expense',
+        date: '2026-01-02',
+        paidBy: 'partner2',
+      },
+    ];
+
+    const settings: HouseholdSettings = {
+      currencyCode: 'USD',
+      currencySymbol: '$',
+      splitMode: 'equal',
+      partner1Ratio: 0.5,
+      budgets: {},
+      normalizationRules: {},
+      categories: {},
+    };
+
+    const settlements: Settlement[] = [
+      {
+        id: 1,
+        date: '2026-01-03',
+        amount: 3500,
+        from: 'partner2',
+        to: 'partner1',
+        note: 'Rent split',
+      },
+    ];
+
+    const result = calculateBalance(expenses, settings, settlements);
+
+    // After settlement, partner1 should owe partner2 500.
+    expect(result.partner1Balance).toBe(-500);
+    expect(result.partner2Balance).toBe(500);
   });
 });
 

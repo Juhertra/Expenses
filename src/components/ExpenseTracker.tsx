@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   PlusCircle,
   TrendingUp,
@@ -76,6 +76,7 @@ const ExpenseTracker: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const [importingData, setImportingData] = useState(false);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Household settings state (for currency, split modes, budgets, normalization)
   // Default categories (used for initialization)
@@ -242,13 +243,13 @@ const ExpenseTracker: React.FC = () => {
         return;
       }
       
-      // Cmd/Ctrl + S: Save
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        if (dirty && !exportingData) {
-          exportData();
+        // Cmd/Ctrl + S: Save
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+          e.preventDefault();
+          if (dirty && !exportingData) {
+            saveData();
+          }
         }
-      }
       
       // Cmd/Ctrl + N: New transaction
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
@@ -302,6 +303,36 @@ const ExpenseTracker: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty, exportingData]);
+
+  useEffect(() => {
+    if (!dirty || exportingData || !supportsFileSystem || !saveDirectory) {
+      return;
+    }
+
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current);
+    }
+
+    autoSaveTimer.current = setTimeout(() => {
+      saveData({ allowDownload: false, showToast: false, promptForDirectory: false });
+    }, 1500);
+
+    return () => {
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [
+    dirty,
+    exportingData,
+    supportsFileSystem,
+    saveDirectory,
+    expenses,
+    recurring,
+    partnerNames,
+    householdSettings,
+    settlements,
+  ]);
 
   /**
    * Show toast notification (Phase 1 Feature #2D)
@@ -1167,7 +1198,7 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Prompt user to select a directory for auto-saving backups
    */
-  const chooseSaveDirectory = async () => {
+  const chooseSaveDirectory = async (): Promise<FileSystemDirectoryHandle | null> => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dirHandle = await (window as any).showDirectoryPicker({
@@ -1176,110 +1207,89 @@ const ExpenseTracker: React.FC = () => {
       });
       setSaveDirectory(dirHandle);
       showToast(`Save folder set: ${dirHandle.name}`, 'success');
+      return dirHandle;
     } catch (error: unknown) {
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Error choosing directory:', error);
         showToast('Failed to select folder. Please try again.', 'error');
       }
+      return null;
     }
   };
 
+  const buildExportObject = () => {
+    const exportDate = new Date().toISOString();
+    const raw = {
+      'household-expenses': JSON.stringify(expenses),
+      'household-recurring': JSON.stringify(recurring),
+      'household-partner-names': JSON.stringify(partnerNames),
+      'household-settings': JSON.stringify(householdSettings),
+      'household-settlements': JSON.stringify(settlements),
+    };
+
+    return {
+      schemaVersion: 1,
+      exportDate,
+      data: {
+        expenses,
+        recurring,
+        partnerNames,
+        householdSettings,
+        settlements,
+      },
+      raw,
+    };
+  };
+
+  const writeJsonToDirectory = async (
+    dirHandle: FileSystemDirectoryHandle,
+    filename: string,
+    jsonString: string
+  ) => {
+    const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(jsonString);
+    await writable.close();
+  };
+
   /**
-   * Export all data to JSON file (includes both readable data and raw storage strings)
-   * Vault mode: This is the source of truth for persistence
+   * Save data to a stable file (used by auto-save and manual Save).
    */
-  const exportData = async () => {
+  const saveData = async (options?: {
+    allowDownload?: boolean;
+    showToast?: boolean;
+    promptForDirectory?: boolean;
+  }) => {
     setExportingData(true);
     try {
-      // Gather all data from storage (raw strings)
-      const expensesData = await window.storage.get('household-expenses');
-      const recurringData = await window.storage.get('household-recurring');
-      const namesData = await window.storage.get('household-partner-names');
-      const settingsData = await window.storage.get('household-settings');
-      const settlementsData = await window.storage.get('household-settlements');
-
-      // Guard JSON.parse for each key - never block export due to corrupted storage
-      let expenses = [];
-      try {
-        expenses = expensesData ? JSON.parse(expensesData.value) : [];
-      } catch (e) {
-        console.warn('Failed to parse expenses for export data, using empty array', e);
-      }
-
-      let recurring = [];
-      try {
-        recurring = recurringData ? JSON.parse(recurringData.value) : [];
-      } catch (e) {
-        console.warn('Failed to parse recurring for export data, using empty array', e);
-      }
-
-      let partnerNames = { partner1: 'Partner 1', partner2: 'Partner 2' };
-      try {
-        partnerNames = namesData ? JSON.parse(namesData.value) : partnerNames;
-      } catch (e) {
-        console.warn('Failed to parse partner names for export data, using defaults', e);
-      }
-
-      let householdSettingsExport = defaultSettings;
-      try {
-        householdSettingsExport = settingsData ? JSON.parse(settingsData.value) : defaultSettings;
-      } catch (e) {
-        console.warn('Failed to parse household settings for export data, using defaults', e);
-      }
-
-      let settlementsExport = [];
-      try {
-        settlementsExport = settlementsData ? JSON.parse(settlementsData.value) : [];
-      } catch (e) {
-        console.warn('Failed to parse settlements for export data, using empty array', e);
-      }
-
-      // Build export object with BOTH data (readable) and raw (exact storage strings)
-      // Raw is always included, even if JSON.parse failed above
-      // Schema v1: vault mode - this is the source of truth
-      const exportObject = {
-        schemaVersion: 1,
-        exportDate: new Date().toISOString(),
-        data: {
-          expenses,
-          recurring,
-          partnerNames,
-          householdSettings: householdSettingsExport,
-          settlements: settlementsExport
-        },
-        raw: {
-          'household-expenses': expensesData?.value || '[]',
-          'household-recurring': recurringData?.value || '[]',
-          'household-partner-names': namesData?.value || '{"partner1":"Partner 1","partner2":"Partner 2"}',
-          'household-settings': settingsData?.value || JSON.stringify(defaultSettings),
-          'household-settlements': settlementsData?.value || '[]'
-        }
-      };
-
-      // Prepare file content and name
+      const exportObject = buildExportObject();
       const jsonString = JSON.stringify(exportObject, null, 2);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `expense-tracker-${timestamp}.json`;
+      const filename = 'expense-tracker.json';
 
-      // Try auto-save to selected directory first
-      if (supportsFileSystem && saveDirectory) {
-        try {
-          const fileHandle = await saveDirectory.getFileHandle(filename, { create: true });
-          const writable = await fileHandle.createWritable();
-          await writable.write(jsonString);
-          await writable.close();
-          
-          setDirty(false);
-          setLastExportDate(exportObject.exportDate);
-          showToast(`Saved to ${saveDirectory.name}/${filename}`, 'success');
-          return; // Success, exit early
-        } catch (error) {
-          console.warn('Auto-save failed, falling back to download:', error);
-          // Fall through to browser download
-        }
+      let targetDirectory = saveDirectory;
+      const shouldPrompt = options?.promptForDirectory !== false;
+      if (supportsFileSystem && !targetDirectory && shouldPrompt) {
+        targetDirectory = await chooseSaveDirectory();
       }
 
-      // Fallback: Browser download (existing behavior)
+      if (supportsFileSystem && targetDirectory) {
+        await writeJsonToDirectory(targetDirectory, filename, jsonString);
+        setDirty(false);
+        setLastExportDate(exportObject.exportDate);
+        if (options?.showToast !== false) {
+          showToast(`Saved to ${targetDirectory.name}/${filename}`, 'success');
+        }
+        return;
+      }
+
+      const allowDownload = options?.allowDownload ?? !supportsFileSystem;
+      if (!allowDownload) {
+        if (options?.showToast !== false && supportsFileSystem && shouldPrompt) {
+          showToast('Choose a save folder to enable saving.', 'error');
+        }
+        return;
+      }
+
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1290,10 +1300,52 @@ const ExpenseTracker: React.FC = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      // Clear dirty flag and update last export date
       setDirty(false);
       setLastExportDate(exportObject.exportDate);
+      if (options?.showToast !== false) {
+        showToast('Data saved successfully!', 'success');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      if (options?.showToast !== false) {
+        showToast('Save failed. Please try again.', 'error');
+      }
+    } finally {
+      setExportingData(false);
+    }
+  };
 
+  /**
+   * Export a timestamped backup file.
+   */
+  const exportData = async () => {
+    setExportingData(true);
+    try {
+      const exportObject = buildExportObject();
+      const jsonString = JSON.stringify(exportObject, null, 2);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `expense-tracker-${timestamp}.json`;
+
+      if (supportsFileSystem && saveDirectory) {
+        await writeJsonToDirectory(saveDirectory, filename, jsonString);
+        setDirty(false);
+        setLastExportDate(exportObject.exportDate);
+        showToast(`Exported to ${saveDirectory.name}/${filename}`, 'success');
+        return;
+      }
+
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setDirty(false);
+      setLastExportDate(exportObject.exportDate);
       showToast('Data exported successfully!', 'success');
     } catch (error) {
       console.error('Export error:', error);
@@ -1558,20 +1610,18 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
   let partner1Balance = partner1Paid - partner1FairShare;
   let partner2Balance = partner2Paid - partner2FairShare;
 
-  // Adjust balances for settlements/repayments
-  // Balance represents debt owed: when A pays B, BOTH balances decrease toward zero
-  // partner1Balance represents how much partner2 owes to partner1
-  // partner2Balance represents how much partner1 owes to partner2
-  settlements.forEach(settlement => {
-    const amount = settlement.amount;
-    if (settlement.from === 'partner1' && settlement.to === 'partner2') {
-      partner1Balance -= amount; // partner2 owes less to partner1
-      partner2Balance -= amount; // partner1 owes less to partner2
-    } else if (settlement.from === 'partner2' && settlement.to === 'partner1') {
-      partner2Balance -= amount; // partner1 owes less to partner2
-      partner1Balance -= amount; // partner2 owes less to partner1
-    }
-  });
+  // Adjust balances for settlements/repayments.
+  // Treat settlements as net transfers toward partner1 (positive = partner1 received).
+  const netSettlementToPartner1 = settlements.reduce((sum, settlement) => {
+    const amount = Number(settlement.amount);
+    if (!Number.isFinite(amount)) return sum;
+    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
+    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + amount;
+    return sum;
+  }, 0);
+
+  partner1Balance -= netSettlementToPartner1;
+  partner2Balance += netSettlementToPartner1;
 
   // Calculate totals per category for expenses.
   const categoryTotals = filteredExpenses
@@ -1625,7 +1675,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
     { icon: TrendingDown, label: 'Add Expense', description: 'Quick expense', action: () => openQuickAdd('expense'), shortcut: 'E' },
     { icon: TrendingUp, label: 'Add Income', description: 'Quick income', action: () => openQuickAdd('income'), shortcut: 'I' },
     { icon: Settings, label: 'Open Settings', description: 'Configure app', action: () => setShowSettingsModal(true), shortcut: 'Cmd+,' },
-    { icon: Save, label: 'Export Data', description: 'Save backup', action: () => exportData(), shortcut: 'Cmd+S' },
+      { icon: Save, label: 'Export Data', description: 'Save backup', action: () => exportData() },
     
     // Search transactions (top 5 recent)
     ...filteredExpenses.slice(0, 5).map(exp => ({
@@ -1907,9 +1957,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 </p>
               )}
               {!dirty && saveDirectory && (
-                <p className="text-green-400 text-xs flex items-center gap-1 mt-1">
+                <p className="text-green-400 text-xs flex items-center gap-1 mt-1 flex-wrap">
                   <span>✓</span>
                   <span className="truncate">Auto-saving to {saveDirectory.name}/</span>
+                  {lastExportDate && (
+                    <span className="text-slate-400">
+                      Auto-saved {new Date(lastExportDate).toLocaleTimeString()}
+                    </span>
+                  )}
                 </p>
               )}
             </div>
@@ -1939,12 +1994,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
 
           <div className="flex gap-2 flex-wrap">
             {/* Save Button */}
-            <button
-              onClick={exportData}
-              disabled={exportingData || !dirty}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              title={saveDirectory ? `Save to ${saveDirectory.name}/ (⌘S)` : 'Save (⌘S / Ctrl+S)'}
-            >
+              <button
+                onClick={saveData}
+                disabled={exportingData || !dirty}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                title={saveDirectory ? `Save to ${saveDirectory.name}/ (⌘S)` : 'Save (⌘S / Ctrl+S)'}
+              >
               <Save className="w-4 h-4" />
               <span className="text-sm font-medium">
                 {exportingData ? 'Saving...' : 'Save'}

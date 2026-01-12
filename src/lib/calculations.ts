@@ -89,19 +89,17 @@ export function calculateBalance(
   let partner1Balance = totals.partner1Paid - partner1FairShare;
   let partner2Balance = totals.partner2Paid - partner2FairShare;
 
-  // Apply settlements
-  settlements.forEach(settlement => {
-    const amount = settlement.amount;
-    if (settlement.from === 'partner1' && settlement.to === 'partner2') {
-      // Partner1 paid Partner2, reduces both balances toward zero
-      partner1Balance -= amount;
-      partner2Balance -= amount;
-    } else if (settlement.from === 'partner2' && settlement.to === 'partner1') {
-      // Partner2 paid Partner1, reduces both balances toward zero
-      partner2Balance -= amount;
-      partner1Balance -= amount;
-    }
-  });
+  // Apply settlements as net transfers toward partner1 (positive = partner1 received).
+  const netSettlementToPartner1 = settlements.reduce((sum, settlement) => {
+    const amount = Number(settlement.amount);
+    if (!Number.isFinite(amount)) return sum;
+    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
+    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + amount;
+    return sum;
+  }, 0);
+
+  partner1Balance -= netSettlementToPartner1;
+  partner2Balance += netSettlementToPartner1;
 
   return {
     partner1Balance,

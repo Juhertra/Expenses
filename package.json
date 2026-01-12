@@ -37,5 +37,17 @@
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vitest": "^4.0.16"
-  }
+  },
+  "description": "A beautiful, full-featured expense tracking application for managing household finances between two partners. Built with React, TypeScript, Tailwind CSS, and localStorage persistence.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Juhertra/Expenses.git"
+  },
+  "author": "Hernan Trajtemberg",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Juhertra/Expenses/issues"
+  },
+  "homepage": "https://github.com/Juhertra/Expenses#readme"
 }
