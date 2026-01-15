@@ -20,8 +20,11 @@ export function useFilteredExpenses(): Expense[] {
       if (!matchesDate) return false;
 
       // Apply category filter
-      if (ui.selectedCategory && exp.category !== ui.selectedCategory) {
-        return false;
+      if (ui.selectedCategory) {
+        const matchesCategory = exp.splits?.length
+          ? exp.splits.some(split => split.category === ui.selectedCategory)
+          : exp.category === ui.selectedCategory;
+        if (!matchesCategory) return false;
       }
 
       // Apply search filter
@@ -31,6 +34,8 @@ export function useFilteredExpenses(): Expense[] {
       return (
         exp.description.toLowerCase().includes(query) ||
         exp.category.toLowerCase().includes(query) ||
+        (exp.splits?.some(split => split.category.toLowerCase().includes(query)) ?? false) ||
+        exp.date.toLowerCase().includes(query) ||
         exp.paidBy.toLowerCase().includes(query) ||
         (exp.paidBy === 'partner1' &&
           partnerNames.partner1.toLowerCase().includes(query)) ||

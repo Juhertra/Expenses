@@ -69,6 +69,24 @@ The app will automatically open in your browser at `http://localhost:3000`.
 - `npm run build` - Build production bundle (TypeScript check + Vite build)
 - `npm run preview` - Preview production build locally
 - `npm run lint` - Run ESLint for code quality checks
+- `npm run electron:dev` - Start Vite + Electron (desktop dev)
+- `npm run electron:build` - Build desktop installers via electron-builder
+- `npm run electron:pack` - Build unpacked desktop app for testing
+
+## Electron (Desktop)
+
+The Electron build uses a file-based data store in the app's user data folder by default.
+You can choose a custom data file path in Settings (Data File).
+
+Dev mode:
+```bash
+npm run electron:dev
+```
+
+Build desktop installers:
+```bash
+npm run electron:build
+```
 
 ## Storage Architecture
 

@@ -3,6 +3,7 @@
  */
 
 import { localStorageAdapter } from './localStorageAdapter';
+import { ElectronStorageAdapter } from './electronStorageAdapter';
 
 const STORAGE_KEYS = {
   EXPENSES: 'household-expenses',
@@ -69,9 +70,9 @@ async function seedDefaultData() {
   const defaults = getDefaultData();
 
   // Check and seed partner names
-  const existingNames = await localStorageAdapter.get(STORAGE_KEYS.PARTNER_NAMES);
+  const existingNames = await window.storage.get(STORAGE_KEYS.PARTNER_NAMES);
   if (!existingNames) {
-    await localStorageAdapter.set(
+    await window.storage.set(
       STORAGE_KEYS.PARTNER_NAMES,
       JSON.stringify(defaults.partnerNames)
     );
@@ -79,9 +80,9 @@ async function seedDefaultData() {
   }
 
   // Check and seed expenses
-  const existingExpenses = await localStorageAdapter.get(STORAGE_KEYS.EXPENSES);
+  const existingExpenses = await window.storage.get(STORAGE_KEYS.EXPENSES);
   if (!existingExpenses) {
-    await localStorageAdapter.set(
+    await window.storage.set(
       STORAGE_KEYS.EXPENSES,
       JSON.stringify(defaults.expenses)
     );
@@ -89,9 +90,9 @@ async function seedDefaultData() {
   }
 
   // Check and seed recurring transactions
-  const existingRecurring = await localStorageAdapter.get(STORAGE_KEYS.RECURRING);
+  const existingRecurring = await window.storage.get(STORAGE_KEYS.RECURRING);
   if (!existingRecurring) {
-    await localStorageAdapter.set(
+    await window.storage.set(
       STORAGE_KEYS.RECURRING,
       JSON.stringify(defaults.recurring)
     );
@@ -105,10 +106,16 @@ async function seedDefaultData() {
  */
 export async function initStorage(): Promise<void> {
   // Attach adapter to window
-  window.storage = localStorageAdapter;
+  if (window.electronAPI?.readDataFile && window.electronAPI?.writeDataFile) {
+    window.storage = new ElectronStorageAdapter(window.electronAPI);
+  } else {
+    window.storage = localStorageAdapter;
+  }
   
-  // Seed default data if needed
-  await seedDefaultData();
+  // Seed default data if needed (skip for Electron file-based storage)
+  if (!window.electronAPI) {
+    await seedDefaultData();
+  }
   
   console.log('Storage initialized successfully');
 }

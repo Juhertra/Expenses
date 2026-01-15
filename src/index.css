@@ -16,6 +16,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body[data-lang='he'] {
+  font-family: 'Rubik', 'Heebo', 'Assistant', 'Segoe UI', 'Arial', sans-serif;
+}
+
 #root {
   width: 100%;
   min-height: 100vh;

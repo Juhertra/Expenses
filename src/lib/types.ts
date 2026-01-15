@@ -7,6 +7,10 @@ export interface Expense {
   description: string;
   amount: number;
   category: string;
+  splits?: Array<{
+    category: string;
+    amount: number;
+  }>;
   type: 'expense' | 'income';
   date: string;
   paidBy: 'partner1' | 'partner2' | 'joint';
@@ -18,6 +22,10 @@ export interface RecurringTransaction {
   description: string;
   amount: number;
   category: string;
+  splits?: Array<{
+    category: string;
+    amount: number;
+  }>;
   type: 'expense' | 'income';
   paidBy: 'partner1' | 'partner2' | 'joint';
   recurringDay: number;
@@ -61,6 +69,7 @@ export interface HouseholdSettings {
   budgets: { [category: string]: number };
   normalizationRules: { [key: string]: string };
   categories: { [categoryName: string]: Category };
+  activePartner?: 'partner1' | 'partner2';
 }
 
 export interface Settlement {

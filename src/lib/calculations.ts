@@ -117,7 +117,13 @@ export function calculateCategoryTotals(expenses: Expense[]): Record<string, num
   return expenses
     .filter(exp => exp.type === 'expense')
     .reduce((acc, exp) => {
-      acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+      if (exp.splits && exp.splits.length > 0) {
+        exp.splits.forEach(split => {
+          acc[split.category] = (acc[split.category] || 0) + split.amount;
+        });
+      } else {
+        acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+      }
       return acc;
     }, {} as Record<string, number>);
 }
