@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   PlusCircle,
   TrendingUp,
@@ -39,6 +40,7 @@ import type {
  * styling and lucide-react for icons.
  */
 const ExpenseTracker: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -56,6 +58,12 @@ const ExpenseTracker: React.FC = () => {
     partner1: 'Partner 1',
     partner2: 'Partner 2'
   });
+
+  useEffect(() => {
+    const lang = i18n.language || 'en';
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  }, [i18n.language]);
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -358,7 +366,7 @@ const ExpenseTracker: React.FC = () => {
   const bulkDelete = async () => {
     if (selectedIds.size === 0) return;
     
-    if (!confirm(`Delete ${selectedIds.size} selected transactions?`)) return;
+    if (!confirm(t('dialogs.bulkDeleteConfirm', { count: selectedIds.size }))) return;
     
     setDeletingItem(true);
     try {
@@ -368,9 +376,9 @@ const ExpenseTracker: React.FC = () => {
       setSelectedIds(new Set());
       setBulkMode(false);
       setDirty(true);
-      showToast(`Deleted ${selectedIds.size} transactions`, 'success');
+      showToast(t('toasts.deletedTransactions', { count: selectedIds.size }), 'success');
     } catch (error) {
-      showToast('Failed to delete transactions', 'error');
+      showToast(t('errors.deleteTransactionsFailed'), 'error');
     } finally {
       setDeletingItem(false);
     }
@@ -389,7 +397,7 @@ const ExpenseTracker: React.FC = () => {
       await window.storage.set('household-expenses', JSON.stringify(updated));
       setDirty(true);
     } catch (error) {
-      showToast('Failed to update category', 'error');
+      showToast(t('errors.categoryUpdateFailed'), 'error');
     } finally {
       setSavingTransaction(false);
     }
@@ -398,9 +406,9 @@ const ExpenseTracker: React.FC = () => {
   const bulkCategorize = async () => {
     if (selectedIds.size === 0) return;
     
-    const newCategory = prompt('Enter new category:');
+    const newCategory = prompt(t('dialogs.newCategoryPrompt'));
     if (!newCategory || !categories[newCategory]) {
-      showToast('Invalid category', 'error');
+      showToast(t('errors.invalidCategory'), 'error');
       return;
     }
     
@@ -414,9 +422,12 @@ const ExpenseTracker: React.FC = () => {
       setSelectedIds(new Set());
       setBulkMode(false);
       setDirty(true);
-      showToast(`Updated ${selectedIds.size} transactions to ${newCategory}`, 'success');
+      showToast(
+        t('toasts.bulkUpdatedCategory', { count: selectedIds.size, category: newCategory }),
+        'success'
+      );
     } catch (error) {
-      showToast('Failed to update categories', 'error');
+      showToast(t('errors.categoriesUpdateFailed'), 'error');
     } finally {
       setSavingTransaction(false);
     }
@@ -427,13 +438,13 @@ const ExpenseTracker: React.FC = () => {
    */
   const saveInlineEdit = async (expId: number) => {
     if (!inlineEditData.description?.trim()) {
-      showToast('Description is required', 'error');
+      showToast(t('errors.descriptionRequired'), 'error');
       return;
     }
     
     const amount = typeof inlineEditData.amount === 'number' ? inlineEditData.amount : parseFloat(String(inlineEditData.amount || '0'));
     if (isNaN(amount) || amount <= 0) {
-      showToast('Amount must be greater than 0', 'error');
+      showToast(t('errors.amountGreaterThanZero'), 'error');
       return;
     }
     
@@ -458,10 +469,10 @@ const ExpenseTracker: React.FC = () => {
       setInlineEditId(null);
       setInlineEditData({});
       setDirty(true);
-      showToast('Transaction updated', 'success');
+      showToast(t('toasts.transactionUpdated'), 'success');
     } catch (error) {
       console.error('Inline edit error:', error);
-      showToast('Failed to update transaction', 'error');
+      showToast(t('errors.transactionUpdateFailed'), 'error');
     } finally {
       setSavingTransaction(false);
     }
@@ -612,15 +623,15 @@ const ExpenseTracker: React.FC = () => {
     
     // Validation
     if (!trimmedName) {
-      showToast('Category name is required', 'error');
+      showToast(t('errors.categoryNameRequired'), 'error');
       return;
     }
     if (!categoryForm.icon) {
-      showToast('Please select an emoji', 'error');
+      showToast(t('errors.categoryEmojiRequired'), 'error');
       return;
     }
     if (categories[trimmedName]) {
-      showToast('Category already exists', 'error');
+      showToast(t('errors.categoryAlreadyExists'), 'error');
       return;
     }
     
@@ -645,9 +656,9 @@ const ExpenseTracker: React.FC = () => {
       setDirty(true);
       setShowCategoryModal(false);
       setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
-      showToast(`Category "${trimmedName}" added`, 'success');
+      showToast(t('toasts.categoryAdded', { name: trimmedName }), 'success');
     } catch (error) {
-      showToast('Failed to add category', 'error');
+      showToast(t('errors.categoryAddFailed'), 'error');
     } finally {
       setSavingSettings(false);
     }
@@ -661,15 +672,15 @@ const ExpenseTracker: React.FC = () => {
     
     // Validation
     if (!trimmedName) {
-      showToast('Category name is required', 'error');
+      showToast(t('errors.categoryNameRequired'), 'error');
       return;
     }
     if (!categoryForm.icon) {
-      showToast('Please select an emoji', 'error');
+      showToast(t('errors.categoryEmojiRequired'), 'error');
       return;
     }
     if (trimmedName !== oldName && categories[trimmedName]) {
-      showToast('Category name already exists', 'error');
+      showToast(t('errors.categoryNameExists'), 'error');
       return;
     }
     
@@ -713,9 +724,9 @@ const ExpenseTracker: React.FC = () => {
       setShowCategoryModal(false);
       setEditingCategory(null);
       setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
-      showToast(`Category updated`, 'success');
+      showToast(t('toasts.categoryUpdated'), 'success');
     } catch (error) {
-      showToast('Failed to update category', 'error');
+      showToast(t('errors.categoryUpdateFailed'), 'error');
     } finally {
       setSavingSettings(false);
     }
@@ -776,9 +787,9 @@ const ExpenseTracker: React.FC = () => {
       setTempHouseholdSettings(updatedSettings);
       setDirty(true);
       setShowDeleteCategoryConfirm(null);
-      showToast(`Category "${categoryName}" deleted`, 'success');
+      showToast(t('toasts.categoryDeleted', { name: categoryName }), 'success');
     } catch (error) {
-      showToast('Failed to delete category', 'error');
+      showToast(t('errors.categoryDeleteFailed'), 'error');
     } finally {
       setSavingSettings(false);
     }
@@ -961,14 +972,14 @@ const ExpenseTracker: React.FC = () => {
   const validateForm = (): boolean => {
     // Description must not be empty
     if (!formData.description.trim()) {
-      alert('Please enter a description');
+      alert(t('errors.descriptionRequired'));
       return false;
     }
 
     // Amount must be a positive number
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid positive amount');
+      alert(t('errors.amountGreaterThanZero'));
       return false;
     }
 
@@ -976,7 +987,7 @@ const ExpenseTracker: React.FC = () => {
     if (formData.isRecurring) {
       const day = formData.recurringDay;
       if (day < 1 || day > 31) {
-        alert('Recurring day must be between 1 and 31');
+        alert(t('errors.recurringDayInvalid'));
         return false;
       }
     }
@@ -1001,7 +1012,7 @@ const ExpenseTracker: React.FC = () => {
     );
 
     if (duplicate) {
-      if (!confirm(`Possible duplicate found: "${duplicate.description}" on ${duplicate.date}. Save anyway?`)) {
+      if (!confirm(t('dialogs.duplicateConfirm', { description: duplicate.description, date: duplicate.date }))) {
         return; // User cancelled
       }
     }
@@ -1071,7 +1082,7 @@ const ExpenseTracker: React.FC = () => {
     );
 
     if (duplicate) {
-      if (!confirm(`Possible duplicate found: "${duplicate.description}" on ${duplicate.date}. Save anyway?`)) {
+      if (!confirm(t('dialogs.duplicateConfirm', { description: duplicate.description, date: duplicate.date }))) {
         return; // User cancelled
       }
     }
@@ -1128,12 +1139,12 @@ const ExpenseTracker: React.FC = () => {
   const recordSettlement = async () => {
     const amount = parseFloat(settlementForm.amount);
     if (!amount || amount <= 0) {
-      alert('Please enter a valid amount');
+      alert(t('errors.settlementAmountInvalid'));
       return;
     }
 
     if (settlementForm.from === settlementForm.to) {
-      alert('From and To partners must be different');
+      alert(t('errors.settlementSamePartner'));
       return;
     }
 
@@ -1206,12 +1217,12 @@ const ExpenseTracker: React.FC = () => {
         startIn: 'documents'
       });
       setSaveDirectory(dirHandle);
-      showToast(`Save folder set: ${dirHandle.name}`, 'success');
+      showToast(t('toasts.saveFolderSet', { name: dirHandle.name }), 'success');
       return dirHandle;
     } catch (error: unknown) {
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Error choosing directory:', error);
-        showToast('Failed to select folder. Please try again.', 'error');
+        showToast(t('errors.selectFolderFailed'), 'error');
       }
       return null;
     }
@@ -1277,7 +1288,10 @@ const ExpenseTracker: React.FC = () => {
         setDirty(false);
         setLastExportDate(exportObject.exportDate);
         if (options?.showToast !== false) {
-          showToast(`Saved to ${targetDirectory.name}/${filename}`, 'success');
+          showToast(
+            t('toasts.savedTo', { path: `${targetDirectory.name}/${filename}` }),
+            'success'
+          );
         }
         return;
       }
@@ -1285,7 +1299,7 @@ const ExpenseTracker: React.FC = () => {
       const allowDownload = options?.allowDownload ?? !supportsFileSystem;
       if (!allowDownload) {
         if (options?.showToast !== false && supportsFileSystem && shouldPrompt) {
-          showToast('Choose a save folder to enable saving.', 'error');
+          showToast(t('errors.saveFolderRequired'), 'error');
         }
         return;
       }
@@ -1303,12 +1317,12 @@ const ExpenseTracker: React.FC = () => {
       setDirty(false);
       setLastExportDate(exportObject.exportDate);
       if (options?.showToast !== false) {
-        showToast('Data saved successfully!', 'success');
+        showToast(t('toasts.dataSaved'), 'success');
       }
     } catch (error) {
       console.error('Save error:', error);
       if (options?.showToast !== false) {
-        showToast('Save failed. Please try again.', 'error');
+        showToast(t('errors.saveFailed'), 'error');
       }
     } finally {
       setExportingData(false);
@@ -1330,7 +1344,10 @@ const ExpenseTracker: React.FC = () => {
         await writeJsonToDirectory(saveDirectory, filename, jsonString);
         setDirty(false);
         setLastExportDate(exportObject.exportDate);
-        showToast(`Exported to ${saveDirectory.name}/${filename}`, 'success');
+        showToast(
+          t('toasts.exportedTo', { path: `${saveDirectory.name}/${filename}` }),
+          'success'
+        );
         return;
       }
 
@@ -1346,10 +1363,10 @@ const ExpenseTracker: React.FC = () => {
 
       setDirty(false);
       setLastExportDate(exportObject.exportDate);
-      showToast('Data exported successfully!', 'success');
+      showToast(t('toasts.dataExported'), 'success');
     } catch (error) {
       console.error('Export error:', error);
-      showToast('Export failed. Please try again.', 'error');
+      showToast(t('errors.exportFailed'), 'error');
     } finally {
       setExportingData(false);
     }
@@ -1370,7 +1387,7 @@ const ExpenseTracker: React.FC = () => {
    */
   const importData = async () => {
     if (!importFile) {
-      alert('Please select a file to import');
+      alert(t('errors.selectImportFile'));
       return;
     }
 
@@ -1382,12 +1399,12 @@ const ExpenseTracker: React.FC = () => {
 
       // Validate schema v1 (strict - fail fast)
       if (importObject.schemaVersion !== 1) {
-        alert('❌ Invalid or unsupported backup file schema version');
+        alert(t('errors.invalidSchemaVersion'));
         return;
       }
       
       if (!importObject.data) {
-        alert('❌ Invalid backup file format: missing data');
+        alert(t('errors.invalidBackupMissingData'));
         return;
       }
 
@@ -1395,39 +1412,55 @@ const ExpenseTracker: React.FC = () => {
 
       // Validation: Check data structure - ALL 4 keys required (clean slate v1)
       if (!Array.isArray(data.expenses)) {
-        alert('❌ Invalid backup: expenses must be an array');
+        alert(t('errors.invalidBackupExpenses'));
         return;
       }
       if (!Array.isArray(data.recurring)) {
-        alert('❌ Invalid backup: recurring must be an array');
+        alert(t('errors.invalidBackupRecurring'));
         return;
       }
       if (!data.partnerNames ||
           typeof data.partnerNames.partner1 !== 'string' ||
           typeof data.partnerNames.partner2 !== 'string') {
-        alert('❌ Invalid backup: partner names must have partner1 and partner2 strings');
+        alert(t('errors.invalidBackupPartners'));
         return;
       }
       // household-settings is REQUIRED in schema v1
       if (!data.householdSettings || typeof data.householdSettings !== 'object') {
-        alert('❌ Invalid backup: household settings are required (schema v1)');
+        alert(t('errors.invalidBackupSettings'));
         return;
       }
       // settlements is optional (for backward compatibility)
       const settlementsCount = Array.isArray(data.settlements) ? data.settlements.length : 0;
 
       // Show summary before import
-      const currency = data.householdSettings?.currencySymbol || '₪';
-      const summary = `Import Data Summary:
+      const currency =
+        data.householdSettings?.currencySymbol || householdSettings.currencySymbol || '';
+      const summaryLines = [
+        t('dialogs.importSummaryTitle'),
+        '',
+        t('dialogs.importSummaryTransactions', { count: data.expenses.length }),
+        t('dialogs.importSummaryRecurring', { count: data.recurring.length }),
+        t('dialogs.importSummaryPartners', {
+          partner1: data.partnerNames.partner1,
+          partner2: data.partnerNames.partner2
+        }),
+        t('dialogs.importSummaryCurrency', { currency })
+      ];
 
-📊 Transactions: ${data.expenses.length}
-🔄 Recurring: ${data.recurring.length}
-👥 Partners: ${data.partnerNames.partner1} & ${data.partnerNames.partner2}
-💱 Currency: ${currency}
-${data.householdSettings ? `⚖️ Split Mode: ${data.householdSettings.splitMode}` : ''}
-${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
+      if (data.householdSettings) {
+        summaryLines.push(
+          t('dialogs.importSummarySplit', { mode: data.householdSettings.splitMode })
+        );
+      }
+      if (settlementsCount > 0) {
+        summaryLines.push(
+          t('dialogs.importSummarySettlements', { count: settlementsCount })
+        );
+      }
 
-⚠️ This will REPLACE all current data!`;
+      summaryLines.push('', t('dialogs.importSummaryWarning'));
+      const summary = summaryLines.join('\n');
 
       if (!confirm(summary)) {
         return;
@@ -1481,12 +1514,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
       // Clear dirty flag (data is now in sync with "vault")
       setDirty(false);
 
-      alert('✅ Data imported successfully! Refreshing...');
+      alert(t('dialogs.importSuccess'));
       window.location.reload();
 
     } catch (error) {
       console.error('Import error:', error);
-      showToast('Import failed. Please check the file format.', 'error');
+      showToast(t('errors.importFailed'), 'error');
     } finally {
       setImportingData(false);
     }
@@ -1665,17 +1698,17 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
    */
   const commands = useMemo(() => [
     // Navigation
-    { icon: BarChart3, label: 'Go to Dashboard', description: 'View overview', action: () => setCurrentView('dashboard'), keywords: ['home', 'overview'] },
-    { icon: Activity, label: 'Go to Transactions', description: 'View all transactions', action: () => setCurrentView('transactions'), keywords: ['list', 'all'] },
-    { icon: PieChart, label: 'Go to Categories', description: 'View by category', action: () => setCurrentView('categories'), keywords: ['breakdown'] },
-    { icon: DollarSign, label: 'Go to Balance', description: 'View settlement', action: () => setCurrentView('balance'), keywords: ['settlement', 'owe'] },
+    { icon: BarChart3, label: t('commands.goToDashboard'), description: t('commands.viewOverview'), action: () => setCurrentView('dashboard'), keywords: ['home', 'overview'] },
+    { icon: Activity, label: t('commands.goToTransactions'), description: t('commands.viewAllTransactions'), action: () => setCurrentView('transactions'), keywords: ['list', 'all'] },
+    { icon: PieChart, label: t('commands.goToCategories'), description: t('commands.viewByCategory'), action: () => setCurrentView('categories'), keywords: ['breakdown'] },
+    { icon: DollarSign, label: t('commands.goToBalance'), description: t('commands.viewSettlement'), action: () => setCurrentView('balance'), keywords: ['settlement', 'owe'] },
     
     // Actions
-    { icon: PlusCircle, label: 'Add Transaction', description: 'Create new entry', action: () => setShowAddModal(true), shortcut: 'Cmd+N' },
-    { icon: TrendingDown, label: 'Add Expense', description: 'Quick expense', action: () => openQuickAdd('expense'), shortcut: 'E' },
-    { icon: TrendingUp, label: 'Add Income', description: 'Quick income', action: () => openQuickAdd('income'), shortcut: 'I' },
-    { icon: Settings, label: 'Open Settings', description: 'Configure app', action: () => setShowSettingsModal(true), shortcut: 'Cmd+,' },
-      { icon: Save, label: 'Export Data', description: 'Save backup', action: () => exportData() },
+    { icon: PlusCircle, label: t('commands.addTransaction'), description: t('commands.createEntry'), action: () => setShowAddModal(true), shortcut: 'Cmd+N' },
+    { icon: TrendingDown, label: t('commands.addExpense'), description: t('commands.quickExpense'), action: () => openQuickAdd('expense'), shortcut: 'E' },
+    { icon: TrendingUp, label: t('commands.addIncome'), description: t('commands.quickIncome'), action: () => openQuickAdd('income'), shortcut: 'I' },
+    { icon: Settings, label: t('commands.openSettings'), description: t('commands.configureApp'), action: () => setShowSettingsModal(true), shortcut: 'Cmd+,' },
+      { icon: Save, label: t('commands.exportData'), description: t('commands.saveBackup'), action: () => exportData() },
     
     // Search transactions (top 5 recent)
     ...filteredExpenses.slice(0, 5).map(exp => ({
@@ -1948,18 +1981,22 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               <Users className="w-6 h-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl font-bold">My Dashboard</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">{t('app.title')}</h1>
               <p className="text-purple-300 text-xs sm:text-sm truncate">{partnerNames.partner1} &amp; {partnerNames.partner2}</p>
               {dirty && (
                 <p className="text-yellow-400 text-xs flex items-center gap-1 mt-1 flex-wrap">
                   <span>⚠️</span>
-                  <span className="break-words">Unsaved changes {saveDirectory ? `(will save to ${saveDirectory.name}/)` : '(Export to persist)'}</span>
+                  <span className="break-words">
+                    {saveDirectory
+                      ? t('status.unsavedChangesWillSaveTo', { name: saveDirectory.name })
+                      : t('status.unsavedChanges')}
+                  </span>
                 </p>
               )}
               {!dirty && saveDirectory && (
                 <p className="text-green-400 text-xs flex items-center gap-1 mt-1 flex-wrap">
                   <span>✓</span>
-                  <span className="truncate">Auto-saving to {saveDirectory.name}/</span>
+                  <span className="truncate">{t('status.autoSavingTo', { name: saveDirectory.name })}</span>
                   {lastExportDate && (
                     <span className="text-slate-400">
                       Auto-saved {new Date(lastExportDate).toLocaleTimeString()}
@@ -1975,19 +2012,19 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             {!dirty && (
               <>
                 <Check className="w-3.5 h-3.5 text-green-400" />
-                <span className="text-slate-300">All saved</span>
+                <span className="text-slate-300">{t('status.allSaved')}</span>
               </>
             )}
             {dirty && !exportingData && (
               <>
                 <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                <span className="text-slate-300">Unsaved changes</span>
+                <span className="text-slate-300">{t('status.unsavedChanges')}</span>
               </>
             )}
             {exportingData && (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-slate-300">Saving...</span>
+                <span className="text-slate-300">{t('status.saving')}</span>
               </>
             )}
           </div>
@@ -1998,11 +2035,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 onClick={saveData}
                 disabled={exportingData || !dirty}
                 className="bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                title={saveDirectory ? `Save to ${saveDirectory.name}/ (⌘S)` : 'Save (⌘S / Ctrl+S)'}
+                title={saveDirectory ? t('tooltips.saveTo', { name: saveDirectory.name }) : t('tooltips.save')}
               >
               <Save className="w-4 h-4" />
               <span className="text-sm font-medium">
-                {exportingData ? 'Saving...' : 'Save'}
+                {exportingData ? t('buttons.saving') : t('buttons.save')}
               </span>
             </button>
             
@@ -2010,20 +2047,20 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <button
               onClick={() => setShowShortcuts(true)}
               className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              title="Keyboard Shortcuts (?)"
+              title={t('tooltips.keyboardShortcuts')}
             >
               <HelpCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">Help</span>
+              <span className="text-sm font-medium">{t('buttons.help')}</span>
             </button>
 
             {/* Settings Button */}
             <button
               onClick={() => setShowSettingsModal(true)}
               className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              title="Settings (⌘,)"
+              title={t('tooltips.settings')}
             >
               <Settings className="w-4 h-4" />
-              <span className="text-sm font-medium">Settings</span>
+              <span className="text-sm font-medium">{t('buttons.settings')}</span>
             </button>
           </div>
         </div>
@@ -2041,7 +2078,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               }`}
             >
               <BarChart3 className="w-4 h-4" />
-              <span>Dashboard</span>
+              <span>{t('nav.dashboard')}</span>
               {currentView === 'dashboard' && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-t-full" />
               )}
@@ -2057,7 +2094,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               }`}
             >
               <Activity className="w-4 h-4" />
-              <span>Transactions</span>
+              <span>{t('nav.transactions')}</span>
               {currentView === 'transactions' && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-t-full" />
               )}
@@ -2071,7 +2108,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               }`}
             >
               <PieChart className="w-4 h-4" />
-              <span>Categories</span>
+              <span>{t('nav.categories')}</span>
               {currentView === 'categories' && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-t-full" />
               )}
@@ -2085,7 +2122,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               }`}
             >
               <DollarSign className="w-4 h-4" />
-              <span>Balance</span>
+              <span>{t('nav.balance')}</span>
               {currentView === 'balance' && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-t-full" />
               )}
@@ -2127,7 +2164,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               currentView === 'dashboard' ? 'text-white font-medium' : 'text-slate-400'
             }`}
           >
-            Dashboard
+            {t('nav.dashboard')}
           </button>
           {currentView !== 'dashboard' && (
             <>
@@ -2159,10 +2196,10 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             {/* Empty State (Phase 1 Feature #4) */}
             {filteredExpenses.length === 0 && (
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-12 text-center">
-                <div className="text-7xl mb-6">💰</div>
-                <h3 className="text-3xl font-bold mb-3">Welcome to Your Expense Tracker!</h3>
+                <div className="text-7xl mb-6">[]</div>
+                <h3 className="text-3xl font-bold mb-3">{t('app.welcomeTitle')}</h3>
                 <p className="text-slate-400 text-lg mb-8 max-w-2xl mx-auto">
-                  Start tracking your household expenses to get insights on spending patterns.
+                  {t('app.welcomeBody')}
                 </p>
                 <div className="flex gap-4 justify-center">
                   <button
@@ -2170,19 +2207,18 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     className="px-8 py-4 bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-3 transition-colors text-lg font-medium"
                   >
                     <TrendingDown className="w-6 h-6" />
-                    Add First Expense
+                    {t('buttons.addFirstExpense')}
                   </button>
                   <button
                     onClick={() => openQuickAdd('income')}
                     className="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-3 transition-colors text-lg font-medium"
                   >
                     <TrendingUp className="w-6 h-6" />
-                    Add Income
+                    {t('buttons.addIncome')}
                   </button>
                 </div>
                 <p className="text-slate-500 text-sm mt-6">
-                  Or press <kbd className="px-2 py-1 bg-slate-700 rounded text-xs">E</kbd> for expense 
-                  or <kbd className="px-2 py-1 bg-slate-700 rounded text-xs">I</kbd> for income
+                  {t('app.shortcutHint')}
                 </p>
               </div>
             )}
@@ -2193,7 +2229,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6 transition-all duration-200 hover:bg-slate-800/70 hover:border-slate-600 hover:shadow-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-slate-400 text-sm">Balance</span>
+                  <span className="text-slate-400 text-sm">{t('labels.balance')}</span>
                   <div className="text-blue-400 text-2xl font-bold">
                     {totalIncome > 0
                       ? Math.round((balance / totalIncome) * 100)
@@ -2203,12 +2239,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 <div className="text-3xl font-bold mb-1 transition-all duration-500">
                   {formatCurrency(balance)}
                 </div>
-                <div className="text-xs text-slate-500">{filteredExpenses.length} transactions</div>
+                <div className="text-xs text-slate-500">
+                  {t('labels.transactionsCount', { count: filteredExpenses.length })}
+                </div>
               </div>
 
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6 transition-all duration-200 hover:bg-slate-800/70 hover:border-slate-600 hover:shadow-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-slate-400 text-sm">Expense</span>
+                  <span className="text-slate-400 text-sm">{t('labels.expense')}</span>
                   <div className="text-red-400 text-2xl font-bold">
                     -{totalIncome > 0
                       ? Math.round((totalExpense / totalIncome) * 100)
@@ -2219,22 +2257,24 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   -{formatCurrency(totalExpense)}
                 </div>
                 <div className="text-xs text-slate-500">
-                  {filteredExpenses.filter(e => e.type === 'expense').length}{' '}
-                  transactions
+                  {t('labels.transactionsCount', {
+                    count: filteredExpenses.filter(e => e.type === 'expense').length
+                  })}
                 </div>
               </div>
 
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6 transition-all duration-200 hover:bg-slate-800/70 hover:border-slate-600 hover:shadow-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-slate-400 text-sm">Income</span>
+                  <span className="text-slate-400 text-sm">{t('labels.income')}</span>
                   <div className="text-green-400 text-2xl font-bold">100%</div>
                 </div>
                 <div className="text-3xl font-bold text-green-400 mb-1 transition-all duration-500">
                   +{formatCurrency(totalIncome)}
                 </div>
                 <div className="text-xs text-slate-500">
-                  {filteredExpenses.filter(e => e.type === 'income').length}{' '}
-                  transactions
+                  {t('labels.transactionsCount', {
+                    count: filteredExpenses.filter(e => e.type === 'income').length
+                  })}
                 </div>
               </div>
             </div>
@@ -2244,8 +2284,8 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6 mb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Zap className="w-5 h-5 text-yellow-400" />
-                  <h3 className="text-lg font-bold">Quick Add (Frequent)</h3>
-                  <span className="text-xs text-slate-400">Your most common transactions</span>
+                  <h3 className="text-lg font-bold">{t('labels.quickAddFrequent')}</h3>
+                  <span className="text-xs text-slate-400">{t('messages.mostCommonTransactions')}</span>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {frequentExpenses.map((exp, idx) => (
@@ -2261,10 +2301,10 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                             date: new Date().toISOString().split('T')[0]
                           });
                           setShowAddModal(true);
-                          showToast(`Pre-filled ${exp.description}`, 'success');
+                          showToast(t('toasts.prefilled', { description: exp.description }), 'success');
                         }}
                         className="bg-slate-700/50 hover:bg-slate-600 px-4 py-3 rounded-xl transition-all hover:scale-105 border border-slate-600 hover:border-purple-500"
-                        title={`Edit and add ${exp.description}`}
+                        title={t('tooltips.editAndAdd', { description: exp.description })}
                       >
                         <div className="text-2xl mb-1">{categories[exp.category]?.icon}</div>
                         <div className="text-sm font-medium truncate max-w-[120px]">{exp.description}</div>
@@ -2290,15 +2330,15 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                             setExpenses(updated);
                             await window.storage.set('household-expenses', JSON.stringify(updated));
                             setDirty(true);
-                            showToast(`Added ${exp.description}`, 'success');
+                            showToast(t('toasts.added', { description: exp.description }), 'success');
                           } catch (error) {
-                            showToast('Failed to add transaction', 'error');
+                            showToast(t('errors.addTransactionFailed'), 'error');
                           } finally {
                             setSavingTransaction(false);
                           }
                         }}
                         className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 p-2 bg-purple-600 hover:bg-purple-700 rounded-full shadow-lg transition-all transform hover:scale-110"
-                        title="Add this transaction now"
+                        title={t('tooltips.addTransactionNow')}
                       >
                         <PlusCircle className="w-4 h-4" />
                       </button>
@@ -2314,38 +2354,38 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <Activity className="w-5 h-5" />
-                  Insights
+                  {t('labels.insights')}
                 </h3>
                 <div className="space-y-3 text-xs sm:text-sm">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                    <span className="text-slate-400 whitespace-nowrap">Largest Expense:</span>
+                    <span className="text-slate-400 whitespace-nowrap">{t('labels.largestExpense')}:</span>
                     <span className="font-semibold text-right break-words min-w-0">
                       {insights.largest.amount > 0 
                         ? `${formatCurrency(insights.largest.amount)} - ${insights.largest.description}`
-                        : 'None'}
+                        : t('labels.none')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-slate-400 whitespace-nowrap">Avg Daily Spend:</span>
+                    <span className="text-slate-400 whitespace-nowrap">{t('labels.avgDailySpend')}:</span>
                     <span className="font-semibold">{formatCurrency(insights.avgDaily)}</span>
                   </div>
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-slate-400 whitespace-nowrap">Top Category:</span>
+                    <span className="text-slate-400 whitespace-nowrap">{t('labels.topCategory')}:</span>
                     <span className="font-semibold flex items-center gap-2 min-w-0">
                       <span className="flex-shrink-0">{categories[insights.topCategory]?.icon || ''}</span>
                       <span className="truncate">{insights.topCategory}</span>
                     </span>
                   </div>
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-slate-400 whitespace-nowrap">Days with Spending:</span>
-                    <span className="font-semibold">{insights.daysWithSpending} days</span>
+                    <span className="text-slate-400 whitespace-nowrap">{t('labels.daysWithSpending')}:</span>
+                    <span className="font-semibold">{t('labels.daysCount', { count: insights.daysWithSpending })}</span>
                   </div>
                 </div>
               </div>
 
               {/* Month-over-Month Comparison */}
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-bold mb-4">Month-over-Month</h3>
+                <h3 className="text-base sm:text-lg font-bold mb-4">{t('labels.monthOverMonth')}</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {categoryDeltas.slice(0, 6).map(delta => (
                     <div key={delta.category} className="flex items-center justify-between text-xs sm:text-sm gap-2">
@@ -2359,7 +2399,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     </div>
                   ))}
                   {categoryDeltas.length === 0 && (
-                    <p className="text-slate-500 text-xs sm:text-sm text-center py-4">No previous month data</p>
+                    <p className="text-slate-500 text-xs sm:text-sm text-center py-4">{t('messages.noPreviousMonthData')}</p>
                   )}
                 </div>
               </div>
@@ -2370,9 +2410,9 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               {/* Top categories */}
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">Categories</h3>
+                  <h3 className="text-lg font-bold">{t('labels.categories')}</h3>
                   <div className="flex gap-2 text-xs">
-                    <span className="text-yellow-400">● Expenses</span>
+                    <span className="text-yellow-400">● {t('labels.expense')}</span>
                   </div>
                 </div>
 
@@ -2383,12 +2423,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       onClick={() => {
                         setSelectedCategory(category);
                         setCurrentView('transactions');
-                        showToast(`Filtering by ${category}`, 'success');
+                        showToast(t('toasts.filteringBy', { category }), 'success');
                       }}
                       className={`${categories[category]?.color} bg-opacity-20 rounded-xl p-4 border border-opacity-30 hover:border-opacity-100 transition-all hover:scale-105 cursor-pointer text-left ${
                         selectedCategory === category ? 'ring-2 ring-white' : ''
                       }`}
-                      title={`Click to filter by ${category}`}
+                      title={t('tooltips.filterByCategory', { category })}
                     >
                       <div className="text-3xl mb-2">
                         {categories[category]?.icon}
@@ -2413,7 +2453,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       ))}
                     </div>
                     <span>
-                      Others{' '}
+                      {t('charts.others')}{' '}
                       {sortedCategories.length > 4
                         ? Math.round(
                             (sortedCategories
@@ -2432,25 +2472,25 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               {/* Statistics bar chart */}
               <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">Statistics</h3>
+                  <h3 className="text-lg font-bold">{t('labels.statistics')}</h3>
                   <div className="flex gap-4 text-xs">
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 bg-red-400 rounded-full"></span>
-                      Expense
+                      {t('labels.expense')}
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                      Income
+                      {t('labels.income')}
                     </span>
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-400 mb-2">This Month</div>
+                <div className="text-xs text-slate-400 mb-2">{t('labels.thisMonth')}</div>
 
                 <div className="relative h-48">
                   {!hasAnyData && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-slate-500 text-sm">No data for this month yet</p>
+                      <p className="text-slate-500 text-sm">{t('messages.noDataThisMonth')}</p>
                     </div>
                   )}
                   
@@ -2490,7 +2530,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                             const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(data.day).padStart(2, '0')}`;
                             setSearchQuery(dateStr);
                             setCurrentView('transactions');
-                            showToast(`Showing transactions for day ${data.day}`, 'success');
+                            showToast(t('toasts.showingTransactionsForDay', { day: data.day }), 'success');
                           }}
                         >
                           {/* Always render both bars so the chart never looks empty */}
@@ -2500,7 +2540,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                               ...incomeStyle,
                               transitionDelay: `${idx * 30}ms`
                             }}
-                            title={data.income > 0 ? `Income (Day ${data.day}): ${formatCurrency(data.income)}` : `No income (Day ${data.day})`}
+                            title={
+                              data.income > 0
+                                ? t('charts.incomeDayTitle', {
+                                    day: data.day,
+                                    value: formatCurrency(data.income)
+                                  })
+                                : t('charts.noIncomeDayTitle', { day: data.day })
+                            }
                           />
                           <div
                             className="w-full bg-red-500 rounded-t opacity-80 hover:opacity-100 transition-all duration-700 ease-out"
@@ -2508,7 +2555,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                               ...expenseStyle,
                               transitionDelay: `${idx * 30}ms`
                             }}
-                            title={data.expense > 0 ? `Expense (Day ${data.day}): ${formatCurrency(data.expense)}` : `No expense (Day ${data.day})`}
+                            title={
+                              data.expense > 0
+                                ? t('charts.expenseDayTitle', {
+                                    day: data.day,
+                                    value: formatCurrency(data.expense)
+                                  })
+                                : t('charts.noExpenseDayTitle', { day: data.day })
+                            }
                           />
                         </div>
                       );
@@ -2522,7 +2576,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   ))}
                 </div>
                 <p className="text-xs text-slate-500 mt-3 text-center">
-                  Only days with spending will have visible bars
+                  {t('messages.onlyDaysWithSpending')}
                 </p>
 
                 {/* Chart Tooltip Portal (Phase 2 Feature #4) */}
@@ -2535,14 +2589,22 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       transform: 'translate(-50%, -100%)'
                     }}
                   >
-                    <div className="text-sm font-bold mb-1">Day {chartTooltip.day}</div>
+                    <div className="text-sm font-bold mb-1">
+                      {t('charts.day', { day: chartTooltip.day })}
+                    </div>
                     {chartTooltip.income > 0 && (
-                      <div className="text-xs text-green-400">Income: {formatCurrency(chartTooltip.income)}</div>
+                      <div className="text-xs text-green-400">
+                        {t('charts.incomeLabel', { value: formatCurrency(chartTooltip.income) })}
+                      </div>
                     )}
                     {chartTooltip.expense > 0 && (
-                      <div className="text-xs text-red-400">Expense: {formatCurrency(chartTooltip.expense)}</div>
+                      <div className="text-xs text-red-400">
+                        {t('charts.expenseLabel', { value: formatCurrency(chartTooltip.expense) })}
+                      </div>
                     )}
-                    <div className="text-xs text-slate-500 mt-1">Click to view transactions</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {t('charts.clickToView')}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2550,7 +2612,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
 
             {/* Spending Trends - 6 month view (Phase 2 Feature #6) */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6 mb-6">
-              <h3 className="text-lg font-bold mb-4">Spending Trends</h3>
+              <h3 className="text-lg font-bold mb-4">{t('labels.spendingTrends')}</h3>
               <div className="relative h-48">
                 <svg viewBox="0 0 600 150" className="w-full h-full">
                   {/* Grid lines */}
@@ -2588,10 +2650,10 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       onClick={() => {
                         setSelectedMonth(d.month);
                         setSelectedYear(d.year);
-                        showToast(`Viewing ${months[d.month]} ${d.year}`, 'success');
+                        showToast(t('toasts.viewingMonth', { month: months[d.month], year: d.year }), 'success');
                       }}
                     >
-                      <title>{months[d.month]}: {formatCurrency(d.amount)}</title>
+                      <title>{t('charts.monthAmount', { month: months[d.month], value: formatCurrency(d.amount) })}</title>
                     </circle>
                   ))}
                 </svg>
@@ -2607,9 +2669,9 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               {/* Prediction badge */}
               {prediction > 0 && (
                 <div className="mt-4 p-3 bg-purple-900/30 border border-purple-700 rounded-lg text-sm">
-                  <span className="text-purple-400">Predicted next month: </span>
+                  <span className="text-purple-400">{t('charts.predictedNextLabel')}</span>
                   <span className="font-bold">{formatCurrency(prediction)}</span>
-                  <span className="text-xs text-slate-400 ml-2">(based on 6-month average)</span>
+                  <span className="text-xs text-slate-400 ml-2">{t('charts.predictedNote')}</span>
                 </div>
               )}
             </div>
@@ -2619,12 +2681,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               {/* Recent transactions */}
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">Transactions</h3>
+                  <h3 className="text-lg font-bold">{t('labels.transactions')}</h3>
                   <button
                     onClick={() => setCurrentView('transactions')}
                     className="text-purple-400 text-sm hover:text-purple-300"
                   >
-                    See All →
+                    {t('buttons.seeAll')}
                   </button>
                 </div>
 
@@ -2637,7 +2699,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                         key={exp.id} 
                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/50 transition-all cursor-pointer"
                         onClick={() => editExpense(exp)}
-                        title="Click to edit"
+                        title={t('tooltips.clickToEdit')}
                       >
                         <div
                           className={`w-10 h-10 ${categories[exp.category]?.color} rounded-xl flex items-center justify-center text-xl flex-shrink-0`}
@@ -2650,7 +2712,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                           </div>
                           <div className="text-xs text-slate-400">
                             {exp.paidBy === 'joint'
-                              ? 'Joint'
+                              ? t('labels.joint')
                               : exp.paidBy === 'partner1'
                               ? partnerNames.partner1
                               : partnerNames.partner2}
@@ -2679,8 +2741,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               {/* Upcoming recurring items */}
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">Upcoming</h3>
-                  <button className="text-purple-400 text-sm hover:text-purple-300">+</button>
+                  <h3 className="text-lg font-bold">{t('labels.upcoming')}</h3>
+                  <button
+                    className="text-purple-400 text-sm hover:text-purple-300"
+                    title={t('buttons.addRecurring')}
+                  >
+                    +
+                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -2699,7 +2766,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                           {rec.description}
                         </div>
                         <div className="text-xs text-slate-400">
-                          Day {rec.recurringDay} • Monthly
+                          {t('labels.recurringMonthly', { day: rec.recurringDay })}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2726,7 +2793,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   ))}
                   {recurring.length === 0 && (
                     <div className="text-center text-slate-400 py-8 text-sm">
-                      No recurring transactions yet
+                      {t('messages.noRecurring')}
                     </div>
                   )}
                 </div>
@@ -2741,16 +2808,16 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
         {currentView === 'transactions' && (
           <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">My Transactions</h3>
+              <h3 className="text-xl font-bold">{t('labels.myTransactions')}</h3>
               <div className="flex gap-2">
                 {/* Add Transaction Button */}
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                  title="Add Transaction (⌘N)"
+                  title={t('buttons.addTransaction')}
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span className="text-sm font-medium">Add Transaction</span>
+                  <span className="text-sm font-medium">{t('buttons.addTransaction')}</span>
                 </button>
                 {/* Bulk Mode Toggle (Phase 2 Feature #10) */}
                 <button
@@ -2764,7 +2831,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       : 'bg-slate-700 hover:bg-slate-600'
                   }`}
                 >
-                  {bulkMode ? 'Exit Bulk Mode' : 'Bulk Select'}
+                  {bulkMode ? t('buttons.exitBulkMode') : t('buttons.bulkSelect')}
                 </button>
               </div>
             </div>
@@ -2772,11 +2839,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             {/* Category Filter Indicator (Phase 1 Feature #8) */}
             {selectedCategory && (
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm text-slate-400">Filtered by:</span>
+                <span className="text-sm text-slate-400">{t('labels.filteredBy')}:</span>
                 <button
                   onClick={() => {
                     setSelectedCategory(null);
-                    showToast('Filter cleared', 'success');
+                    showToast(t('toasts.filterCleared'), 'success');
                   }}
                   className="px-3 py-1 bg-purple-600 rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
                 >
@@ -2791,7 +2858,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <div className="mb-4">
               <input
                 type="text"
-                placeholder="🔍 Search transactions..."
+                placeholder={t('messages.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
@@ -2802,12 +2869,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             {bulkMode && (
               <div className="sticky top-0 z-10 bg-purple-900 border border-purple-700 rounded-lg p-3 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  <span className="text-sm font-medium">{t('labels.selectedCount', { count: selectedIds.size })}</span>
                   <button
                     onClick={() => setSelectedIds(new Set())}
                     className="text-xs text-purple-300 hover:text-white"
                   >
-                    Clear
+                    {t('buttons.clear')}
                   </button>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
@@ -2816,14 +2883,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     disabled={selectedIds.size === 0 || savingTransaction}
                     className="flex-1 sm:flex-initial px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm transition-colors"
                   >
-                    Change Category
+                    {t('buttons.changeCategory')}
                   </button>
                   <button
                     onClick={bulkDelete}
                     disabled={selectedIds.size === 0 || deletingItem}
                     className="flex-1 sm:flex-initial px-3 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm transition-colors"
                   >
-                    Delete Selected
+                    {t('buttons.deleteSelected')}
                   </button>
                 </div>
               </div>
@@ -2836,11 +2903,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   const now = new Date();
                   setSelectedMonth(now.getMonth());
                   setSelectedYear(now.getFullYear());
-                  showToast('Showing this month', 'success');
+                  showToast(t('toasts.showingThisMonth'), 'success');
                 }}
                 className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-full text-xs whitespace-nowrap transition-colors"
               >
-                This Month
+                {t('labels.thisMonth')}
               </button>
               <button
                 onClick={() => {
@@ -2849,11 +2916,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
                   setSelectedMonth(prevMonth);
                   setSelectedYear(prevYear);
-                  showToast('Showing last month', 'success');
+                  showToast(t('toasts.showingLastMonth'), 'success');
                 }}
                 className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-full text-xs whitespace-nowrap transition-colors"
               >
-                Last Month
+                {t('labels.lastMonth')}
               </button>
               <button
                 onClick={() => {
@@ -2865,14 +2932,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     new Date(e.date).getFullYear() === selectedYear
                   );
                   if (largeExpenses.length > 0) {
-                    showToast(`Found ${largeExpenses.length} large expenses`, 'success');
+                    showToast(t('toasts.foundLargeExpenses', { count: largeExpenses.length }), 'success');
                   } else {
-                    showToast('No large expenses this month', 'error');
+                    showToast(t('toasts.noLargeExpensesThisMonth'), 'error');
                   }
                 }}
                 className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-full text-xs whitespace-nowrap transition-colors"
               >
-                Large Expenses (&gt; {householdSettings.currencySymbol}1000)
+                {t('labels.largeExpenses')} (&gt; {householdSettings.currencySymbol}1000)
               </button>
               {filterPresets.map(preset => (
                 <button
@@ -2882,7 +2949,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     if (preset.filters.categories && preset.filters.categories.length > 0) {
                       setSelectedCategory(preset.filters.categories[0]);
                     }
-                    showToast(`Applied filter: ${preset.name}`, 'success');
+                    showToast(t('toasts.appliedFilter', { name: preset.name }), 'success');
                   }}
                   className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded-full text-xs whitespace-nowrap transition-colors"
                 >
@@ -2907,13 +2974,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             {filteredExpenses.length === 0 && expenses.length > 0 && (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">🔍</div>
-                <h4 className="text-xl font-semibold mb-2">No transactions found</h4>
+                <h4 className="text-xl font-semibold mb-2">{t('messages.noTransactionsFound')}</h4>
                 <p className="text-slate-400 mb-6">
                   {searchQuery 
-                    ? `No results for "${searchQuery}"`
+                    ? t('messages.noResultsFor', { query: searchQuery })
                     : selectedCategory
-                    ? `No transactions in ${selectedCategory}`
-                    : 'No transactions in this month'
+                    ? t('messages.noTransactionsInCategory', { category: selectedCategory })
+                    : t('messages.noTransactions')
                   }
                 </p>
                 <div className="flex gap-3 justify-center">
@@ -2925,14 +2992,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       }}
                       className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
                     >
-                      Clear filters
+                      {t('buttons.clearFilters')}
                     </button>
                   )}
                   <button
                     onClick={() => setShowAddModal(true)}
                     className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
                   >
-                    Add Transaction
+                    {t('buttons.addTransaction')}
                   </button>
                 </div>
               </div>
@@ -2942,7 +3009,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             {filteredExpenses.length > ITEMS_PER_PAGE && (
               <div className="flex items-center justify-between mb-4 text-sm text-slate-400">
                 <span>
-                  Showing {((transactionPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(transactionPage * ITEMS_PER_PAGE, filteredExpenses.length)} of {filteredExpenses.length}
+                  {t('messages.showingRange', {
+                    start: ((transactionPage - 1) * ITEMS_PER_PAGE) + 1,
+                    end: Math.min(transactionPage * ITEMS_PER_PAGE, filteredExpenses.length),
+                    total: filteredExpenses.length
+                  })}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -2950,17 +3021,20 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     disabled={transactionPage === 1}
                     className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
                   >
-                    Previous
+                    {t('buttons.previous')}
                   </button>
                   <span className="px-3 py-1">
-                    Page {transactionPage} of {Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE)}
+                    {t('messages.pageOf', {
+                      page: transactionPage,
+                      total: Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE)
+                    })}
                   </span>
                   <button
                     onClick={() => setTransactionPage(Math.min(Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE), transactionPage + 1))}
                     disabled={transactionPage >= Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE)}
                     className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
                   >
-                    Next
+                    {t('buttons.next')}
                   </button>
                 </div>
               </div>
@@ -2980,14 +3054,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                         value={inlineEditData.description ?? exp.description}
                         onChange={(e) => setInlineEditData({...inlineEditData, description: e.target.value})}
                         className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm"
-                        placeholder="Description"
+                        placeholder={t('labels.description')}
                       />
                       <input
                         type="number"
                         value={inlineEditData.amount ?? exp.amount}
                         onChange={(e) => setInlineEditData({...inlineEditData, amount: parseFloat(e.target.value)})}
                         className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm"
-                        placeholder="Amount"
+                        placeholder={t('labels.amount')}
                         step="0.01"
                       />
                       <select
@@ -3004,10 +3078,10 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                           onClick={() => saveInlineEdit(exp.id)}
                           disabled={savingTransaction}
                           className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm flex items-center gap-1 flex-1 justify-center disabled:opacity-50"
-                          title="Save changes"
+                          title={t('tooltips.saveChanges')}
                         >
                           <Check className="w-4 h-4" />
-                          <span>Save</span>
+                          <span>{t('buttons.save')}</span>
                         </button>
                         <button
                           onClick={() => {
@@ -3015,7 +3089,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                             setInlineEditData({});
                           }}
                           className="px-3 py-1 bg-slate-600 hover:bg-slate-500 rounded text-sm"
-                          title="Cancel"
+                          title={t('buttons.cancel')}
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -3072,11 +3146,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                         <span className="whitespace-nowrap">{exp.date}</span>
                         <span className="hidden sm:inline">•</span>
                         <span className="truncate">
-                          {exp.paidBy === 'joint'
-                            ? 'Joint'
-                            : exp.paidBy === 'partner1'
-                            ? partnerNames.partner1
-                            : partnerNames.partner2}
+                            {exp.paidBy === 'joint'
+                              ? t('labels.joint')
+                              : exp.paidBy === 'partner1'
+                              ? partnerNames.partner1
+                              : partnerNames.partner2}
                         </span>
                       </div>
                     </div>
@@ -3112,7 +3186,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                             confirmDeleteExpense(exp.id, exp.description);
                           }}
                           className="p-1.5 sm:p-2 hover:bg-red-600 rounded-lg transition-colors"
-                          title="Delete this transaction"
+                          title={t('tooltips.deleteTransaction')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -3130,7 +3204,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
         {currentView === 'categories' && (
           <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">Expenses by Category</h3>
+              <h3 className="text-xl font-bold">{t('labels.expensesByCategory')}</h3>
               <button
                 onClick={() => {
                   setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
@@ -3138,25 +3212,25 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   setShowCategoryModal(true);
                 }}
                 className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                title="Add Category"
+                title={t('buttons.addCategory')}
               >
                 <PlusCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">Add Category</span>
+                <span className="text-sm font-medium">{t('buttons.addCategory')}</span>
               </button>
             </div>
 
             {/* Empty State (Phase 1 Feature #4) */}
             {totalExpense === 0 && (
               <div className="text-center py-16">
-                <div className="text-6xl mb-4">📊</div>
-                <h4 className="text-xl font-semibold mb-2">No expenses this month</h4>
-                <p className="text-slate-400 mb-6">Add expenses to see category breakdown</p>
+                <div className="text-6xl mb-4">[]</div>
+                <h4 className="text-xl font-semibold mb-2">{t('messages.noExpensesThisMonth')}</h4>
+                <p className="text-slate-400 mb-6">{t('messages.addExpensesForCategoryBreakdown')}</p>
                 <button
                   onClick={() => openQuickAdd('expense')}
                   className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors inline-flex items-center gap-2"
                 >
                   <TrendingDown className="w-5 h-5" />
-                  Add Expense
+                  {t('buttons.addExpense')}
                 </button>
               </div>
             )}
@@ -3173,10 +3247,10 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       e.preventDefault();
                       const txId = parseInt(e.dataTransfer.getData('transactionId'));
                       updateTransactionCategory(txId, category);
-                      showToast(`Moved to ${category}`, 'success');
+                      showToast(t('toasts.movedToCategory', { category }), 'success');
                     }}
                     className="bg-slate-700/50 rounded-xl p-6 border-2 border-dashed border-transparent hover:border-purple-500 transition-colors relative group"
-                    title="Drop transactions here to re-categorize"
+                    title={t('tooltips.dropToRecategorize')}
                   >
                     {/* Edit & Delete Buttons */}
                     <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -3192,7 +3266,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                           setShowCategoryModal(true);
                         }}
                         className="p-2 hover:bg-slate-600 rounded-lg transition-colors bg-slate-800/90"
-                        title="Edit category"
+                        title={t('tooltips.editCategory')}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -3202,7 +3276,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                           confirmDeleteCategory(category);
                         }}
                         className="p-2 hover:bg-red-600 rounded-lg transition-colors bg-slate-800/90"
-                        title="Delete category"
+                        title={t('tooltips.deleteCategory')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -3221,7 +3295,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Percentage</span>
+                        <span className="text-slate-400">{t('labels.percentage')}</span>
                         <span className="font-medium">
                           {((amount / totalExpense) * 100).toFixed(1)}%
                         </span>
@@ -3240,7 +3314,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
 
               {/* Pie Chart Visualization (Phase 2 Feature #5) */}
               <div className="mt-6 bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
-                <h3 className="text-lg font-bold mb-4">Category Distribution</h3>
+                <h3 className="text-lg font-bold mb-4">{t('labels.categoryDistribution')}</h3>
                 <div className="flex flex-col lg:flex-row gap-6 items-center">
                   {/* Visual Pie Chart using CSS */}
                   <div className="relative w-64 h-64 flex-shrink-0">
@@ -3281,7 +3355,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                                 onClick={() => {
                                   setSelectedCategory(category);
                                   setCurrentView('transactions');
-                                  showToast(`Filtering by ${category}`, 'success');
+                                  showToast(t('toasts.filteringBy', { category }), 'success');
                                 }}
                               >
                                 <title>{category}: {percentage.toFixed(1)}%</title>
@@ -3317,7 +3391,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                             onClick={() => {
                               setSelectedCategory(category);
                               setCurrentView('transactions');
-                              showToast(`Filtering by ${category}`, 'success');
+                              showToast(t('toasts.filteringBy', { category }), 'success');
                             }}
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -3343,7 +3417,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
         {currentView === 'balance' && (
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6">
-              <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">Balance Settlement</h3>
+              <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">{t('labels.balanceSettlement')}</h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div className="bg-slate-700/50 rounded-xl p-4 sm:p-6">
@@ -3367,7 +3441,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs sm:text-sm gap-2">
-                        <span className="text-slate-400">Income</span>
+                        <span className="text-slate-400">{t('labels.income')}</span>
                         <span className="font-medium text-green-400 break-words text-right">
                           +{formatCurrency(partner1Income)}
                         </span>
@@ -3396,7 +3470,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs sm:text-sm gap-2">
-                        <span className="text-slate-400">Income</span>
+                        <span className="text-slate-400">{t('labels.income')}</span>
                         <span className="font-medium text-green-400 break-words text-right">
                           +{formatCurrency(partner2Income)}
                         </span>
@@ -3409,13 +3483,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               {Math.abs(partner1Balance) < 0.01 ? (
                 <div className="bg-green-900/20 border border-green-700 rounded-xl p-6 text-center">
                   <div className="text-5xl mb-3">✅</div>
-                  <h4 className="text-xl font-bold text-green-400 mb-2">Perfect Balance!</h4>
-                  <p className="text-slate-300">All expenses are evenly split. No settlements needed.</p>
+                  <h4 className="text-xl font-bold text-green-400 mb-2">{t('messages.perfectBalance')}</h4>
+                  <p className="text-slate-300">{t('messages.allSettled')}</p>
                 </div>
               ) : (
               <div className="bg-purple-900/30 border border-purple-700 rounded-xl p-6">
                 <div className="text-center">
-                  <div className="text-lg font-bold mb-2">Settlement Required</div>
+                  <div className="text-lg font-bold mb-2">{t('messages.settlementRequired')}</div>
                   {householdSettings.splitMode === 'proportional' && (
                     <div className="text-xs text-slate-400 mb-2">
                       Split: {(splitRatio * 100).toFixed(0)}% / {((1-splitRatio) * 100).toFixed(0)}%
@@ -3476,7 +3550,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 {jointPaid > 0 && (
                   <div>
                     <div className="flex justify-between mb-2 gap-2">
-                      <span className="font-medium text-sm sm:text-base">Joint</span>
+                      <span className="font-medium text-sm sm:text-base">{t('labels.joint')}</span>
                       <span className="text-slate-400 text-sm sm:text-base whitespace-nowrap">{formatCurrency(jointPaid)}</span>
                     </div>
                     <div className="w-full bg-slate-700 rounded-full h-2 sm:h-3">
@@ -3493,18 +3567,18 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             {/* Settlements section */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-bold">Settlements</h3>
+                <h3 className="text-lg sm:text-xl font-bold">{t('labels.settlements')}</h3>
                 <button
                   onClick={() => setShowSettlementModal(true)}
                   className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
                   <PlusCircle className="w-5 h-5" />
-                  Record Payment
+                  {t('buttons.recordPayment')}
                 </button>
               </div>
 
               {settlements.length === 0 ? (
-                <p className="text-slate-400 text-center py-4 text-sm">No settlements recorded yet</p>
+                <p className="text-slate-400 text-center py-4 text-sm">{t('messages.noSettlements')}</p>
               ) : (
                 <div className="space-y-2 sm:space-y-3">
                   {settlements
@@ -3541,7 +3615,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                           <button
                             onClick={() => deleteSettlement(settlement.id)}
                             className="p-2 hover:bg-red-600 rounded-lg transition-colors"
-                            title="Delete settlement"
+                            title={t('tooltips.deleteSettlement')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -3559,7 +3633,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">Record Settlement</h3>
+                <h3 className="text-xl font-bold">{t('labels.recordSettlement')}</h3>
                 <button
                   onClick={() => setShowSettlementModal(false)}
                   className="p-2 hover:bg-slate-700 rounded-lg"
@@ -3631,13 +3705,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     onClick={() => setShowSettlementModal(false)}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
                   >
-                    Cancel
+                    {t('buttons.cancel')}
                   </button>
                   <button
                     onClick={recordSettlement}
                     className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors"
                   >
-                    Record Payment
+                    {t('buttons.recordPayment')}
                   </button>
                 </div>
               </div>
@@ -3650,7 +3724,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">Settings</h3>
+                <h3 className="text-xl font-bold">{t('settings.title')}</h3>
                 <button
                   onClick={() => setShowSettingsModal(false)}
                   className="p-2 hover:bg-slate-700 rounded-lg"
@@ -3661,7 +3735,25 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm text-slate-400 mb-2">
-                    Partner 1 Name
+                    {t('settings.language')}
+                  </label>
+                  <select
+                    value={i18n.language || 'en'}
+                    onChange={e => {
+                      const nextLang = e.target.value;
+                      i18n.changeLanguage(nextLang);
+                      window.localStorage.setItem('app-locale', nextLang);
+                    }}
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
+                  >
+                    <option value="en">{t('settings.languages.en')}</option>
+                    <option value="he">{t('settings.languages.he')}</option>
+                  </select>
+                  <p className="text-xs text-slate-500 mt-2">{t('settings.languageHelp')}</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    {t('settings.partner1Name')}
                   </label>
                   <input
                     type="text"
@@ -3670,12 +3762,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       setTempNames({ ...tempNames, partner1: e.target.value })
                     }
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
-                    placeholder="Enter name"
+                    placeholder={t('settings.namePlaceholder')}
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-slate-400 mb-2">
-                    Partner 2 Name
+                    {t('settings.partner2Name')}
                   </label>
                   <input
                     type="text"
@@ -3684,24 +3776,24 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       setTempNames({ ...tempNames, partner2: e.target.value })
                     }
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
-                    placeholder="Enter name"
+                    placeholder={t('settings.namePlaceholder')}
                   />
                 </div>
 
                 {/* Household Settings Section */}
                 <div className="space-y-4 pt-4 border-t border-slate-600">
-                  <h4 className="text-sm font-semibold text-slate-300">Household Settings</h4>
+                  <h4 className="text-sm font-semibold text-slate-300">{t('labels.householdSettings')}</h4>
                   
                   {/* Currency */}
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">
-                      Currency
+                      {t('labels.currency')}
                     </label>
                     <select
                       value={tempHouseholdSettings.currencyCode}
                       onChange={e => {
                         const code = e.target.value;
-                        const symbol = code === 'ILS' ? '₪' : code === 'USD' ? '$' : '€';
+                        const symbol = code === 'ILS' ? '\u20aa' : code === 'USD' ? '$' : '\u20ac';
                         setTempHouseholdSettings({ 
                           ...tempHouseholdSettings, 
                           currencyCode: code,
@@ -3710,16 +3802,16 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       }}
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
                     >
-                      <option value="ILS">🇮🇱 ILS (₪)</option>
-                      <option value="USD">🇺🇸 USD ($)</option>
-                      <option value="EUR">🇪🇺 EUR (€)</option>
+                      <option value="ILS">{t('settings.currencyILS')}</option>
+                      <option value="USD">{t('settings.currencyUSD')}</option>
+                      <option value="EUR">{t('settings.currencyEUR')}</option>
                     </select>
                   </div>
 
                   {/* Split Mode */}
                   <div>
                     <label className="block text-sm text-slate-400 mb-2">
-                      Expense Split Mode
+                      {t('labels.expenseSplitMode')}
                     </label>
                     <select
                       value={tempHouseholdSettings.splitMode}
@@ -3731,8 +3823,8 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       }
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
                     >
-                      <option value="equal">Equal (50/50)</option>
-                      <option value="proportional">Proportional (Custom Ratio)</option>
+                      <option value="equal">{t('settings.splitEqual')}</option>
+                      <option value="proportional">{t('settings.splitProportional')}</option>
                     </select>
                   </div>
 
@@ -3740,7 +3832,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   {tempHouseholdSettings.splitMode === 'proportional' && (
                     <div>
                       <label className="block text-sm text-slate-400 mb-2">
-                        {tempNames.partner1 || 'Partner 1'} Share Ratio
+                        {t('settings.shareRatioLabel', { name: tempNames.partner1 || t('labels.partner1') })}
                       </label>
                       <input
                         type="number"
@@ -3760,12 +3852,16 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                         className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
                       />
                       <p className="text-xs text-slate-500 mt-1">
-                        {tempNames.partner1 || 'Partner 1'}: {(tempHouseholdSettings.partner1Ratio * 100).toFixed(0)}% | 
-                        {tempNames.partner2 || 'Partner 2'}: {((1 - tempHouseholdSettings.partner1Ratio) * 100).toFixed(0)}%
+                        {t('settings.ratioSummary', {
+                          name1: tempNames.partner1 || t('labels.partner1'),
+                          ratio1: (tempHouseholdSettings.partner1Ratio * 100).toFixed(0),
+                          name2: tempNames.partner2 || t('labels.partner2'),
+                          ratio2: ((1 - tempHouseholdSettings.partner1Ratio) * 100).toFixed(0)
+                        })}
                       </p>
                       {(tempHouseholdSettings.partner1Ratio <= 0.05 || tempHouseholdSettings.partner1Ratio >= 0.95) && (
                         <p className="text-xs text-yellow-400 mt-1">
-                          ⚠️ Ratio is clamped to 5%-95% range
+                          {t('settings.ratioClamped')}
                         </p>
                       )}
                     </div>
@@ -3782,7 +3878,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     }}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
                   >
-                    Cancel
+                    {t('buttons.cancel')}
                   </button>
                   <button
                     onClick={async () => {
@@ -3792,29 +3888,29 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     disabled={savingSettings}
                     className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {savingSettings ? 'Saving...' : 'Save Settings'}
+                    {savingSettings ? t('buttons.saving') : t('buttons.saveSettings')}
                   </button>
                 </div>
 
                 {/* Save Folder Configuration */}
                 {supportsFileSystem && (
                   <div className="space-y-4 pt-4 border-t border-slate-600">
-                    <h4 className="text-sm font-semibold text-slate-300">Auto-Save Folder</h4>
-                    <p className="text-xs text-slate-400">
-                      📁 Choose a folder to auto-save backups with timestamps.
-                    </p>
+                    <h4 className="text-sm font-semibold text-slate-300">{t('labels.autoSaveFolder')}</h4>
+                    <p className="text-xs text-slate-400">{t('messages.autoSaveHelp')}</p>
 
                     <button
                       onClick={chooseSaveDirectory}
                       className="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <FolderOpen className="w-4 h-4" />
-                      {saveDirectory ? `Change Folder (${saveDirectory.name})` : 'Choose Save Folder'}
+                      {saveDirectory
+                        ? t('buttons.changeFolder', { name: saveDirectory.name })
+                        : t('buttons.chooseSaveFolder')}
                     </button>
                     
                     {saveDirectory && (
                       <p className="text-xs text-green-400">
-                        ✓ Saving to: {saveDirectory.name}/
+                        {t('status.savingTo', { name: saveDirectory.name })}
                       </p>
                     )}
                   </div>
@@ -3822,22 +3918,20 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
 
                 {/* Export/Import Section */}
                 <div className="space-y-4 pt-4 border-t border-slate-600">
-                  <h4 className="text-sm font-semibold text-slate-300">Data Backup (Vault Mode)</h4>
-                  <p className="text-xs text-slate-400">
-                    📦 Export to make changes permanent. localStorage is temporary cache only.
-                  </p>
+                  <h4 className="text-sm font-semibold text-slate-300">{t('labels.dataBackup')}</h4>
+                  <p className="text-xs text-slate-400">{t('messages.exportHelp')}</p>
 
                   <button
                     onClick={exportData}
                     disabled={exportingData}
                     className="w-full bg-green-600 hover:bg-green-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {exportingData ? 'Exporting...' : '💾 Export Data'}
+                    {exportingData ? t('buttons.exporting') : t('buttons.exportData')}
                   </button>
                   
                   {lastExportDate && !dirty && (
                     <p className="text-xs text-green-400">
-                      ✓ Last exported: {new Date(lastExportDate).toLocaleString()}
+                      {t('status.lastExported', { date: new Date(lastExportDate).toLocaleString() })}
                     </p>
                   )}
 
@@ -3853,17 +3947,19 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       htmlFor="import-file"
                       className="block w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg transition-colors text-center cursor-pointer"
                     >
-                      📥 Choose File to Import
+                      {t('buttons.chooseFileToImport')}
                     </label>
                     {importFile && (
                       <div className="mt-2">
-                        <p className="text-xs text-slate-400 mb-2">Selected: {importFile.name}</p>
+                        <p className="text-xs text-slate-400 mb-2">
+                          {t('labels.selectedFile', { name: importFile.name })}
+                        </p>
                         <button
                           onClick={importData}
                           disabled={importingData}
                           className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {importingData ? 'Importing...' : 'Import & Replace All Data'}
+                          {importingData ? t('buttons.importing') : t('buttons.importReplace')}
                         </button>
                       </div>
                     )}
@@ -3880,7 +3976,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold">
-                  {editingId ? 'Edit' : 'Add'} Transaction
+                  {editingId ? t('labels.editTransaction') : t('labels.addTransactionTitle')}
                 </h3>
                 <button
                   onClick={resetForm}
@@ -3893,7 +3989,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 {/* Description with Auto-suggestions (Phase 2 Feature #9) */}
                 <div className="relative">
                   <label className="block text-sm text-slate-400 mb-1">
-                    Description
+                    {t('labels.description')}
                   </label>
                   <input
                     type="text"
@@ -3912,7 +4008,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       }
                     }}
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
-                    placeholder="e.g., Rent, Groceries"
+                    placeholder={t('placeholders.descriptionExample')}
                   />
                   
                   {/* Suggestion dropdown (Phase 2 Feature #9) */}
@@ -3949,7 +4045,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 </div>
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">
-                    Amount
+                    {t('labels.amount')}
                   </label>
                   <input
                     type="number"
@@ -3958,13 +4054,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                       setFormData({ ...formData, amount: e.target.value })
                     }
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
-                    placeholder="0.00"
+                    placeholder={t('placeholders.amount')}
                     step="0.01"
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">
-                    Category
+                    {t('labels.category')}
                   </label>
                   <select
                     value={formData.category}
@@ -3981,7 +4077,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Type</label>
+                  <label className="block text-sm text-slate-400 mb-1">{t('labels.type')}</label>
                   <select
                     value={formData.type}
                     onChange={e =>
@@ -3989,12 +4085,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     }
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
                   >
-                    <option value="expense">Expense</option>
-                    <option value="income">Income</option>
+                    <option value="expense">{t('labels.expense')}</option>
+                    <option value="income">{t('labels.income')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Date</label>
+                  <label className="block text-sm text-slate-400 mb-1">{t('labels.date')}</label>
                   <input
                     type="date"
                     value={formData.date}
@@ -4005,7 +4101,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Paid By</label>
+                  <label className="block text-sm text-slate-400 mb-1">{t('labels.paidBy')}</label>
                   <select
                     value={formData.paidBy}
                     onChange={e =>
@@ -4015,7 +4111,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   >
                     <option value="partner1">{partnerNames.partner1}</option>
                     <option value="partner2">{partnerNames.partner2}</option>
-                    <option value="joint">Joint</option>
+                    <option value="joint">{t('labels.joint')}</option>
                   </select>
                 </div>
                 {!editingId && (
@@ -4032,14 +4128,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                         }
                         className="w-4 h-4"
                       />
-                      <label className="text-sm">
-                        Make this recurring monthly
-                      </label>
+                      <label className="text-sm">{t('labels.recurringToggle')}</label>
                     </div>
                     {formData.isRecurring && (
                       <div>
                         <label className="block text-sm text-slate-400 mb-1">
-                          Day of Month
+                          {t('labels.dayOfMonth')}
                         </label>
                         <input
                           type="number"
@@ -4063,14 +4157,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     onClick={resetForm}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
                   >
-                    Cancel
+                    {t('buttons.cancel')}
                   </button>
                   <button
                     onClick={editingId ? updateExpense : addExpense}
                     disabled={savingTransaction}
                     className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {savingTransaction ? 'Saving...' : (editingId ? 'Update' : 'Add')}
+                    {savingTransaction ? t('buttons.saving') : (editingId ? t('buttons.update') : t('buttons.add'))}
                   </button>
                 </div>
               </div>
@@ -4082,11 +4176,15 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
         {deleteConfirm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-red-500 my-8">
-              <h3 className="text-xl font-bold mb-4">⚠️ Delete {deleteConfirm.type === 'expense' ? 'Transaction' : 'Recurring Item'}?</h3>
+              <h3 className="text-xl font-bold mb-4">
+                {t('messages.deleteConfirmTitle', {
+                  type: deleteConfirm.type === 'expense' ? t('labels.transaction') : t('labels.recurringItem')
+                })}
+              </h3>
               <p className="text-slate-300 mb-6">
-                Are you sure you want to delete "{deleteConfirm.description}"?
+                {t('messages.deleteConfirmBody', { description: deleteConfirm.description })}
                 <br />
-                <span className="text-sm text-red-400">This action cannot be undone.</span>
+                <span className="text-sm text-red-400">{t('messages.deleteCannotUndo')}</span>
               </p>
               <div className="flex gap-2">
                 <button
@@ -4094,14 +4192,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   disabled={deletingItem}
                   className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  {t('buttons.cancel')}
                 </button>
                 <button
                   onClick={executeDelete}
                   disabled={deletingItem}
                   className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {deletingItem ? 'Deleting...' : 'Delete'}
+                  {deletingItem ? t('buttons.deleting') : t('buttons.delete')}
                 </button>
               </div>
             </div>
@@ -4115,11 +4213,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <button
               onClick={() => openQuickAdd('income')}
               className="w-14 h-14 bg-green-600 hover:bg-green-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 animate-bounce-slow group"
-              title="Quick Income (Shortcut: I)"
+              title={t('buttons.quickIncome', { shortcut: 'I' })}
             >
               <TrendingUp className="w-6 h-6 text-white" />
               <span className="absolute right-full mr-3 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                Quick Income (I)
+                {t('buttons.quickIncome', { shortcut: 'I' })}
               </span>
             </button>
             
@@ -4127,11 +4225,11 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <button
               onClick={() => openQuickAdd('expense')}
               className="w-14 h-14 bg-red-600 hover:bg-red-700 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 animate-bounce-slow group"
-              title="Quick Expense (Shortcut: E)"
+              title={t('buttons.quickExpense', { shortcut: 'E' })}
             >
               <TrendingDown className="w-6 h-6 text-white" />
               <span className="absolute right-full mr-3 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                Quick Expense (E)
+                {t('buttons.quickExpense', { shortcut: 'E' })}
               </span>
             </button>
           </div>
@@ -4147,7 +4245,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   type="text"
                   value={commandQuery}
                   onChange={(e) => setCommandQuery(e.target.value)}
-                  placeholder="Search transactions, categories, or commands..."
+                  placeholder={t('messages.searchCommandsPlaceholder')}
                   className="w-full bg-slate-700 border-0 rounded-lg px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   autoFocus
                 />
@@ -4157,7 +4255,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               <div className="max-h-96 overflow-y-auto p-2">
                 {filteredCommands.length === 0 && (
                   <div className="text-center py-8 text-slate-400">
-                    No commands found
+                    {t('messages.noCommandsFound')}
                   </div>
                 )}
                 {filteredCommands.map((cmd, idx) => (
@@ -4187,7 +4285,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 max-h-[90vh] overflow-y-auto my-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold">
-                  {editingCategory ? 'Edit Category' : 'Add Category'}
+                  {editingCategory ? t('labels.editCategoryTitle') : t('labels.addCategoryTitle')}
                 </h3>
                 <button
                   onClick={() => {
@@ -4203,7 +4301,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               <div className="space-y-3">
                 {/* Category Name */}
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Category Name</label>
+                  <label className="block text-sm text-slate-400 mb-2">{t('labels.categoryName')}</label>
                   <input
                     type="text"
                     value={categoryForm.name}
@@ -4262,7 +4360,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
 
                 {/* Color Picker */}
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">Color</label>
+                  <label className="block text-sm text-slate-400 mb-2">{t('labels.color')}</label>
                   <div className="grid grid-cols-6 gap-2">
                     {[
                       'bg-red-500', 'bg-orange-500', 'bg-yellow-500',
@@ -4285,12 +4383,12 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
 
                 {/* Preview */}
                 <div className="bg-slate-700/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-2">Preview:</p>
+                  <p className="text-xs text-slate-400 mb-2">{t('labels.preview')}</p>
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 ${categoryForm.color} rounded-xl flex items-center justify-center text-2xl`}>
                       {categoryForm.icon || '?'}
                     </div>
-                    <span className="font-medium">{categoryForm.name || 'Category Name'}</span>
+                    <span className="font-medium">{categoryForm.name || t('labels.categoryNamePlaceholder')}</span>
                   </div>
                 </div>
 
@@ -4303,14 +4401,14 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                     }}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
                   >
-                    Cancel
+                    {t('buttons.cancel')}
                   </button>
                   <button
                     onClick={() => editingCategory ? editCategory(editingCategory) : addCategory()}
                     disabled={savingSettings}
                     className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {savingSettings ? 'Saving...' : (editingCategory ? 'Update' : 'Add')}
+                    {savingSettings ? t('buttons.saving') : (editingCategory ? t('buttons.update') : t('buttons.add'))}
                   </button>
                 </div>
               </div>
@@ -4322,15 +4420,15 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
         {showDeleteCategoryConfirm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-red-500">
-              <h3 className="text-xl font-bold mb-4">⚠️ Delete Category?</h3>
+              <h3 className="text-xl font-bold mb-4">{t('messages.deleteCategoryTitle')}</h3>
               <p className="text-slate-300 mb-4">
-                Category "{showDeleteCategoryConfirm.categoryName}" has{' '}
-                <span className="font-bold text-yellow-400">
-                  {showDeleteCategoryConfirm.transactionCount} transaction(s)
-                </span>.
+                {t('messages.categoryHasTransactions', {
+                  category: showDeleteCategoryConfirm.categoryName,
+                  count: showDeleteCategoryConfirm.transactionCount
+                })}
               </p>
               <p className="text-slate-300 mb-4">
-                Please choose a category to reassign them to:
+                {t('messages.chooseReassignCategory')}
               </p>
               
               <select
@@ -4358,7 +4456,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   disabled={savingSettings}
                   className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  Cancel
+                  {t('buttons.cancel')}
                 </button>
                 <button
                   onClick={() =>
@@ -4370,7 +4468,7 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                   disabled={savingSettings}
                   className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {savingSettings ? 'Deleting...' : 'Delete & Reassign'}
+                  {savingSettings ? t('buttons.deleting') : t('buttons.deleteReassign')}
                 </button>
               </div>
             </div>
@@ -4383,13 +4481,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
             <div className="bg-slate-800 rounded-2xl p-8 max-w-3xl w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-2xl font-bold mb-1">⌨️ Keyboard Shortcuts</h3>
-                  <p className="text-slate-400 text-sm">Boost your productivity</p>
+                  <h3 className="text-2xl font-bold mb-1">⌨️ {t('labels.keyboardShortcuts')}</h3>
+                  <p className="text-slate-400 text-sm">{t('messages.boostProductivity')}</p>
                 </div>
                 <button 
                   onClick={() => setShowShortcuts(false)} 
                   className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                  title="Close (Esc)"
+                  title={t('tooltips.close')}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -4398,13 +4496,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               <div className="space-y-6">
                 {/* Navigation */}
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">Navigation</h4>
+                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{t('labels.navigation')}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { keys: ['1'], desc: 'Dashboard' },
-                      { keys: ['2'], desc: 'Transactions' },
-                      { keys: ['3'], desc: 'Categories' },
-                      { keys: ['4'], desc: 'Balance' }
+                      { keys: ['1'], desc: t('nav.dashboard') },
+                      { keys: ['2'], desc: t('nav.transactions') },
+                      { keys: ['3'], desc: t('nav.categories') },
+                      { keys: ['4'], desc: t('nav.balance') }
                     ].map((s, i) => (
                       <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
                         <span className="text-sm text-slate-300">{s.desc}</span>
@@ -4416,15 +4514,15 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 
                 {/* Actions */}
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">Actions</h4>
+                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{t('labels.actions')}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { keys: ['⌘', 'N'], desc: 'New transaction' },
-                      { keys: ['E'], desc: 'Quick expense' },
-                      { keys: ['I'], desc: 'Quick income' },
-                      { keys: ['⌘', 'S'], desc: 'Save/Export' },
-                      { keys: ['⌘', 'K'], desc: 'Command Palette' },
-                      { keys: ['Esc'], desc: 'Close modal' }
+                      { keys: ['⌘', 'N'], desc: t('shortcuts.newTransaction') },
+                      { keys: ['E'], desc: t('shortcuts.quickExpense') },
+                      { keys: ['I'], desc: t('shortcuts.quickIncome') },
+                      { keys: ['⌘', 'S'], desc: t('shortcuts.saveExport') },
+                      { keys: ['⌘', 'K'], desc: t('shortcuts.commandPalette') },
+                      { keys: ['Esc'], desc: t('shortcuts.closeModal') }
                     ].map((s, i) => (
                       <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
                         <span className="text-sm text-slate-300">{s.desc}</span>
@@ -4440,9 +4538,9 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
                 
                 {/* Help */}
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">Help</h4>
+                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{t('labels.helpSection')}</h4>
                   <div className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
-                    <span className="text-sm text-slate-300">Show this panel</span>
+                    <span className="text-sm text-slate-300">{t('shortcuts.showPanel')}</span>
                     <kbd className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono">?</kbd>
                   </div>
                 </div>
@@ -4450,8 +4548,13 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
               
               <div className="mt-8 pt-6 border-t border-slate-700">
                 <p className="text-xs text-slate-500 text-center">
-                  <kbd className="px-2 py-1 bg-slate-700 rounded">⌘</kbd> = Cmd on Mac, Ctrl on Win/Linux • 
-                  Press <kbd className="px-2 py-1 bg-slate-700 rounded">?</kbd> anytime to show this help
+                  <span>
+                    <kbd className="px-2 py-1 bg-slate-700 rounded">⌘</kbd> {t('shortcuts.cmdHint')}
+                  </span>
+                  <br />
+                  <span>
+                    {t('shortcuts.pressAnytime')} <kbd className="px-2 py-1 bg-slate-700 rounded">⌘/</kbd> {t('shortcuts.toShowHelp')}
+                  </span>
                 </p>
               </div>
             </div>
@@ -4463,4 +4566,3 @@ ${settlementsCount > 0 ? `💸 Settlements: ${settlementsCount}` : ''}
 };
 
 export default ExpenseTracker;
-
