@@ -47,7 +47,8 @@
     "changeFolder": "שנה תיקייה",
     "recordPaymentAction": "רשום תשלום",
     "previous": "הקודם",
-    "next": "הבא"
+    "next": "הבא",
+    "close": "סגור"
   },
   "labels": {
     "balance": "יתרה",
@@ -89,6 +90,7 @@
     "fairShare": "חלק הוגן",
     "noteOptional": "הערה (אופציונלי)",
     "perCategory": "לפי קטגוריה",
+    "expensesByCategory": "הוצאות לפי קטגוריה",
     "dataBackup": "נתונים וגיבוי",
     "autoSaveFolder": "תיקיית גיבוי",
     "householdSettings": "הגדרות משק בית",
@@ -197,7 +199,8 @@
     "added": "נוסף",
     "filteringByCategory": "מסנן קטגוריה",
     "showingTransactionsForDay": "מציג תנועות ליום",
-    "viewingRange": "מציג טווח"
+    "viewingRange": "מציג טווח",
+    "movedToCategory": "הועבר ל-{category}"
   },
   "status": {
     "unsavedChangesWillSaveTo": "שינויים יישמרו ל-{path}",
@@ -206,7 +209,9 @@
     "allSaved": "הכל נשמר",
     "savingTo": "שומר ל-{name}",
     "lastExported": "ייצוא אחרון {date}",
-    "savingToFolder": "שומר לתיקייה"
+    "savingToFolder": "שומר לתיקייה",
+    "loading": "טוען...",
+    "processing": "מעבד..."
   },
   "tooltips": {
     "saveTo": "שמור לתיקייה",
@@ -221,7 +226,8 @@
     "dropToRecategorize": "גרור לשינוי קטגוריה",
     "editCategory": "ערוך קטגוריה",
     "deleteCategory": "מחק קטגוריה",
-    "close": "סגירה"
+    "close": "סגירה",
+    "quickEdit": "עריכה מהירה"
   },
   "charts": {
     "others": "אחרים",

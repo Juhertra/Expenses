@@ -47,7 +47,8 @@
     "changeFolder": "Change folder",
     "recordPaymentAction": "Record payment",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "close": "Close"
   },
   "labels": {
     "balance": "Balance",
@@ -89,6 +90,7 @@
     "fairShare": "Fair share",
     "noteOptional": "Note (optional)",
     "perCategory": "Per category",
+    "expensesByCategory": "Expenses by category",
     "dataBackup": "Data & Backup",
     "autoSaveFolder": "Auto save folder",
     "householdSettings": "Household Settings",
@@ -197,7 +199,8 @@
     "added": "Added",
     "filteringByCategory": "Filtering by category",
     "showingTransactionsForDay": "Showing transactions for day",
-    "viewingRange": "Viewing range"
+    "viewingRange": "Viewing range",
+    "movedToCategory": "Moved to {category}"
   },
   "status": {
     "unsavedChangesWillSaveTo": "Unsaved changes will save to {path}",
@@ -206,7 +209,9 @@
     "allSaved": "All changes saved",
     "savingTo": "Saving to {name}",
     "lastExported": "Last exported {date}",
-    "savingToFolder": "Saving to folder"
+    "savingToFolder": "Saving to folder",
+    "loading": "Loading...",
+    "processing": "Processing..."
   },
   "tooltips": {
     "saveTo": "Save to folder",
@@ -221,7 +226,8 @@
     "dropToRecategorize": "Drop to recategorize",
     "editCategory": "Edit category",
     "deleteCategory": "Delete category",
-    "close": "Close"
+    "close": "Close",
+    "quickEdit": "Quick edit (inline)"
   },
   "charts": {
     "others": "Others",

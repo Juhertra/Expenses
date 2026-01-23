@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cancelAnimation, slideFadeInUp, slideFadeOutDown, withOnFinish, canAnimate } from '../../lib/animations/animeHelpers';
 
 interface ToastProps {
@@ -10,6 +11,8 @@ interface ToastProps {
 }
 
 export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.dir() === 'rtl';
   const toastRef = useRef<HTMLDivElement | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingRef = useRef(false);
@@ -49,14 +52,14 @@ export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
   return (
     <div
       ref={toastRef}
-      className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50`}
+      className={`fixed top-4 ${isRTL ? 'left-4' : 'right-4'} ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50`}
     >
       <Icon className="w-5 h-5" />
       <span>{message}</span>
       <button
         onClick={requestClose}
-        className="ml-2 hover:bg-white/20 rounded p-1 transition-colors"
-        aria-label="Close notification"
+        className={`${isRTL ? 'mr-2' : 'ml-2'} hover:bg-white/20 rounded p-1 transition-colors`}
+        aria-label={t('buttons.close')}
       >
         <X className="w-4 h-4" />
       </button>

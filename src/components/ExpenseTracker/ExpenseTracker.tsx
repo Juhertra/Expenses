@@ -1950,7 +1950,7 @@ const ExpenseTracker: React.FC = () => {
   if (loading) {
     return (
       <div className={`min-h-screen bg-gradient-to-br ${theme.colors.bgPrimary} ${theme.colors.textPrimary} flex items-center justify-center`}>
-        <div className="text-xl">Loading...</div>
+        <div className="text-xl">{t('status.loading')}</div>
       </div>
     );
   }
@@ -3217,7 +3217,7 @@ const ExpenseTracker: React.FC = () => {
                   </div>
                   
                   {/* Amount + Actions */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-13 sm:pl-0">
+                  <div className={`flex items-center justify-between sm:justify-end gap-3 sm:gap-4 ${isRTL ? 'pr-13 sm:pr-0' : 'pl-13 sm:pl-0'}`}>
                     <div
                       className={`text-base sm:text-lg font-bold whitespace-nowrap ${
                         exp.type === 'income' ? 'text-green-400' : 'text-red-400'
@@ -3235,7 +3235,7 @@ const ExpenseTracker: React.FC = () => {
                             setInlineEditData({});
                           }}
                           className="p-1.5 sm:p-2 hover:bg-blue-600 rounded-lg transition-colors"
-                          title="Quick edit (inline)"
+                          title={t('tooltips.quickEdit')}
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -4048,7 +4048,7 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Floating Action Buttons - Dashboard Only (Phase 1 Feature #1 & #10) */}
         {currentView === 'dashboard' && (
-          <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-30">
+          <div className={`fixed bottom-6 ${isRTL ? 'left-6' : 'right-6'} flex flex-col gap-3 z-30`}>
             {/* Quick Income Button */}
             <button
               onClick={() => openQuickAdd('income')}
@@ -4056,11 +4056,11 @@ const ExpenseTracker: React.FC = () => {
               title={t('buttons.quickIncome', { shortcut: 'I' })}
             >
               <TrendingUp className="w-6 h-6 text-white" />
-              <span className="absolute right-full mr-3 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+              <span className={`absolute ${isRTL ? 'left-full ml-3' : 'right-full mr-3'} bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg`}>
                 {t('buttons.quickIncome', { shortcut: 'I' })}
               </span>
             </button>
-            
+
             {/* Quick Expense Button */}
             <button
               onClick={() => openQuickAdd('expense')}
@@ -4068,7 +4068,7 @@ const ExpenseTracker: React.FC = () => {
               title={t('buttons.quickExpense', { shortcut: 'E' })}
             >
               <TrendingDown className="w-6 h-6 text-white" />
-              <span className="absolute right-full mr-3 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+              <span className={`absolute ${isRTL ? 'left-full ml-3' : 'right-full mr-3'} bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg`}>
                 {t('buttons.quickExpense', { shortcut: 'E' })}
               </span>
             </button>

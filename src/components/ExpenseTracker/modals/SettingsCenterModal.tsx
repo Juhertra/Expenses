@@ -330,7 +330,7 @@ export default function SettingsCenterModal(props: Props) {
           </div>
 
           {/* Tabs */}
-          <div className={`ml-6 flex items-center bg-slate-800/60 rounded-2xl p-1 border border-slate-700 ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
+          <div className={`${dir === "rtl" ? "mr-6" : "ml-6"} flex items-center bg-slate-800/60 rounded-2xl p-1 border border-slate-700 ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
             <button
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
                 tab === "settings" ? "bg-purple-600 text-white" : "text-slate-300 hover:text-white"
@@ -351,7 +351,7 @@ export default function SettingsCenterModal(props: Props) {
           </div>
 
           {/* Search */}
-          <div className={`ml-auto flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-2xl px-3 py-2 w-[320px] ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
+          <div className={`${dir === "rtl" ? "mr-auto" : "ml-auto"} flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-2xl px-3 py-2 w-[320px] ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
             <Search className="w-4 h-4 text-slate-400" />
             <input
               ref={searchRef}

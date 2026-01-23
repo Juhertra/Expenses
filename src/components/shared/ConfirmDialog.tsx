@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   variant = 'danger',
   isProcessing = false,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const confirmColor =
@@ -72,7 +74,7 @@ export function ConfirmDialog({
             disabled={isProcessing}
             className={`flex-1 ${confirmColor} py-2 rounded-lg transition-colors disabled:opacity-50`}
           >
-            {isProcessing ? 'Processing...' : confirmLabel}
+            {isProcessing ? t('status.processing') : confirmLabel}
           </button>
         </div>
       </div>
