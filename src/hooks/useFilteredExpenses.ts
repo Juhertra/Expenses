@@ -1,55 +1,24 @@
 import { useMemo } from 'react';
 import { useExpenseContext } from '../contexts/ExpenseContext';
 import type { Expense } from '../lib/types';
+import { selectFilteredExpenses } from '../state/selectors';
 
 /**
- * Custom hook to get filtered expenses based on current UI state
- * (month, year, search query, category filter)
+ * Thin hook wrapper around the pure selector.
  */
 export function useFilteredExpenses(): Expense[] {
   const { state } = useExpenseContext();
   const { expenses, partnerNames, ui } = state;
+  const { selectedMonth, selectedYear, selectedCategory, searchQuery } = ui;
 
-  return useMemo(() => {
-    return expenses.filter(exp => {
-      const expDate = new Date(exp.date);
-      const matchesDate =
-        expDate.getMonth() === ui.selectedMonth &&
-        expDate.getFullYear() === ui.selectedYear;
-
-      if (!matchesDate) return false;
-
-      // Apply category filter
-      if (ui.selectedCategory) {
-        const matchesCategory = exp.splits?.length
-          ? exp.splits.some(split => split.category === ui.selectedCategory)
-          : exp.category === ui.selectedCategory;
-        if (!matchesCategory) return false;
-      }
-
-      // Apply search filter
-      if (ui.searchQuery === '') return true;
-
-      const query = ui.searchQuery.toLowerCase();
-      return (
-        exp.description.toLowerCase().includes(query) ||
-        exp.category.toLowerCase().includes(query) ||
-        (exp.splits?.some(split => split.category.toLowerCase().includes(query)) ?? false) ||
-        exp.date.toLowerCase().includes(query) ||
-        exp.paidBy.toLowerCase().includes(query) ||
-        (exp.paidBy === 'partner1' &&
-          partnerNames.partner1.toLowerCase().includes(query)) ||
-        (exp.paidBy === 'partner2' &&
-          partnerNames.partner2.toLowerCase().includes(query))
-      );
-    });
-  }, [
-    expenses,
-    partnerNames,
-    ui.selectedMonth,
-    ui.selectedYear,
-    ui.selectedCategory,
-    ui.searchQuery,
-  ]);
+  return useMemo(
+    () =>
+      selectFilteredExpenses({
+        expenses,
+        partnerNames,
+        ui: { selectedMonth, selectedYear, selectedCategory, searchQuery },
+      }),
+    [expenses, partnerNames, selectedMonth, selectedYear, selectedCategory, searchQuery]
+  );
 }
 

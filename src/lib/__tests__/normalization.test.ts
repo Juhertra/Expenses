@@ -43,7 +43,7 @@ describe('normalizeDescription', () => {
 describe('checkDuplicate', () => {
   const expenses: Expense[] = [
     {
-      id: '1',
+      id: 1,
       description: 'Grocery Shopping',
       amount: 50,
       category: 'Food',
@@ -52,7 +52,7 @@ describe('checkDuplicate', () => {
       paidBy: 'partner1',
     },
     {
-      id: '2',
+      id: 2,
       description: 'Rent Payment',
       amount: 1000,
       category: 'Housing',

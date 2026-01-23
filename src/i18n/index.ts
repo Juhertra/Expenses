@@ -16,6 +16,11 @@ i18n
     },
     lng: savedLocale,
     fallbackLng: 'en',
+    supportedLngs: ['en', 'he'],
+    ns: ['translation'],
+    defaultNS: 'translation',
+    returnNull: false,
+    returnEmptyString: false,
     interpolation: {
       escapeValue: false,
     },

@@ -12,7 +12,7 @@ describe('calculateTotals', () => {
   it('should calculate totals correctly for mixed transactions', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Expense 1',
         amount: 100,
         category: 'Food',
@@ -21,7 +21,7 @@ describe('calculateTotals', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Income 1',
         amount: 500,
         category: 'Other',
@@ -30,7 +30,7 @@ describe('calculateTotals', () => {
         paidBy: 'partner1',
       },
       {
-        id: '3',
+        id: 3,
         description: 'Expense 2',
         amount: 50,
         category: 'Food',
@@ -54,7 +54,7 @@ describe('calculateBalance', () => {
   it('should split expenses equally in equal mode', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Expense 1',
         amount: 100,
         category: 'Food',
@@ -63,7 +63,7 @@ describe('calculateBalance', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Expense 2',
         amount: 50,
         category: 'Food',
@@ -97,7 +97,7 @@ describe('calculateBalance', () => {
   it('should handle proportional split correctly', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Expense 1',
         amount: 100,
         category: 'Food',
@@ -128,7 +128,7 @@ describe('calculateBalance', () => {
   it('should exclude joint expenses from balance calculation', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Personal Expense',
         amount: 100,
         category: 'Food',
@@ -137,7 +137,7 @@ describe('calculateBalance', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Joint Expense',
         amount: 50,
         category: 'Food',
@@ -168,7 +168,7 @@ describe('calculateBalance', () => {
   it('should apply settlements by moving payer up and receiver down', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Rent',
         amount: 7000,
         category: 'Housing',
@@ -177,7 +177,7 @@ describe('calculateBalance', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Groceries',
         amount: 1000,
         category: 'Food',
@@ -220,7 +220,7 @@ describe('calculateCategoryTotals', () => {
   it('should aggregate expenses by category', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Food 1',
         amount: 100,
         category: 'Food',
@@ -229,7 +229,7 @@ describe('calculateCategoryTotals', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Food 2',
         amount: 50,
         category: 'Food',
@@ -238,7 +238,7 @@ describe('calculateCategoryTotals', () => {
         paidBy: 'partner2',
       },
       {
-        id: '3',
+        id: 3,
         description: 'Housing 1',
         amount: 200,
         category: 'Housing',
@@ -257,7 +257,7 @@ describe('calculateCategoryTotals', () => {
   it('should ignore income in category totals', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Income',
         amount: 100,
         category: 'Other',
@@ -266,7 +266,7 @@ describe('calculateCategoryTotals', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Expense',
         amount: 50,
         category: 'Other',
@@ -286,7 +286,7 @@ describe('calculateInsights', () => {
   it('should calculate insights correctly', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Largest',
         amount: 200,
         category: 'Food',
@@ -295,7 +295,7 @@ describe('calculateInsights', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Small',
         amount: 50,
         category: 'Food',
@@ -304,7 +304,7 @@ describe('calculateInsights', () => {
         paidBy: 'partner1',
       },
       {
-        id: '3',
+        id: 3,
         description: 'Housing',
         amount: 100,
         category: 'Housing',
@@ -329,7 +329,7 @@ describe('getFrequentExpenses', () => {
   it('should return most frequent expenses', () => {
     const expenses: Expense[] = [
       {
-        id: '1',
+        id: 1,
         description: 'Coffee',
         amount: 5,
         category: 'Food',
@@ -338,7 +338,7 @@ describe('getFrequentExpenses', () => {
         paidBy: 'partner1',
       },
       {
-        id: '2',
+        id: 2,
         description: 'Coffee',
         amount: 5,
         category: 'Food',
@@ -347,7 +347,7 @@ describe('getFrequentExpenses', () => {
         paidBy: 'partner1',
       },
       {
-        id: '3',
+        id: 3,
         description: 'Coffee',
         amount: 5,
         category: 'Food',
@@ -356,7 +356,7 @@ describe('getFrequentExpenses', () => {
         paidBy: 'partner1',
       },
       {
-        id: '4',
+        id: 4,
         description: 'Lunch',
         amount: 15,
         category: 'Food',

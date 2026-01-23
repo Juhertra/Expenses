@@ -18,7 +18,7 @@ describe('storageService', () => {
     it('should save and load expenses', async () => {
       const expenses: Expense[] = [
         {
-          id: '1',
+          id: 1,
           description: 'Test',
           amount: 100,
           category: 'Food',

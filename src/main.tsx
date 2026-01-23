@@ -4,12 +4,20 @@ import App from './App.tsx'
 import './index.css'
 import './i18n'
 import { initStorage } from './lib/initStorage.ts'
+import { ThemeProvider, getAllThemesCSS } from './lib/theme.ts'
 
 // Initialize storage before rendering React
 initStorage().then(() => {
+  // Inject theme CSS variables
+  const themeStyles = document.createElement('style');
+  themeStyles.innerHTML = getAllThemesCSS();
+  document.head.appendChild(themeStyles);
+
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
     </React.StrictMode>,
   )
 }).catch((error) => {

@@ -4,6 +4,7 @@
 
 import { localStorageAdapter } from './localStorageAdapter';
 import { ElectronStorageAdapter } from './electronStorageAdapter';
+import { getDefaultSeedData } from './defaults';
 
 const STORAGE_KEYS = {
   EXPENSES: 'household-expenses',
@@ -12,62 +13,11 @@ const STORAGE_KEYS = {
 };
 
 /**
- * Get default seed data for the application
- */
-function getDefaultData() {
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  
-  // Format: YYYY-MM-DD
-  const formatDate = (day: number) => {
-    return `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  };
-
-  return {
-    partnerNames: {
-      partner1: 'Hernan',
-      partner2: 'Partner',
-    },
-    expenses: [
-      {
-        id: Date.now() - 3000,
-        description: 'Monthly Rent',
-        amount: 1500,
-        category: 'Housing',
-        type: 'expense',
-        date: formatDate(1),
-        paidBy: 'joint',
-      },
-      {
-        id: Date.now() - 2000,
-        description: 'Grocery Shopping',
-        amount: 120.50,
-        category: 'Food',
-        type: 'expense',
-        date: formatDate(5),
-        paidBy: 'partner1',
-      },
-      {
-        id: Date.now() - 1000,
-        description: 'Salary',
-        amount: 4500,
-        category: 'Other',
-        type: 'income',
-        date: formatDate(1),
-        paidBy: 'partner1',
-      },
-    ],
-    recurring: [],
-  };
-}
-
-/**
  * Seed storage with default data if keys are missing
  * ONLY writes if a key doesn't exist (never overwrites)
  */
 async function seedDefaultData() {
-  const defaults = getDefaultData();
+  const defaults = getDefaultSeedData();
 
   // Check and seed partner names
   const existingNames = await window.storage.get(STORAGE_KEYS.PARTNER_NAMES);
@@ -105,15 +55,22 @@ async function seedDefaultData() {
  * Must be called before React renders
  */
 export async function initStorage(): Promise<void> {
-  // Attach adapter to window
-  if (window.electronAPI?.readDataFile && window.electronAPI?.writeDataFile) {
-    window.storage = new ElectronStorageAdapter(window.electronAPI);
-  } else {
-    window.storage = localStorageAdapter;
+  // Attach adapter to window (do not overwrite if preload already set it)
+  const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'storage');
+  const hasStorage = typeof window.storage !== 'undefined';
+  const canAssignStorage = !storageDescriptor || storageDescriptor.writable !== false;
+  const hasElectronAPI = !!window.electronAPI;
+
+  if (!hasStorage && canAssignStorage) {
+    if (hasElectronAPI) {
+      window.storage = new ElectronStorageAdapter(window.electronAPI!);
+    } else {
+      window.storage = localStorageAdapter;
+    }
   }
   
   // Seed default data if needed (skip for Electron file-based storage)
-  if (!window.electronAPI) {
+  if (!hasElectronAPI) {
     await seedDefaultData();
   }
   

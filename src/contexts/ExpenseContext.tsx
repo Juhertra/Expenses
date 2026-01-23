@@ -6,34 +6,11 @@ import type {
   PartnerNames,
   HouseholdSettings,
   Settlement,
-  Category,
 } from '../lib/types';
 import { loadAllData, saveExpenses, saveRecurring, savePartnerNames, saveSettings, saveSettlements } from '../lib/storageService';
 
-// Default categories
-const DEFAULT_CATEGORIES: Record<string, Category> = {
-  Housing: { icon: '🏠', color: 'bg-orange-500' },
-  Food: { icon: '🍔', color: 'bg-green-500' },
-  Transportation: { icon: '🚗', color: 'bg-blue-500' },
-  Utilities: { icon: '⚡', color: 'bg-yellow-500' },
-  Healthcare: { icon: '🏥', color: 'bg-red-500' },
-  Entertainment: { icon: '🎮', color: 'bg-purple-500' },
-  Shopping: { icon: '🛍️', color: 'bg-pink-500' },
-  Education: { icon: '📚', color: 'bg-indigo-500' },
-  Insurance: { icon: '🛡️', color: 'bg-cyan-500' },
-  Savings: { icon: '💰', color: 'bg-emerald-500' },
-  Other: { icon: '📌', color: 'bg-gray-500' },
-};
+import { DEFAULT_CATEGORIES, defaultSettings, defaultPartnerNames } from '../lib/defaults';
 
-const defaultSettings: HouseholdSettings = {
-  currencyCode: 'ILS',
-  currencySymbol: '₪',
-  splitMode: 'equal',
-  partner1Ratio: 0.5,
-  budgets: {},
-  normalizationRules: {},
-  categories: { ...DEFAULT_CATEGORIES },
-};
 
 // State type
 export interface ExpenseState {
@@ -80,7 +57,7 @@ const initialState: ExpenseState = {
   expenses: [],
   recurring: [],
   settlements: [],
-  partnerNames: { partner1: 'Partner 1', partner2: 'Partner 2' },
+  partnerNames: defaultPartnerNames,
   householdSettings: defaultSettings,
   ui: {
     loading: true,

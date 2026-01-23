@@ -292,6 +292,13 @@ ipcMain.handle('data:reveal', async () => {
   }
   return filePath;
 });
+// Generic open/save dialogs for renderer use
+ipcMain.handle('dialog:showSaveDialog', async (_event, options) => {
+  return dialog.showSaveDialog(options || {});
+});
+ipcMain.handle('dialog:showOpenDialog', async (_event, options) => {
+  return dialog.showOpenDialog(options || {});
+});
 ipcMain.handle('data:import', async () => {
   const result = await dialog.showOpenDialog({
     title: 'Import backup file',

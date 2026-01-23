@@ -1,15 +1,14 @@
 import { useMemo } from 'react';
-import { calculateTotals, type TotalsResult } from '../lib/calculations';
+import { type TotalsResult } from '../lib/calculations';
+import { selectTotals } from '../state/selectors';
 import { useFilteredExpenses } from './useFilteredExpenses';
 
 /**
- * Custom hook to calculate all totals (income, expenses, by partner)
+ * Thin hook wrapper around the pure totals selector.
  */
 export function useTotals(): TotalsResult {
   const filteredExpenses = useFilteredExpenses();
 
-  return useMemo(() => {
-    return calculateTotals(filteredExpenses);
-  }, [filteredExpenses]);
+  return useMemo(() => selectTotals(filteredExpenses), [filteredExpenses]);
 }
 

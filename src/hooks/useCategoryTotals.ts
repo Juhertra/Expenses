@@ -1,15 +1,13 @@
 import { useMemo } from 'react';
-import { calculateCategoryTotals } from '../lib/calculations';
+import { selectCategoryTotals } from '../state/selectors';
 import { useFilteredExpenses } from './useFilteredExpenses';
 
 /**
- * Custom hook to calculate category totals for expenses
+ * Thin hook wrapper around the pure category totals selector.
  */
 export function useCategoryTotals(): Record<string, number> {
   const filteredExpenses = useFilteredExpenses();
 
-  return useMemo(() => {
-    return calculateCategoryTotals(filteredExpenses);
-  }, [filteredExpenses]);
+  return useMemo(() => selectCategoryTotals(filteredExpenses), [filteredExpenses]);
 }
 
