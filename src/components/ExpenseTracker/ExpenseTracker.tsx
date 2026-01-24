@@ -18,6 +18,7 @@ import {
   Zap,
   Calendar
 } from 'lucide-react';
+import { Button } from '../ui/Button';
 import type {
   Expense,
   RecurringTransaction,
@@ -2006,52 +2007,54 @@ const ExpenseTracker: React.FC = () => {
           </div>
 
           <div className={`flex gap-2 flex-wrap items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <button
+            <Button
               onClick={() => saveData()}
               disabled={exportingData || !dirty}
-              className={`bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed disabled:opacity-60 px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg shadow-green-500/30 ${isRTL ? 'flex-row-reverse' : ''}`}
+              variant="success"
+              size="md"
+              iconStart={<Save className="w-4 h-4" />}
               title={saveDirectory ? t('tooltips.saveTo', { name: saveDirectory.name }) : t('tooltips.save')}
+              className="shadow-lg shadow-green-500/30"
             >
-              <Save className="w-4 h-4" />
-              <span className="text-sm font-semibold">
-                {exportingData ? t('buttons.saving') : t('buttons.save')}
-              </span>
-            </button>
+              {exportingData ? t('buttons.saving') : t('buttons.save')}
+            </Button>
 
-            <button
+            <Button
               onClick={() => setShowShortcuts(true)}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all bg-slate-800/70 hover:bg-slate-800 border border-slate-700 hover:border-purple-500 ${isRTL ? 'flex-row-reverse' : ''}`}
+              variant="secondary"
+              size="md"
+              iconStart={<HelpCircle className="w-4 h-4" />}
               title={t('tooltips.keyboardShortcuts')}
             >
-              <HelpCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">{t('buttons.help')}</span>
-            </button>
+              {t('buttons.help')}
+            </Button>
 
-            <button
+            <Button
               onClick={openSettingsModal}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all bg-slate-800/70 hover:bg-slate-800 border border-slate-700 hover:border-purple-500 ${isRTL ? 'flex-row-reverse' : ''}`}
+              variant="secondary"
+              size="md"
+              iconStart={<Settings className="w-4 h-4" />}
               title={t('tooltips.settings')}
             >
-              <Settings className="w-4 h-4" />
-              <span className="text-sm font-medium">{t('buttons.settings')}</span>
-            </button>
+              {t('buttons.settings')}
+            </Button>
           </div>
         </div>
 
         {/* Navigation buttons and selectors */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           {/* View navigation buttons */}
-          <div className="flex items-center gap-4 overflow-x-auto pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b border-purple-700/50 mb-2">
+          <div className="flex items-center gap-4 overflow-x-auto pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b border-slate-700/50 mb-2">
             <button
               onClick={() => setCurrentView('dashboard')}
               className={`relative pb-3 px-3 text-sm font-semibold flex items-center gap-2 whitespace-nowrap transition-colors ${
-                currentView === 'dashboard' ? 'text-purple-200' : 'text-slate-400 hover:text-white'
+                currentView === 'dashboard' ? 'text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
               <span>{t('nav.dashboard')}</span>
               {currentView === 'dashboard' && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 bg-purple-400 rounded-full" />
+                <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 ${theme.colors.accentPrimary} rounded-full`} />
               )}
             </button>
             <button
@@ -2059,37 +2062,37 @@ const ExpenseTracker: React.FC = () => {
                 setCurrentView('transactions');
               }}
               className={`relative pb-3 px-3 text-sm font-semibold flex items-center gap-2 whitespace-nowrap transition-colors ${
-                currentView === 'transactions' ? 'text-purple-200' : 'text-slate-400 hover:text-white'
+                currentView === 'transactions' ? 'text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               <Activity className="w-4 h-4" />
               <span>{t('nav.transactions')}</span>
               {currentView === 'transactions' && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 bg-purple-400 rounded-full" />
+                <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 ${theme.colors.accentPrimary} rounded-full`} />
               )}
             </button>
             <button
               onClick={() => setCurrentView('categories')}
               className={`relative pb-3 px-3 text-sm font-semibold flex items-center gap-2 whitespace-nowrap transition-colors ${
-                currentView === 'categories' ? 'text-purple-200' : 'text-slate-400 hover:text-white'
+                currentView === 'categories' ? 'text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               <PieChart className="w-4 h-4" />
               <span>{t('nav.categories')}</span>
               {currentView === 'categories' && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 bg-purple-400 rounded-full" />
+                <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 ${theme.colors.accentPrimary} rounded-full`} />
               )}
             </button>
             <button
               onClick={() => setCurrentView('balance')}
               className={`relative pb-3 px-3 text-sm font-semibold flex items-center gap-2 whitespace-nowrap transition-colors ${
-                currentView === 'balance' ? 'text-purple-200' : 'text-slate-400 hover:text-white'
+                currentView === 'balance' ? 'text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               <DollarSign className="w-4 h-4" />
               <span>{t('nav.balance')}</span>
               {currentView === 'balance' && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 bg-purple-400 rounded-full" />
+                <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 ${theme.colors.accentPrimary} rounded-full`} />
               )}
             </button>
           </div>
@@ -2872,14 +2875,16 @@ const ExpenseTracker: React.FC = () => {
               <h3 className="text-xl font-bold">{t('labels.myTransactions')}</h3>
               <div className="flex gap-2">
                 {/* Add Transaction Button */}
-                <button
+                <Button
                   onClick={() => setShowAddModal(true)}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg shadow-purple-500/30"
+                  variant="accent"
+                  size="md"
+                  iconStart={<PlusCircle className="w-4 h-4" />}
                   title={t('buttons.addTransaction')}
+                  className="shadow-lg shadow-purple-500/30"
                 >
-                  <PlusCircle className="w-4 h-4" />
-                  <span className="text-sm font-medium">{t('buttons.addTransaction')}</span>
-                </button>
+                  {t('buttons.addTransaction')}
+                </Button>
                 {/* Bulk Mode Toggle (Phase 2 Feature #10) */}
                 <button
                   onClick={() => {
@@ -4058,28 +4063,30 @@ const ExpenseTracker: React.FC = () => {
         {currentView === 'dashboard' && (
           <div className={`fixed bottom-6 ${isRTL ? 'left-6' : 'right-6'} flex flex-col gap-3 z-30`}>
             {/* Quick Income Button */}
-            <button
+            <Button
               onClick={() => openQuickAdd('income')}
-              className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full shadow-2xl shadow-green-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 animate-bounce-slow group"
+              variant="income"
               title={t('buttons.quickIncome', { shortcut: 'I' })}
+              className="!w-14 !h-14 !p-0 rounded-full shadow-2xl shadow-green-500/30 hover:scale-110 active:scale-95 animate-bounce-slow group"
             >
               <TrendingUp className="w-6 h-6 text-white" />
               <span className={`absolute ${isRTL ? 'left-full ml-3' : 'right-full mr-3'} bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg`}>
                 {t('buttons.quickIncome', { shortcut: 'I' })}
               </span>
-            </button>
+            </Button>
 
             {/* Quick Expense Button */}
-            <button
+            <Button
               onClick={() => openQuickAdd('expense')}
-              className="w-14 h-14 bg-gradient-to-br from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 rounded-full shadow-2xl shadow-red-500/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 animate-bounce-slow group"
+              variant="expense"
               title={t('buttons.quickExpense', { shortcut: 'E' })}
+              className="!w-14 !h-14 !p-0 rounded-full shadow-2xl shadow-red-500/30 hover:scale-110 active:scale-95 animate-bounce-slow group"
             >
               <TrendingDown className="w-6 h-6 text-white" />
               <span className={`absolute ${isRTL ? 'left-full ml-3' : 'right-full mr-3'} bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg`}>
                 {t('buttons.quickExpense', { shortcut: 'E' })}
               </span>
-            </button>
+            </Button>
           </div>
         )}
 
