@@ -1891,6 +1891,7 @@ const ExpenseTracker: React.FC = () => {
   };
 
   const isRTL = (i18n.dir && i18n.dir() === 'rtl') || (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
+  const dir = i18n.dir ? i18n.dir() : 'ltr';
 
   const monthFormatter = useMemo(
     () => new Intl.DateTimeFormat(i18n.language || undefined, { month: 'short' }),
