@@ -69,6 +69,7 @@ export default function SettingsCenterModal(props: Props) {
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const hasInitialized = useRef(false);
 
   const [tab, setTab] = useState<TabId>("settings");
   const [section, setSection] = useState<SectionId>("general");
@@ -162,9 +163,16 @@ export default function SettingsCenterModal(props: Props) {
 
   // Open animation
   useEffect(() => {
-    if (!isOpen) return;
-    setSection("general");
-    scrollToSection("general", "auto");
+    if (!isOpen) {
+      hasInitialized.current = false;
+      return;
+    }
+
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      setSection("general");
+      scrollToSection("general", "auto");
+    }
 
     const overlay = overlayRef.current;
     const panel = panelRef.current;
@@ -277,7 +285,8 @@ export default function SettingsCenterModal(props: Props) {
       },
       {
         root: container,
-        threshold: 0.35,
+        threshold: 0.1,
+        rootMargin: "-50px 0px -50px 0px",
       }
     );
     sections.forEach((sec) => observer.observe(sec));
@@ -288,8 +297,7 @@ export default function SettingsCenterModal(props: Props) {
   useEffect(() => {
     if (!isOpen || tab !== "settings") return;
     if (!debouncedQuery) {
-      setSection("general");
-      scrollToSection("general", "auto");
+      // Don't reset to general when clearing search, just stay on current section
       return;
     }
     if (visibleSections.length) {
