@@ -1,5 +1,6 @@
 ﻿import React, { useState } from "react";
 import { X, FolderOpen, Check, Sparkles } from "lucide-react";
+import { Button } from "../../ui/Button";
 import type { PartnerNames, HouseholdSettings } from "../../../lib/types";
 import type { ThemeMode } from "../../../lib/theme";
 import type { TFunction, i18n as I18nType } from "i18next";
@@ -387,13 +388,14 @@ export function SettingsPanel({
               <h4 className="text-sm font-semibold text-slate-300">{t("labels.dataBackup")}</h4>
               <p className="text-xs text-slate-400">{t("messages.exportHelp")}</p>
 
-              <button
+              <Button
                 onClick={onExportData}
                 disabled={exportingData}
-                className="w-full bg-green-600 hover:bg-green-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                variant="success"
+                className="w-full"
               >
                 {exportingData ? t("buttons.exporting") : t("buttons.exportData")}
-              </button>
+              </Button>
 
               {lastExportDate && !dirty && (
                 <p className="text-xs text-green-400">{t("status.lastExported", { date: new Date(lastExportDate).toLocaleString() })}</p>
@@ -410,13 +412,14 @@ export function SettingsPanel({
                 {importFile && (
                   <div className="space-y-2">
                     <p className="text-xs text-slate-400">{t("labels.selectedFile", { name: importFile.name })}</p>
-                    <button
+                    <Button
                       onClick={handleImport}
                       disabled={importingData}
-                      className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      variant="accent"
+                      className="w-full"
                     >
                       {importingData ? t("buttons.importing") : t("buttons.importReplace")}
-                    </button>
+                    </Button>
                     {importStatus === "success" && (
                       <p className="text-xs text-green-400">{t("status.imported", "Import completed")}</p>
                     )}
@@ -432,19 +435,20 @@ export function SettingsPanel({
         )}
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors">
+          <Button onClick={onClose} variant="secondary" className="flex-1">
             {t("buttons.cancel")}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={async () => {
               await onSaveNames();
               await onSaveHouseholdSettings();
             }}
             disabled={isSavingDisabled}
-            className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="accent"
+            className="flex-1"
           >
             {savingSettings ? t("buttons.saving") : t("buttons.saveSettings")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

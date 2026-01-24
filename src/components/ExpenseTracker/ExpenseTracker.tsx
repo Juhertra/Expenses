@@ -4040,20 +4040,22 @@ const ExpenseTracker: React.FC = () => {
                 <span className="text-sm text-red-400">{t('messages.deleteCannotUndo')}</span>
               </p>
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => setDeleteConfirm(null)}
                   disabled={deletingItem}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="secondary"
+                  className="flex-1"
                 >
                   {t('buttons.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={executeDelete}
                   disabled={deletingItem}
-                  className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="danger"
+                  className="flex-1"
                 >
                   {deletingItem ? t('buttons.deleting') : t('buttons.delete')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -4314,14 +4316,15 @@ const ExpenseTracker: React.FC = () => {
               </select>
 
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => setShowDeleteCategoryConfirm(null)}
                   disabled={savingSettings}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  variant="secondary"
+                  className="flex-1"
                 >
                   {t('buttons.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() =>
                     executeDeleteCategory(
                       showDeleteCategoryConfirm.categoryName,
@@ -4329,10 +4332,11 @@ const ExpenseTracker: React.FC = () => {
                     )
                   }
                   disabled={savingSettings}
-                  className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  variant="danger"
+                  className="flex-1"
                 >
                   {savingSettings ? t('buttons.deleting') : t('buttons.deleteReassign')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
