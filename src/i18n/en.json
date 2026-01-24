@@ -102,7 +102,11 @@
     "selectedFile": "Selected file",
     "preview": "Preview",
     "from": "From",
-    "to": "To"
+    "to": "To",
+    "recordSettlement": "Record Settlement",
+    "percentage": "Percentage",
+    "iconEmoji": "Icon/Emoji",
+    "categoryNamePlaceholder": "Category name"
   },
   "messages": {
     "searchBreadcrumb": "Search",

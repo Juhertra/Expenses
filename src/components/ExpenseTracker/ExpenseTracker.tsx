@@ -2303,7 +2303,7 @@ const ExpenseTracker: React.FC = () => {
                         <div className="text-xs text-slate-400">{withLtr(formatCurrency(exp.amount))}</div>
                       </button>
                       {/* Add Again button (Phase 2 Feature #8) */}
-                      <button
+                      <Button
                         onClick={async () => {
                           // Directly add the transaction without opening modal
                           setSavingTransaction(true);
@@ -2329,11 +2329,12 @@ const ExpenseTracker: React.FC = () => {
                             setSavingTransaction(false);
                           }
                         }}
-                        className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 p-2 bg-purple-600 hover:bg-purple-700 rounded-full shadow-lg transition-all transform hover:scale-110"
+                        variant="accent"
+                        className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 !p-2 rounded-full shadow-lg hover:scale-110 !w-auto !h-auto"
                         title={t('tooltips.addTransactionNow')}
                       >
                         <PlusCircle className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -2906,17 +2907,19 @@ const ExpenseTracker: React.FC = () => {
             {selectedCategory && (
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-sm text-slate-400">{t('labels.filteredBy')}:</span>
-                <button
+                <Button
                   onClick={() => {
                     setSelectedCategory(null);
                     showToast(t('toasts.filterCleared'), 'success');
                   }}
-                  className="px-3 py-1 bg-purple-600 rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
+                  variant="accent"
+                  size="sm"
+                  iconEnd={<X className="w-3 h-3" />}
+                  className="gap-2"
                 >
                   <span>{categories[selectedCategory]?.icon}</span>
                   <span>{getCategoryLabel(selectedCategory)}</span>
-                  <X className="w-3 h-3" />
-                </button>
+                </Button>
               </div>
             )}
 
@@ -2944,20 +2947,24 @@ const ExpenseTracker: React.FC = () => {
                   </button>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <button
+                  <Button
                     onClick={bulkCategorize}
                     disabled={selectedIds.size === 0 || savingTransaction}
-                    className="flex-1 sm:flex-initial px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm transition-colors"
+                    variant="accent"
+                    size="sm"
+                    className="flex-1 sm:flex-initial"
                   >
                     {t('buttons.changeCategory')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={bulkDelete}
                     disabled={selectedIds.size === 0 || deletingItem}
-                    className="flex-1 sm:flex-initial px-3 py-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm transition-colors"
+                    variant="danger"
+                    size="sm"
+                    className="flex-1 sm:flex-initial"
                   >
                     {t('buttons.deleteSelected')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -3008,7 +3015,7 @@ const ExpenseTracker: React.FC = () => {
                 {t('labels.largeExpenses')} (&gt; {householdSettings.currencySymbol}1000)
               </button>
               {filterPresets.map(preset => (
-                <button
+                <Button
                   key={preset.name}
                   onClick={() => {
                     // Apply preset filters
@@ -3017,10 +3024,12 @@ const ExpenseTracker: React.FC = () => {
                     }
                     showToast(t('toasts.appliedFilter', { name: preset.name }), 'success');
                   }}
-                  className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded-full text-xs whitespace-nowrap transition-colors"
+                  variant="accent"
+                  size="sm"
+                  className="rounded-full text-xs whitespace-nowrap"
                 >
                   {preset.name}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -3061,12 +3070,12 @@ const ExpenseTracker: React.FC = () => {
                       {t('buttons.clearFilters')}
                     </button>
                   )}
-                  <button
+                  <Button
                     onClick={() => setShowAddModal(true)}
-                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                    variant="accent"
                   >
                     {t('buttons.addTransaction')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -3273,18 +3282,18 @@ const ExpenseTracker: React.FC = () => {
           <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold">{t('labels.expensesByCategory')}</h3>
-              <button
+              <Button
                 onClick={() => {
                   setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
                   setEditingCategory(null);
                   setShowCategoryModal(true);
                 }}
-                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                variant="accent"
+                iconStart={<PlusCircle className="w-4 h-4" />}
                 title={t('buttons.addCategory')}
               >
-                <PlusCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">{t('buttons.addCategory')}</span>
-              </button>
+                {t('buttons.addCategory')}
+              </Button>
             </div>
 
             {/* Empty State (Phase 1 Feature #4) */}
@@ -3638,13 +3647,14 @@ const ExpenseTracker: React.FC = () => {
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
                 <h3 className="text-lg sm:text-xl font-bold">{t('labels.settlements')}</h3>
-                <button
+                <Button
                   onClick={() => setShowSettlementModal(true)}
-                  className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                  variant="accent"
+                  iconStart={<PlusCircle className="w-5 h-5" />}
+                  className="w-full sm:w-auto"
                 >
-                  <PlusCircle className="w-5 h-5" />
                   {t('buttons.recordPayment')}
-                </button>
+                </Button>
               </div>
 
               {settlements.length === 0 ? (
@@ -3773,18 +3783,20 @@ const ExpenseTracker: React.FC = () => {
                 </div>
 
                 <div className="flex gap-2 pt-4">
-                  <button
+                  <Button
                     onClick={() => setShowSettlementModal(false)}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
+                    variant="secondary"
+                    className="flex-1"
                   >
                     {t('buttons.cancel')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={recordSettlement}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors"
+                    variant="accent"
+                    className="flex-1"
                   >
                     {t('buttons.recordPayment')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -4006,19 +4018,21 @@ const ExpenseTracker: React.FC = () => {
                   </>
                 )}
                 <div className="flex gap-2 pt-4">
-                  <button
+                  <Button
                     onClick={resetForm}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
+                    variant="secondary"
+                    className="flex-1"
                   >
                     {t('buttons.cancel')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={editingId ? updateExpense : addExpense}
                     disabled={savingTransaction}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    variant="accent"
+                    className="flex-1"
                   >
                     {savingTransaction ? t('buttons.saving') : (editingId ? t('buttons.update') : t('buttons.add'))}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -4259,22 +4273,24 @@ const ExpenseTracker: React.FC = () => {
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
-                  <button
+                  <Button
                     onClick={() => {
                       setShowCategoryModal(false);
                       setEditingCategory(null);
                     }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
+                    variant="secondary"
+                    className="flex-1"
                   >
                     {t('buttons.cancel')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => editingCategory ? editCategory(editingCategory) : addCategory()}
                     disabled={savingSettings}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg transition-colors disabled:opacity-50"
+                    variant="accent"
+                    className="flex-1"
                   >
                     {savingSettings ? t('buttons.saving') : (editingCategory ? t('buttons.update') : t('buttons.add'))}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

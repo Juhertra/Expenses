@@ -333,7 +333,7 @@ export default function SettingsCenterModal(props: Props) {
           <div className={`${dir === "rtl" ? "mr-6" : "ml-6"} flex items-center bg-slate-800/60 rounded-2xl p-1 border border-slate-700 ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
             <button
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
-                tab === "settings" ? "bg-purple-600 text-white" : "text-slate-300 hover:text-white"
+                tab === "settings" ? `${themeDef.colors.accentPrimary} text-white` : "text-slate-300 hover:text-white"
               }`}
               onClick={() => setTab("settings")}
             >
@@ -341,7 +341,7 @@ export default function SettingsCenterModal(props: Props) {
             </button>
             <button
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
-                tab === "shortcuts" ? "bg-purple-600 text-white" : "text-slate-300 hover:text-white"
+                tab === "shortcuts" ? `${themeDef.colors.accentPrimary} text-white` : "text-slate-300 hover:text-white"
               }`}
               onClick={() => setTab("shortcuts")}
             >
@@ -403,7 +403,7 @@ export default function SettingsCenterModal(props: Props) {
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition border ${
                     section === id
-                      ? "bg-purple-600/20 border-purple-500/40 text-white"
+                      ? `${themeDef.colors.accentPrimary}/20 ${themeDef.colors.focus}/40 text-white`
                       : "bg-transparent border-transparent text-slate-300 hover:bg-slate-800/50 hover:text-white"
                   } ${dir === "rtl" ? "flex-row-reverse text-right" : ""}`}
                 >
@@ -417,7 +417,7 @@ export default function SettingsCenterModal(props: Props) {
           </div>
 
           {/* Content */}
-          <div ref={contentRef} className={`col-span-9 p-6 overflow-y-auto ${themeDef.colors.cardBg}`}>
+          <div ref={contentRef} className={`col-span-9 p-6 overflow-y-auto h-full ${themeDef.colors.cardBg}`}>
             {tab === "shortcuts" ? (
               <div className="space-y-4">
                 <div data-animate="card" className={`rounded-2xl border ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-5`}>

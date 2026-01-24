@@ -102,7 +102,11 @@
     "selectedFile": "קובץ שנבחר",
     "preview": "תצוגה",
     "from": "מ",
-    "to": "אל"
+    "to": "אל",
+    "recordSettlement": "רישום התחשבנות",
+    "percentage": "אחוז",
+    "iconEmoji": "אייקון/אימוג'י",
+    "categoryNamePlaceholder": "שם קטגוריה"
   },
   "messages": {
     "searchBreadcrumb": "חיפוש",
