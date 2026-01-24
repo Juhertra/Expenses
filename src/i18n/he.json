@@ -106,7 +106,21 @@
     "recordSettlement": "רישום התחשבנות",
     "percentage": "אחוז",
     "iconEmoji": "אייקון/אימוג'י",
-    "categoryNamePlaceholder": "שם קטגוריה"
+    "categoryNamePlaceholder": "שם קטגוריה",
+    "none": "אין",
+    "spendingTrends": "מגמות הוצאות",
+    "upcoming": "קרובות",
+    "recurringMonthly": "חודשי ביום {day}",
+    "myTransactions": "התנועות שלי",
+    "filteredBy": "מסונן לפי",
+    "largeExpenses": "הוצאות גדולות",
+    "categoryDistribution": "פילוח קטגוריות",
+    "balanceSettlement": "יתרה והתחשבנות",
+    "editTransaction": "ערוך תנועה",
+    "addTransactionTitle": "הוסף תנועה",
+    "categoryName": "שם קטגוריה",
+    "editCategoryTitle": "ערוך קטגוריה",
+    "addCategoryTitle": "הוסף קטגוריה"
   },
   "messages": {
     "searchBreadcrumb": "חיפוש",
@@ -137,7 +151,14 @@
     "deleteCategoryConfirm": "למחוק ולהעביר תנועות?",
     "noSettlements": "אין התחשבנויות",
     "deleteCategoryBody": "למחוק את הקטגוריה?",
-    "noResults": "אין תוצאות"
+    "noResults": "אין תוצאות",
+    "mostCommonTransactions": "תנועות נפוצות",
+    "noRecurring": "אין תנועות חוזרות",
+    "pageOf": "עמוד {page} מתוך {total}",
+    "perfectBalance": "איזון מושלם!",
+    "allSettled": "כל ההוצאות מסודרות",
+    "settlementRequired": "נדרשת התחשבנות",
+    "partnerOwes": "{from} חייב ל-{to}"
   },
   "dialogs": {
     "bulkDeleteConfirm": "למחוק {count} נבחרים?",
@@ -232,7 +253,14 @@
     "editCategory": "ערוך קטגוריה",
     "deleteCategory": "מחק קטגוריה",
     "close": "סגירה",
-    "quickEdit": "עריכה מהירה"
+    "quickEdit": "עריכה מהירה",
+    "addTransactionNow": "הוסף תנועה זו עכשיו",
+    "editAndAdd": "ערוך והוסף {description}",
+    "clickToEdit": "לחץ לעריכה",
+    "saveChanges": "שמור שינויים",
+    "deleteSettlement": "מחק התחשבנות",
+    "emojiAlreadyUsed": "אמוג'י כבר בשימוש",
+    "selectEmoji": "בחר אמוג'י"
   },
   "charts": {
     "others": "אחרים",

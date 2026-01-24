@@ -385,11 +385,11 @@ export default function SettingsCenterModal(props: Props) {
         </div>
 
         {/* Body */}
-        <div className="grid grid-cols-12 h-[calc(90vh-72px)]">
+        <div className="grid grid-cols-12 h-[calc(90vh-72px)] overflow-hidden">
           {/* Sidebar */}
           <div
             ref={sidebarRef}
-            className={`col-span-3 border-r ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-4 overflow-y-auto ${dir === "rtl" ? "border-l" : ""}`}
+            className={`col-span-3 border-r ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-4 overflow-y-auto h-full ${dir === "rtl" ? "border-l" : ""}`}
           >
             <div className="space-y-2">
               {SECTIONS.filter((s) => currentSections.includes(s.id)).map(({ id, icon: Icon, labelKey }) => (

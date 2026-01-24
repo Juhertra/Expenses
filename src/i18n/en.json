@@ -106,7 +106,21 @@
     "recordSettlement": "Record Settlement",
     "percentage": "Percentage",
     "iconEmoji": "Icon/Emoji",
-    "categoryNamePlaceholder": "Category name"
+    "categoryNamePlaceholder": "Category name",
+    "none": "None",
+    "spendingTrends": "Spending trends",
+    "upcoming": "Upcoming",
+    "recurringMonthly": "Monthly on day {day}",
+    "myTransactions": "My Transactions",
+    "filteredBy": "Filtered by",
+    "largeExpenses": "Large expenses",
+    "categoryDistribution": "Category distribution",
+    "balanceSettlement": "Balance & Settlement",
+    "editTransaction": "Edit Transaction",
+    "addTransactionTitle": "Add Transaction",
+    "categoryName": "Category Name",
+    "editCategoryTitle": "Edit Category",
+    "addCategoryTitle": "Add Category"
   },
   "messages": {
     "searchBreadcrumb": "Search",
@@ -137,7 +151,14 @@
     "deleteCategoryConfirm": "Delete category and reassign transactions?",
     "noSettlements": "No settlements recorded",
     "deleteCategoryBody": "Are you sure you want to delete this category?",
-    "noResults": "No results"
+    "noResults": "No results",
+    "mostCommonTransactions": "Most common transactions",
+    "noRecurring": "No recurring transactions",
+    "pageOf": "Page {page} of {total}",
+    "perfectBalance": "Perfect Balance!",
+    "allSettled": "All expenses are settled",
+    "settlementRequired": "Settlement Required",
+    "partnerOwes": "{from} owes {to}"
   },
   "dialogs": {
     "bulkDeleteConfirm": "Delete {count} selected?",
@@ -232,7 +253,14 @@
     "editCategory": "Edit category",
     "deleteCategory": "Delete category",
     "close": "Close",
-    "quickEdit": "Quick edit (inline)"
+    "quickEdit": "Quick edit (inline)",
+    "addTransactionNow": "Add this transaction now",
+    "editAndAdd": "Edit and add {description}",
+    "clickToEdit": "Click to edit",
+    "saveChanges": "Save changes",
+    "deleteSettlement": "Delete settlement",
+    "emojiAlreadyUsed": "Emoji already used",
+    "selectEmoji": "Select emoji"
   },
   "charts": {
     "others": "Others",
