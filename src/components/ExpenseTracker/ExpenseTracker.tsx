@@ -2098,7 +2098,8 @@ const ExpenseTracker: React.FC = () => {
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(parseInt(e.target.value))}
-              className="flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 px-3 sm:px-4 py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base"
+              dir={dir}
+              className={`flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${isRTL ? 'pr-10 pl-3 sm:pl-4' : 'pl-3 pr-10 sm:pr-4'} py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base`}
             >
               {months.map((month, idx) => (
                 <option key={idx} value={idx}>
@@ -2109,7 +2110,8 @@ const ExpenseTracker: React.FC = () => {
             <select
               value={selectedYear}
               onChange={e => setSelectedYear(parseInt(e.target.value))}
-              className="flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 px-3 sm:px-4 py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base"
+              dir={dir}
+              className={`flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${isRTL ? 'pr-10 pl-3 sm:pl-4' : 'pl-3 pr-10 sm:pr-4'} py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base`}
             >
               {getAvailableYears().map(year => (
                 <option key={year} value={year}>
@@ -2346,8 +2348,8 @@ const ExpenseTracker: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                     <span className="text-slate-400 whitespace-nowrap">{t('labels.largestExpense')}:</span>
                     <span className="font-semibold text-right break-words min-w-0">
-                      {insights.largest.amount > 0 
-                        ? `${formatCurrency(insights.largest.amount)} - ${insights.largest.description}`
+                      {insights.largest.amount > 0
+                        ? <>{withLtr(formatCurrency(insights.largest.amount))} - {insights.largest.description}</>
                         : t('labels.none')}
                     </span>
                   </div>
@@ -2580,12 +2582,12 @@ const ExpenseTracker: React.FC = () => {
                     </div>
                     {chartTooltip.income > 0 && (
                       <div className="text-xs text-green-400">
-                        {t('charts.incomeLabel', { value: formatCurrency(chartTooltip.income) })}
+                        {t('charts.incomeLabel')}: <span className="ltr-text">{formatCurrency(chartTooltip.income)}</span>
                       </div>
                     )}
                     {chartTooltip.expense > 0 && (
                       <div className="text-xs text-red-400">
-                        {t('charts.expenseLabel', { value: formatCurrency(chartTooltip.expense) })}
+                        {t('charts.expenseLabel')}: <span className="ltr-text">{formatCurrency(chartTooltip.expense)}</span>
                       </div>
                     )}
                     <div className="text-xs text-slate-500 mt-1">
@@ -3357,7 +3359,7 @@ const ExpenseTracker: React.FC = () => {
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-400">{t('labels.percentage')}</span>
                         <span className="font-medium">
-                          {((amount / totalExpense) * 100).toFixed(1)}%
+                          {withLtr(`${((amount / totalExpense) * 100).toFixed(1)}%`)}
                         </span>
                       </div>
                       <div className="w-full bg-slate-600 rounded-full h-2">
@@ -3554,7 +3556,7 @@ const ExpenseTracker: React.FC = () => {
                   <div className="text-lg font-bold mb-2">{t('messages.settlementRequired')}</div>
                   {householdSettings.splitMode === 'proportional' && (
                     <div className="text-xs text-slate-400 mb-2">
-                      Split: {(splitRatio * 100).toFixed(0)}% / {((1-splitRatio) * 100).toFixed(0)}%
+                      {t('labels.splitRatio')}: {withLtr(`${(splitRatio * 100).toFixed(0)}% / ${((1-splitRatio) * 100).toFixed(0)}%`)}
                     </div>
                   )}
                   {partner1Balance > 0 ? (
@@ -3732,7 +3734,8 @@ const ExpenseTracker: React.FC = () => {
                   <select
                     value={settlementForm.from}
                     onChange={(e) => setSettlementForm({ ...settlementForm, from: e.target.value as 'partner1' | 'partner2' })}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
+                    dir={dir}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
                   >
                     <option value="partner1">{partnerNames.partner1}</option>
                     <option value="partner2">{partnerNames.partner2}</option>
@@ -3744,7 +3747,8 @@ const ExpenseTracker: React.FC = () => {
                   <select
                     value={settlementForm.to}
                     onChange={(e) => setSettlementForm({ ...settlementForm, to: e.target.value as 'partner1' | 'partner2' })}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
+                    dir={dir}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
                   >
                     <option value="partner1">{partnerNames.partner1}</option>
                     <option value="partner2">{partnerNames.partner2}</option>
@@ -3907,7 +3911,8 @@ const ExpenseTracker: React.FC = () => {
                     onChange={e =>
                       setFormData({ ...formData, category: e.target.value })
                     }
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
+                    dir={dir}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
                   >
                     {Object.keys(categories).map(cat => (
                       <option key={cat} value={cat}>
@@ -3923,7 +3928,8 @@ const ExpenseTracker: React.FC = () => {
                     onChange={e =>
                       setFormData({ ...formData, type: e.target.value as 'expense' | 'income' })
                     }
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
+                    dir={dir}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
                   >
                     <option value="expense">{t('labels.expense')}</option>
                     <option value="income">{t('labels.income')}</option>
@@ -3947,7 +3953,8 @@ const ExpenseTracker: React.FC = () => {
                     onChange={e =>
                       setFormData({ ...formData, paidBy: e.target.value as 'partner1' | 'partner2' | 'joint' })
                     }
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
+                    dir={dir}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
                   >
                     <option value="partner1">{partnerNames.partner1}</option>
                     <option value="partner2">{partnerNames.partner2}</option>

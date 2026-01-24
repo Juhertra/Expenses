@@ -96,6 +96,7 @@
     "householdSettings": "הגדרות משק בית",
     "currency": "מטבע",
     "expenseSplitMode": "אופן חלוקה",
+    "splitRatio": "חלוקה",
     "partner1": "שותף 1",
     "partner2": "שותף 2",
     "selectedFile": "קובץ שנבחר",

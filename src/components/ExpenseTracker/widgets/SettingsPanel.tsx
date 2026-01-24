@@ -190,7 +190,8 @@ export function SettingsPanel({
                   i18n.changeLanguage(nextLang);
                   window.localStorage.setItem("app-locale", nextLang);
                 }}
-                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg px-4 py-2`}
+                dir={dir}
+                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
               >
                 <option value="en">{t("settings.languages.en")}</option>
                 <option value="he">{t("settings.languages.he")}</option>
@@ -243,7 +244,8 @@ export function SettingsPanel({
                     currencySymbol: symbol,
                   });
                 }}
-                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg px-4 py-2`}
+                dir={dir}
+                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
               >
                 <option value="ILS">{t("settings.currencyILS")}</option>
                 <option value="USD">{t("settings.currencyUSD")}</option>
@@ -261,7 +263,8 @@ export function SettingsPanel({
                     splitMode: e.target.value as "equal" | "proportional",
                   })
                 }
-                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg px-4 py-2`}
+                dir={dir}
+                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
               >
                 <option value="equal">{t("settings.splitEqual")}</option>
                 <option value="proportional">{t("settings.splitProportional")}</option>

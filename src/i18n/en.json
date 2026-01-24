@@ -96,6 +96,7 @@
     "householdSettings": "Household Settings",
     "currency": "Currency",
     "expenseSplitMode": "Expense Split Mode",
+    "splitRatio": "Split",
     "partner1": "Partner 1",
     "partner2": "Partner 2",
     "selectedFile": "Selected file",
