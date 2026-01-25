@@ -441,29 +441,36 @@ const ExpenseTracker: React.FC = () => {
    * Phase 2 Feature #7: Save inline edit
    */
   const saveInlineEdit = async (expId: number) => {
-    if (!inlineEditData.description?.trim()) {
+    const expense = expenses.find(e => e.id === expId);
+    if (!expense) return;
+
+    // Use edited value or fall back to original
+    const description = (inlineEditData.description ?? expense.description)?.trim();
+    if (!description) {
       showToast(t('errors.descriptionRequired'), 'error');
       return;
     }
-    
-    const amount = typeof inlineEditData.amount === 'number' ? inlineEditData.amount : parseFloat(String(inlineEditData.amount || '0'));
+
+    const amount = typeof inlineEditData.amount === 'number'
+      ? inlineEditData.amount
+      : (inlineEditData.amount !== undefined
+          ? parseFloat(String(inlineEditData.amount))
+          : expense.amount);
+
     if (isNaN(amount) || amount <= 0) {
       showToast(t('errors.amountGreaterThanZero'), 'error');
       return;
     }
-    
+
     setSavingTransaction(true);
     try {
-      const expense = expenses.find(e => e.id === expId);
-      if (!expense) return;
-      
       const updated: Expense = {
         ...expense,
-        description: inlineEditData.description?.trim() || expense.description,
+        description: description,
         amount: amount,
-        category: inlineEditData.category || expense.category,
-        date: inlineEditData.date || expense.date,
-        paidBy: inlineEditData.paidBy || expense.paidBy
+        category: inlineEditData.category ?? expense.category,
+        date: inlineEditData.date ?? expense.date,
+        paidBy: inlineEditData.paidBy ?? expense.paidBy
       };
       
       const updatedExpenses = expenses.map(e => e.id === expId ? updated : e);
