@@ -79,6 +79,7 @@ export default function SettingsCenterModal(props: Props) {
 
   const dir = useMemo(() => i18n.dir(i18n.language), [i18n, i18n.language]);
   const themeDef = themes[currentTheme] || { colors: { cardBg: "bg-slate-900/60", cardBorder: "border-slate-700" } };
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac');
 
   const tt = (key: string, fallback: string) => (i18n.exists(key) ? t(key) : fallback);
 
@@ -396,48 +397,115 @@ export default function SettingsCenterModal(props: Props) {
 
         {/* Body */}
         <div className="grid grid-cols-12 h-[calc(90vh-72px)] overflow-hidden">
-          {/* Sidebar */}
-          <div
-            ref={sidebarRef}
-            className={`col-span-3 border-r ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-4 overflow-y-auto h-full ${dir === "rtl" ? "border-l" : ""}`}
-          >
-            <div className="space-y-2">
-              {SECTIONS.filter((s) => currentSections.includes(s.id)).map(({ id, icon: Icon, labelKey }) => (
-                <button
-                  key={id}
-                  data-animate="sidebar-item"
-                  data-id={id}
-                  onClick={() => {
-                    setSection(id);
-                    scrollToSection(id);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition border ${
-                    section === id
-                      ? `${themeDef.colors.accentPrimary}/20 ${themeDef.colors.focus}/40 text-white`
-                      : "bg-transparent border-transparent text-slate-300 hover:bg-slate-800/50 hover:text-white"
-                  } ${dir === "rtl" ? "flex-row-reverse text-right" : ""}`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-semibold">{tt(labelKey, id)}</span>
-                </button>
-              ))}
-            </div>
+          {/* Sidebar - only show for settings tab */}
+          {tab === "settings" && (
+            <div
+              ref={sidebarRef}
+              className={`col-span-3 border-r ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-4 overflow-y-auto h-full ${dir === "rtl" ? "border-l" : ""}`}
+            >
+              <div className="space-y-2">
+                {SECTIONS.filter((s) => currentSections.includes(s.id)).map(({ id, icon: Icon, labelKey }) => (
+                  <button
+                    key={id}
+                    data-animate="sidebar-item"
+                    data-id={id}
+                    onClick={() => {
+                      setSection(id);
+                      scrollToSection(id);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition border ${
+                      section === id
+                        ? `${themeDef.colors.accentPrimary}/20 ${themeDef.colors.focus}/40 text-white`
+                        : "bg-transparent border-transparent text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                    } ${dir === "rtl" ? "flex-row-reverse text-right" : ""}`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-sm font-semibold">{tt(labelKey, id)}</span>
+                  </button>
+                ))}
+              </div>
 
-            <div className="mt-4 text-xs text-slate-500">{tt("settings.hint", "Changes are saved locally.")}</div>
-          </div>
+              <div className="mt-4 text-xs text-slate-500">{tt("settings.hint", "Changes are saved locally.")}</div>
+            </div>
+          )}
 
           {/* Content */}
-          <div ref={contentRef} className={`col-span-9 p-6 overflow-y-auto h-full ${themeDef.colors.cardBg}`}>
+          <div ref={contentRef} className={`${tab === "shortcuts" ? "col-span-12" : "col-span-9"} p-6 overflow-y-auto h-full ${themeDef.colors.cardBg}`}>
             {tab === "shortcuts" ? (
-              <div className="space-y-4">
-                <div data-animate="card" className={`rounded-2xl border ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-5`}>
-                  <div className="text-base font-bold text-white mb-2">{tt("settings.shortcutsTitle", "Keyboard Shortcuts")}</div>
-                  <div className="text-sm text-slate-300">
-                    {tt(
-                      "settings.shortcutsHint",
-                      "Cmd+N add transaction / Cmd+K command palette / Cmd+, settings / Esc close"
-                    )}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-2xl font-bold mb-1">⌨️ {tt("labels.keyboardShortcuts", "Keyboard Shortcuts")}</h3>
+                  <p className="text-slate-400 text-sm">{tt("messages.boostProductivity", "Boost productivity with shortcuts")}</p>
+                </div>
+
+                {/* Navigation */}
+                <div data-animate="card">
+                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{tt("labels.navigation", "Navigation")}</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { keys: ['1'], desc: tt('nav.dashboard', 'Dashboard') },
+                      { keys: ['2'], desc: tt('nav.transactions', 'Transactions') },
+                      { keys: ['3'], desc: tt('nav.categories', 'Categories') },
+                      { keys: ['4'], desc: tt('nav.balance', 'Balance') }
+                    ].map((s, i) => (
+                      <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
+                        <span className="text-sm text-slate-300">{s.desc}</span>
+                        <kbd className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono min-w-[2rem] text-center">{s.keys[0]}</kbd>
+                      </div>
+                    ))}
                   </div>
+                </div>
+
+                {/* Actions */}
+                <div data-animate="card">
+                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{tt("labels.actions", "Actions")}</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { keys: [isMac ? '⌘' : 'Ctrl', 'N'], desc: tt('shortcuts.newTransaction', 'New transaction') },
+                      { keys: ['E'], desc: tt('shortcuts.quickExpense', 'Quick expense') },
+                      { keys: ['I'], desc: tt('shortcuts.quickIncome', 'Quick income') },
+                      { keys: [isMac ? '⌘' : 'Ctrl', 'S'], desc: tt('shortcuts.saveExport', 'Save / export') },
+                      { keys: [isMac ? '⌘' : 'Ctrl', 'K'], desc: tt('shortcuts.commandPalette', 'Command palette') },
+                      { keys: ['Esc'], desc: tt('shortcuts.closeModal', 'Close modal') }
+                    ].map((s, i) => (
+                      <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
+                        <span className="text-sm text-slate-300">{s.desc}</span>
+                        <div className="flex gap-1">
+                          {s.keys.map((k, j) => (
+                            <kbd key={j} className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono">{k}</kbd>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Help */}
+                <div data-animate="card">
+                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{tt("labels.helpSection", "Help")}</h4>
+                  <div className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
+                    <span className="text-sm text-slate-300">{tt('shortcuts.showPanel', 'Show shortcuts panel')}</span>
+                    <kbd className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono">
+                      {isMac ? '⌘ /' : 'Ctrl /'}
+                    </kbd>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-700">
+                  <p className="text-xs text-slate-500">
+                    <span>
+                      <kbd className="px-2 py-1 bg-slate-700 rounded">
+                        {isMac ? '⌘' : 'Ctrl'}
+                      </kbd> {tt('shortcuts.cmdHint', 'Cmd/Ctrl key')}
+                    </span>
+                    <br />
+                    <span className="mt-2 inline-block">
+                      {tt('shortcuts.pressAnytime', 'Press anytime')}
+                      <kbd className="px-2 py-1 bg-slate-700 rounded mx-1">
+                        {isMac ? '⌘ /' : 'Ctrl /'}
+                      </kbd> {tt('shortcuts.toShowHelp', 'to show help')}
+                    </span>
+                  </p>
                 </div>
               </div>
             ) : noMatches ? (
