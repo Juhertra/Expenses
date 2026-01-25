@@ -71,7 +71,6 @@ const ExpenseTracker: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [partnerNames, setPartnerNames] = useState<PartnerNames>(defaultPartnerNames);
   const [tempNames, setTempNames] = useState<PartnerNames>(defaultPartnerNames);
-  const isMac = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac');
 
   useEffect(() => {
     const lang = i18n.language || 'en';
@@ -2037,7 +2036,7 @@ const ExpenseTracker: React.FC = () => {
             </Button>
 
             <Button
-              onClick={openSettingsModal}
+              onClick={() => openSettingsModal()}
               variant="secondary"
               size="md"
               iconStart={<Settings className="w-4 h-4" />}
