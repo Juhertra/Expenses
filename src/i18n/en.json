@@ -231,8 +231,10 @@
   "status": {
     "unsavedChangesWillSaveTo": "Unsaved changes will save to {{path}}",
     "unsavedChanges": "Unsaved changes",
+    "unsavedChangesNoAutoSave": "Unsaved changes - please save manually",
     "autoSavingTo": "Auto-saving to {{path}}",
     "allSaved": "All changes saved",
+    "autoSaveNotAvailable": "Auto-save not available in this browser",
     "savingTo": "Saving to {{name}}",
     "lastExported": "Last exported {{date}}",
     "savingToFolder": "Saving to folder",

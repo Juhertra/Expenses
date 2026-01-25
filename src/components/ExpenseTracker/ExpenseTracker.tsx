@@ -872,26 +872,6 @@ const ExpenseTracker: React.FC = () => {
   };
 
   /**
-   * Normalize description: trim, collapse whitespace, apply safe exact-match normalization rules
-   * SAFE: Uses exact-match mapping (not regex) to avoid user-entered patterns breaking the app
-   */
-  const normalizeDescription = (desc: string): string => {
-    // First pass: trim and collapse whitespace
-    let normalized = desc.trim().replace(/\s+/g, ' ');
-    
-    // Create canonical key for lookup
-    const canonical = canonicalForm(normalized);
-    
-    // Apply normalization rules if a canonical match exists
-    // Rules map keys must be canonical (lowercase, trimmed, collapsed spaces)
-    if (householdSettings.normalizationRules[canonical]) {
-      normalized = householdSettings.normalizationRules[canonical];
-    }
-    
-    return normalized;
-  };
-
-  /**
    * Check for duplicate transactions (same date, amount, canonical description)
    * Uses canonical form for stable comparison that won't change with normalization rules
    * @param excludeId - ID to exclude when checking (for updates)
@@ -951,14 +931,14 @@ const ExpenseTracker: React.FC = () => {
   const addExpense = async () => {
     if (!validateForm()) return;
 
-    // Normalize description
-    const normalizedDesc = normalizeDescription(formData.description);
+    // Trim description but preserve user's original casing/formatting
+    const userDescription = formData.description.trim();
 
-    // Check for duplicates
+    // Check for duplicates using canonical form (for comparison only, not storage)
     const duplicate = checkDuplicate(
       formData.date,
       parseFloat(formData.amount),
-      normalizedDesc
+      userDescription
     );
 
     if (duplicate) {
@@ -971,7 +951,7 @@ const ExpenseTracker: React.FC = () => {
     try {
       const newExpense: Expense = {
         id: Date.now(),
-        description: normalizedDesc, // Use normalized description
+        description: userDescription, // Store original user-entered description
         amount: parseFloat(formData.amount),
         category: formData.category,
         type: formData.type,
@@ -993,10 +973,10 @@ const ExpenseTracker: React.FC = () => {
       if (formData.isRecurring) {
         // Clamp recurring day to 1-31 range
         const clampedDay = Math.max(1, Math.min(31, formData.recurringDay));
-        
+
         const newRecurringItem: RecurringTransaction = {
           id: Date.now() + 1,
-          description: normalizedDesc, // Use normalized description
+          description: userDescription, // Store original user-entered description
           amount: parseFloat(formData.amount),
           category: formData.category,
           type: formData.type,
@@ -1020,14 +1000,14 @@ const ExpenseTracker: React.FC = () => {
   const updateExpense = async () => {
     if (!validateForm()) return;
 
-    // Normalize description
-    const normalizedDesc = normalizeDescription(formData.description);
+    // Trim description but preserve user's original casing/formatting
+    const userDescription = formData.description.trim();
 
-    // Check for duplicates (excluding current expense being edited)
+    // Check for duplicates using canonical form (excluding current expense being edited)
     const duplicate = checkDuplicate(
       formData.date,
       parseFloat(formData.amount),
-      normalizedDesc,
+      userDescription,
       editingId || undefined
     );
 
@@ -1041,7 +1021,7 @@ const ExpenseTracker: React.FC = () => {
     try {
       const newExpenses = expenses.map(exp =>
         exp.id === editingId
-          ? { ...exp, description: normalizedDesc, amount: parseFloat(formData.amount), category: formData.category, type: formData.type, date: formData.date, paidBy: formData.paidBy }
+          ? { ...exp, description: userDescription, amount: parseFloat(formData.amount), category: formData.category, type: formData.type, date: formData.date, paidBy: formData.paidBy }
           : exp
       );
       await saveExpenses(newExpenses);
@@ -1994,13 +1974,19 @@ const ExpenseTracker: React.FC = () => {
                   <span className="px-3 py-1 rounded-full bg-yellow-500/15 border border-yellow-500/40 text-yellow-200 flex items-center gap-2">
                     <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
                     {saveDirectory
-                      ? t('status.unsavedChangesWillSaveTo', { name: saveDirectory.name })
-                      : t('status.unsavedChanges')}
+                      ? t('status.unsavedChangesWillSaveTo', { path: saveDirectory.name })
+                      : supportsFileSystem
+                        ? t('status.unsavedChangesNoAutoSave')
+                        : t('status.unsavedChanges')}
                   </span>
                 ) : (
                   <span className="px-3 py-1 rounded-full bg-green-500/15 border border-green-500/40 text-green-200 flex items-center gap-2">
                     <Check className="w-3.5 h-3.5" />
-                    {saveDirectory ? t('status.autoSavingTo', { name: saveDirectory.name }) : t('status.allSaved')}
+                    {saveDirectory
+                      ? t('status.autoSavingTo', { path: saveDirectory.name })
+                      : !supportsFileSystem
+                        ? t('status.autoSaveNotAvailable')
+                        : t('status.allSaved')}
                     {lastExportDate && (
                       <span className="text-slate-400 ml-1">
                         {new Date(lastExportDate).toLocaleTimeString()}

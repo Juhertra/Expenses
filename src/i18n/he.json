@@ -231,8 +231,10 @@
   "status": {
     "unsavedChangesWillSaveTo": "שינויים יישמרו ל-{{path}}",
     "unsavedChanges": "שינויים שלא נשמרו",
+    "unsavedChangesNoAutoSave": "שינויים לא נשמרו - יש לשמור ידנית",
     "autoSavingTo": "שומר אוטומטית ל-{{path}}",
     "allSaved": "הכל נשמר",
+    "autoSaveNotAvailable": "שמירה אוטומטית לא זמינה בדפדפן זה",
     "savingTo": "שומר ל-{{name}}",
     "lastExported": "ייצוא אחרון {{date}}",
     "savingToFolder": "שומר לתיקייה",
