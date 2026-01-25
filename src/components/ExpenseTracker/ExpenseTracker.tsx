@@ -63,6 +63,7 @@ const ExpenseTracker: React.FC = () => {
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'settings' | 'shortcuts'>('settings');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -123,8 +124,9 @@ const ExpenseTracker: React.FC = () => {
     setTempHouseholdSettings(householdSettings);
   }, [householdSettings, partnerNames]);
 
-  const openSettingsModal = useCallback(() => {
+  const openSettingsModal = useCallback((tab: 'settings' | 'shortcuts' = 'settings') => {
     resetSettingsDrafts();
+    setSettingsInitialTab(tab);
     setShowSettingsModal(true);
   }, [resetSettingsDrafts]);
 
@@ -152,9 +154,8 @@ const ExpenseTracker: React.FC = () => {
   const [saveDirectory, setSaveDirectory] = useState<FileSystemDirectoryHandle | null>(null);
   const [supportsFileSystem, setSupportsFileSystem] = useState(false);
 
-  // Phase 1 UX Features: Toast, Shortcuts, Category Filter, Last Used Categories
+  // Phase 1 UX Features: Toast, Category Filter, Last Used Categories
   const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
   
   // Category management state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -293,7 +294,6 @@ const ExpenseTracker: React.FC = () => {
         setShowAddModal(false);
         closeSettingsInterface();
         setShowSettlementModal(false);
-        setShowShortcuts(false);
         setShowCommandPalette(false);
         setDeleteConfirm(null);
       }
@@ -301,7 +301,7 @@ const ExpenseTracker: React.FC = () => {
       // ?: Show shortcuts help
       if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault();
-        setShowShortcuts(true);
+        openSettingsModal('shortcuts');
       }
       
       // Number keys 1-4: Switch views
@@ -2020,7 +2020,7 @@ const ExpenseTracker: React.FC = () => {
             </Button>
 
             <Button
-              onClick={() => setShowShortcuts(true)}
+              onClick={() => openSettingsModal('shortcuts')}
               variant="secondary"
               size="md"
               iconStart={<HelpCircle className="w-4 h-4" />}
@@ -3806,6 +3806,7 @@ const ExpenseTracker: React.FC = () => {
         <SettingsCenterModal
           isOpen={showSettingsModal}
           onClose={closeSettingsInterface}
+          initialTab={settingsInitialTab}
           t={t}
           i18n={i18n}
           tempNames={tempNames}
@@ -4358,98 +4359,6 @@ const ExpenseTracker: React.FC = () => {
           </div>
         )}
 
-        {/* Keyboard Shortcuts Help Modal (Phase 1 Feature #5) */}
-        {showShortcuts && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-slate-800 rounded-2xl p-8 max-w-3xl w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h3 className="text-2xl font-bold mb-1">⌨️ {t('labels.keyboardShortcuts')}</h3>
-                  <p className="text-slate-400 text-sm">{t('messages.boostProductivity')}</p>
-                </div>
-                <button 
-                  onClick={() => setShowShortcuts(false)} 
-                  className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                  title={t('tooltips.close')}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Navigation */}
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{t('labels.navigation')}</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { keys: ['1'], desc: t('nav.dashboard') },
-                      { keys: ['2'], desc: t('nav.transactions') },
-                      { keys: ['3'], desc: t('nav.categories') },
-                      { keys: ['4'], desc: t('nav.balance') }
-                    ].map((s, i) => (
-                      <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
-                        <span className="text-sm text-slate-300">{s.desc}</span>
-                        <kbd className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono min-w-[2rem] text-center">{s.keys[0]}</kbd>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Actions */}
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{t('labels.actions')}</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                  {[
-                      { keys: [isMac ? '⌘' : 'Ctrl', 'N'], desc: t('shortcuts.newTransaction') },
-                      { keys: ['E'], desc: t('shortcuts.quickExpense') },
-                      { keys: ['I'], desc: t('shortcuts.quickIncome') },
-                      { keys: [isMac ? '⌘' : 'Ctrl', 'S'], desc: t('shortcuts.saveExport') },
-                      { keys: [isMac ? '⌘' : 'Ctrl', 'K'], desc: t('shortcuts.commandPalette') },
-                      { keys: ['Esc'], desc: t('shortcuts.closeModal') }
-                    ].map((s, i) => (
-                      <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
-                        <span className="text-sm text-slate-300">{s.desc}</span>
-                        <div className="flex gap-1">
-                          {s.keys.map((k, j) => (
-                            <kbd key={j} className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono">{k}</kbd>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Help */}
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{t('labels.helpSection')}</h4>
-                  <div className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
-                    <span className="text-sm text-slate-300">{t('shortcuts.showPanel')}</span>
-                    <kbd className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono">
-                      {isMac ? '⌘ /' : 'Ctrl /'}
-                    </kbd>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-8 pt-6 border-t border-slate-700">
-                <p className="text-xs text-slate-500 text-center">
-                  <span>
-                    <kbd className="px-2 py-1 bg-slate-700 rounded">
-                      {isMac ? '⌘' : 'Ctrl'}
-                    </kbd> {t('shortcuts.cmdHint')}
-                  </span>
-                  <br />
-                  <span>
-                    {t('shortcuts.pressAnytime')} 
-                    <kbd className="px-2 py-1 bg-slate-700 rounded">
-                      {isMac ? '⌘ /' : 'Ctrl /'}
-                    </kbd> {t('shortcuts.toShowHelp')}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

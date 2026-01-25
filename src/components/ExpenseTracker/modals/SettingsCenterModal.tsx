@@ -13,6 +13,7 @@ type TabId = "settings" | "shortcuts";
 type Props = {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: TabId;
 
   t: TFunction;
   i18n: I18nType;
@@ -62,7 +63,7 @@ const KEYWORDS: Record<SectionId, string[]> = {
 };
 
 export default function SettingsCenterModal(props: Props) {
-  const { isOpen, onClose, t, i18n, currentTheme } = props;
+  const { isOpen, onClose, t, i18n, currentTheme, initialTab = "settings" } = props;
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -170,6 +171,7 @@ export default function SettingsCenterModal(props: Props) {
 
     if (!hasInitialized.current) {
       hasInitialized.current = true;
+      setTab(initialTab);
       setSection("general");
       scrollToSection("general", "auto");
     }
@@ -246,7 +248,7 @@ export default function SettingsCenterModal(props: Props) {
     return () => {
       scope.revert();
     };
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   // Active sidebar animation
   useEffect(() => {
