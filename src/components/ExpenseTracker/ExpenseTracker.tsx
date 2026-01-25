@@ -42,6 +42,7 @@ import {
   setSettlements as persistSettlements,
 } from '../../services/storage';
 import { pickDirectory, supportsDirectoryPicker } from '../../services/platform';
+import { processRecurringTransactions } from '../../services/recurring';
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
 
@@ -767,57 +768,21 @@ const ExpenseTracker: React.FC = () => {
   };
 
   /**
-   * Process recurring transactions at the beginning of each month. This
-   * function checks each recurring entry and, if it has not been
-   * processed for the current month, creates a corresponding expense.
-   * The updated expenses and recurring entries are saved back to
-   * storage.
+   * Process recurring transactions using the centralized service.
+   * Delegates to processRecurringTransactions from services/recurring.
+   * If any recurring transactions are processed, saves updated state.
    *
    * @param recurringList List of recurring entries
    * @param currentExpenses Current list of all expenses
    */
   const processRecurring = async (recurringList: RecurringTransaction[], currentExpenses: Expense[]) => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    let updated = false;
+    const result = processRecurringTransactions(recurringList, currentExpenses);
 
-    for (const rec of recurringList) {
-      const lastProcessed = rec.lastProcessed
-        ? new Date(rec.lastProcessed)
-        : new Date(currentYear, currentMonth - 1, 1);
-
-      if (
-        lastProcessed.getMonth() !== currentMonth ||
-        lastProcessed.getFullYear() !== currentYear
-      ) {
-        // Guard: clamp recurring day to last day of month if it exceeds
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const effectiveDay = Math.min(rec.recurringDay, daysInMonth);
-
-        const newExpense: Expense = {
-          id: Date.now() + Math.random(),
-          description: rec.description,
-          amount: rec.amount,
-          category: rec.category,
-          type: rec.type,
-          date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(
-            effectiveDay
-          ).padStart(2, '0')}`,
-          paidBy: rec.paidBy,
-          isAuto: true
-        };
-        currentExpenses.push(newExpense);
-        rec.lastProcessed = today.toISOString();
-        updated = true;
-      }
-    }
-
-    if (updated) {
-      await persistExpenses(currentExpenses);
-      await persistRecurring(recurringList);
-      setExpenses(currentExpenses);
-      setRecurring(recurringList);
+    if (result.changed) {
+      await persistExpenses(result.updatedExpenses);
+      await persistRecurring(result.updatedRecurring);
+      setExpenses(result.updatedExpenses);
+      setRecurring(result.updatedRecurring);
     }
   };
 

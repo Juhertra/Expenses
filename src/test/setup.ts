@@ -1,5 +1,3 @@
-import { afterEach } from 'vitest';
-
 type Store = Map<string, string>;
 
 const store: Store = new Map();
@@ -40,7 +38,3 @@ const localStorageMock = {
     localStorageMock.setItem(key, value);
   },
 };
-
-afterEach(() => {
-  localStorageMock.clear();
-});

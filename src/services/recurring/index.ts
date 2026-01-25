@@ -20,13 +20,11 @@ export function processRecurringTransactions(
   let changed = false;
 
   for (const rec of updatedRecurring) {
-    if (!rec.lastProcessed) {
-      rec.lastProcessed = today.toISOString();
-      changed = true;
-      continue;
-    }
+    // Initialize lastProcessed to previous month if missing (will create expense this month)
+    const lastProcessedDate = rec.lastProcessed
+      ? new Date(rec.lastProcessed)
+      : new Date(today.getFullYear(), today.getMonth() - 1, 1);
 
-    const lastProcessedDate = new Date(rec.lastProcessed);
     const lastMonth = lastProcessedDate.getMonth();
     const lastYear = lastProcessedDate.getFullYear();
 

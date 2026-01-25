@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git rev-parse:*)",
+      "Bash(npm test:*)",
+      "Bash(npx vitest:*)",
+      "Bash(ls:*)",
+      "Bash(dir node_modules.binvitest*)",
+      "Bash(where:*)",
+      "Bash(npm bin:*)",
+      "Bash(npm --version:*)",
+      "Bash(node --version)",
+      "Bash(./node_modules/.bin/vitest:*)",
+      "Bash(npm install:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(Get-Content src/lib/__tests__/validators.test.ts -Encoding Byte -TotalCount 10)",
+      "Bash(Format-Hex)",
+      "Bash(npm run test:*)",
+      "Bash(node --loader tsx:*)",
+      "Bash(npm view:*)",
+      "Bash(set NODE_OPTIONS=--no-webstorage)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
+    ]
+  }
+}
