@@ -1,6 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { processRecurringTransactions } from '../index';
-import type { RecurringTransaction, Expense } from '../../../lib/types';
+import { processRecurringTransactions } from '../index.ts';
+import type { RecurringTransaction, Expense } from '../../../lib/types.ts';
 
 describe('processRecurringTransactions', () => {
   it('should create expense for unprocessed recurring transaction', () => {

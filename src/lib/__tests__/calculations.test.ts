@@ -1,12 +1,11 @@
-import { describe, it, expect } from 'vitest';
 import {
   calculateTotals,
   calculateBalance,
   calculateCategoryTotals,
   calculateInsights,
   getFrequentExpenses,
-} from '../calculations';
-import type { Expense, HouseholdSettings, Settlement } from '../types';
+} from '../calculations.ts';
+import type { Expense, HouseholdSettings, Settlement } from '../types.ts';
 
 describe('calculateTotals', () => {
   it('should calculate totals correctly for mixed transactions', () => {

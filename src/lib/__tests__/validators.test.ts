@@ -1,11 +1,10 @@
-import { describe, it, expect } from 'vitest';
 import {
   sanitizeInput,
   validateExpenseForm,
   validateImportData,
   validateSettlement,
-} from '../validators';
-import type { FormData } from '../types';
+} from '../validators.ts';
+import type { FormData } from '../types.ts';
 
 describe('sanitizeInput', () => {
   it('should remove HTML tags', () => {

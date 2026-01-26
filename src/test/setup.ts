@@ -24,7 +24,7 @@ const localStorageMock = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).localStorage = (globalThis as any).localStorage || localStorageMock;
+(globalThis as any).localStorage = localStorageMock;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).window = (globalThis as any).window || {};

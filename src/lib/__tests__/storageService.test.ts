@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import {
   loadExpenses,
   saveExpenses,
@@ -6,8 +5,8 @@ import {
   savePartnerNames,
   loadSettings,
   saveSettings,
-} from '../storageService';
-import type { Expense, PartnerNames, HouseholdSettings } from '../types';
+} from '../storageService.ts';
+import type { Expense, PartnerNames, HouseholdSettings } from '../types.ts';
 
 describe('storageService', () => {
   beforeEach(() => {

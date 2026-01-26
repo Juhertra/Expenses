@@ -1,6 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { canonicalForm, normalizeDescription, checkDuplicate } from '../normalization';
-import type { Expense } from '../types';
+import { canonicalForm, normalizeDescription, checkDuplicate } from '../normalization.ts';
+import type { Expense } from '../types.ts';
 
 describe('canonicalForm', () => {
   it('should create canonical form correctly', () => {
@@ -66,7 +65,7 @@ describe('checkDuplicate', () => {
     const duplicate = checkDuplicate(expenses, '2026-01-01', 50, '  grocery  shopping  ');
 
     expect(duplicate).toBeTruthy();
-    expect(duplicate?.id).toBe('1');
+    expect(duplicate?.id).toBe(1);
   });
 
   it('should not find duplicates when amount differs', () => {
@@ -82,7 +81,7 @@ describe('checkDuplicate', () => {
   });
 
   it('should exclude specified ID from duplicate check', () => {
-    const duplicate = checkDuplicate(expenses, '2026-01-01', 50, 'Grocery Shopping', '1');
+    const duplicate = checkDuplicate(expenses, '2026-01-01', 50, 'Grocery Shopping', 1);
 
     expect(duplicate).toBeNull();
   });
@@ -91,7 +90,7 @@ describe('checkDuplicate', () => {
     const duplicate = checkDuplicate(expenses, '2026-01-01', 50, 'GROCERY SHOPPING');
 
     expect(duplicate).toBeTruthy();
-    expect(duplicate?.id).toBe('1');
+    expect(duplicate?.id).toBe(1);
   });
 });
 
