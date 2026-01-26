@@ -53,6 +53,7 @@ import {
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
+import { useDataPersistence } from '../../hooks/useDataPersistence';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -80,6 +81,22 @@ const ExpenseTracker: React.FC = () => {
     resetForm,
     openQuickAdd,
   } = useExpenseForm();
+
+  // Data persistence operations (extracted to hook)
+  const {
+    importFile,
+    setImportFile,
+    exportingData,
+    importingData,
+    supportsFileSystem,
+    loadData,
+    saveData,
+    exportData,
+    importData,
+    handleImportFile,
+    chooseSaveDirectory,
+    checkFileSystemSupport,
+  } = useDataPersistence();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
@@ -110,15 +127,10 @@ const ExpenseTracker: React.FC = () => {
     type: 'expense' | 'recurring';
   } | null>(null);
 
-  // Export/Import state
-  const [importFile, setImportFile] = useState<File | null>(null);
-
   // Granular loading states (avoid freezing entire UI)
   const [savingNonFormTransaction, setSavingTransaction] = useState(false); // For non-form operations (drag-drop, bulk, inline, etc.)
   const [deletingItem, setDeletingItem] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
-  const [exportingData, setExportingData] = useState(false);
-  const [importingData, setImportingData] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Household settings state (for currency, split modes, budgets, normalization)
@@ -173,7 +185,6 @@ const ExpenseTracker: React.FC = () => {
 
   // File System Access API state (for auto-saving to folder)
   const [saveDirectory, setSaveDirectory] = useState<FileSystemDirectoryHandle | null>(null);
-  const [supportsFileSystem, setSupportsFileSystem] = useState(false);
 
   // Phase 1 UX Features: Toast, Category Filter, Last Used Categories
   const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
@@ -232,12 +243,15 @@ const ExpenseTracker: React.FC = () => {
    */
   useEffect(() => {
     loadData();
-    // Check if File System Access API is supported
-    if (supportsDirectoryPicker()) {
-      setSupportsFileSystem(true);
-    }
+    checkFileSystemSupport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync temp states with loaded data for settings modal drafts
+  useEffect(() => {
+    setTempNames(partnerNames);
+    setTempHouseholdSettings(householdSettings);
+  }, [partnerNames, householdSettings]);
 
   /**
    * Clear search query and reset pagination when month or year changes (Phase 2 Feature #12)
@@ -496,37 +510,6 @@ const ExpenseTracker: React.FC = () => {
     }
   };
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const loadedExpenses = await getExpenses();
-      const loadedRecurring = await getRecurring();
-      const names = await loadPartnerNames();
-      const loadedSettlements = await getSettlements();
-      const loadedSettings = await getSettings();
-
-      const settingsWithCategories =
-        loadedSettings && loadedSettings.categories && Object.keys(loadedSettings.categories).length > 0
-          ? loadedSettings
-          : { ...defaultSettings, categories: { ...DEFAULT_CATEGORIES } };
-
-      setHouseholdSettings(settingsWithCategories);
-      setTempHouseholdSettings(settingsWithCategories);
-
-      setPartnerNames(names);
-      setTempNames(names);
-      setSettlements(loadedSettlements);
-      setExpenses(loadedExpenses);
-      setRecurring(loadedRecurring);
-
-      await processRecurring(loadedRecurring, loadedExpenses);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   /**
    * Persist partner names to storage and close the settings modal if open.
    */
@@ -762,25 +745,6 @@ const ExpenseTracker: React.FC = () => {
   };
 
   /**
-   * Process recurring transactions using the centralized service.
-   * Delegates to processRecurringTransactions from services/recurring.
-   * If any recurring transactions are processed, saves updated state.
-   *
-   * @param recurringList List of recurring entries
-   * @param currentExpenses Current list of all expenses
-   */
-  const processRecurring = async (recurringList: RecurringTransaction[], currentExpenses: Expense[]) => {
-    const result = processRecurringTransactions(recurringList, currentExpenses);
-
-    if (result.changed) {
-      await persistExpenses(result.updatedExpenses);
-      await persistRecurring(result.updatedRecurring);
-      setExpenses(result.updatedExpenses);
-      setRecurring(result.updatedRecurring);
-    }
-  };
-
-  /**
    * Save a new list of expenses to storage and update state.
    *
    * @param newExpenses Updated expenses list
@@ -923,259 +887,6 @@ const ExpenseTracker: React.FC = () => {
       setDeleteConfirm(null);
     } finally {
       setDeletingItem(false);
-    }
-  };
-
-  /**
-   * Prompt user to select a directory for auto-saving backups
-   */
-  const chooseSaveDirectory = async (): Promise<FileSystemDirectoryHandle | null> => {
-    try {
-      const dirHandle = await pickDirectory();
-      if (!dirHandle) {
-        return null;
-      }
-      setSaveDirectory(dirHandle);
-      showToast(t('toasts.saveFolderSet', { name: dirHandle.name }), 'success');
-      return dirHandle;
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Error choosing directory:', error);
-        showToast(t('errors.selectFolderFailed'), 'error');
-      }
-      return null;
-    }
-  };
-
-  /**
-   * Helper to build export payload from current state
-   */
-  const getExportPayload = () => ({
-    expenses,
-    recurring,
-    partnerNames,
-    householdSettings,
-    settlements,
-  });
-
-  /**
-   * Save data to a stable file (used by auto-save and manual Save).
-   */
-  const saveData = async (options?: {
-    allowDownload?: boolean;
-    showToast?: boolean;
-    promptForDirectory?: boolean;
-  }) => {
-    setExportingData(true);
-    try {
-      const payload = getExportPayload();
-      const exportObject = buildExportObject(payload);
-      const jsonString = serializeExport(payload);
-      const filename = 'expense-tracker.json';
-
-      let targetDirectory = saveDirectory;
-      const shouldPrompt = options?.promptForDirectory !== false;
-      if (supportsFileSystem && !targetDirectory && shouldPrompt) {
-        targetDirectory = await chooseSaveDirectory();
-      }
-
-      if (supportsFileSystem && targetDirectory) {
-        await writeJsonToDirectory(targetDirectory, filename, jsonString);
-        setDirty(false);
-        setLastExportDate(exportObject.exportDate);
-        if (options?.showToast !== false) {
-          showToast(
-            t('toasts.savedTo', { path: `${targetDirectory.name}/${filename}` }),
-            'success'
-          );
-        }
-        return;
-      }
-
-      const allowDownload = options?.allowDownload ?? !supportsFileSystem;
-      if (!allowDownload) {
-        if (options?.showToast !== false && supportsFileSystem && shouldPrompt) {
-          showToast(t('errors.saveFolderRequired'), 'error');
-        }
-        return;
-      }
-
-      downloadJson(filename, jsonString);
-
-      setDirty(false);
-      setLastExportDate(exportObject.exportDate);
-      if (options?.showToast !== false) {
-        showToast(t('toasts.dataSaved'), 'success');
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      if (options?.showToast !== false) {
-        showToast(t('errors.saveFailed'), 'error');
-      }
-    } finally {
-      setExportingData(false);
-    }
-  };
-
-  /**
-   * Export a timestamped backup file.
-   */
-  const exportData = async () => {
-    setExportingData(true);
-    try {
-      const payload = getExportPayload();
-      const exportObject = buildExportObject(payload);
-      const jsonString = serializeExport(payload);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `expense-tracker-${timestamp}.json`;
-
-      if (supportsFileSystem && saveDirectory) {
-        await writeJsonToDirectory(saveDirectory, filename, jsonString);
-        setDirty(false);
-        setLastExportDate(exportObject.exportDate);
-        showToast(
-          t('toasts.exportedTo', { path: `${saveDirectory.name}/${filename}` }),
-          'success'
-        );
-        return;
-      }
-
-      downloadJson(filename, jsonString);
-
-      setDirty(false);
-      setLastExportDate(exportObject.exportDate);
-      showToast(t('toasts.dataExported'), 'success');
-    } catch (error) {
-      console.error('Export error:', error);
-      showToast(t('errors.exportFailed'), 'error');
-    } finally {
-      setExportingData(false);
-    }
-  };
-
-  /**
-   * Handle file selection for import
-   */
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImportFile(e.target.files[0]);
-    }
-  };
-
-  /**
-   * Import data from JSON file (validates, shows summary, and overwrites)
-   * Vault mode: This restores the source of truth
-   */
-  const importData = async () => {
-    if (!importFile) {
-      alert(t('errors.selectImportFile'));
-      return;
-    }
-
-    setImportingData(true);
-    try {
-      // Read and validate file using service layer
-      const text = await importFile.text();
-      const importObject = parseImport(text);
-
-      const { data, raw } = importObject;
-      const settlementsCount = Array.isArray(data.settlements) ? data.settlements.length : 0;
-
-      // Show summary before import
-      const currency =
-        data.householdSettings?.currencySymbol || householdSettings.currencySymbol || '';
-      const summaryLines = [
-        t('dialogs.importSummaryTitle'),
-        '',
-        t('dialogs.importSummaryTransactions', { count: data.expenses.length }),
-        t('dialogs.importSummaryRecurring', { count: data.recurring.length }),
-        t('dialogs.importSummaryPartners', {
-          partner1: data.partnerNames.partner1,
-          partner2: data.partnerNames.partner2
-        }),
-        t('dialogs.importSummaryCurrency', { currency })
-      ];
-
-      if (data.householdSettings) {
-        summaryLines.push(
-          t('dialogs.importSummarySplit', { mode: data.householdSettings.splitMode })
-        );
-      }
-      if (settlementsCount > 0) {
-        summaryLines.push(
-          t('dialogs.importSummarySettlements', { count: settlementsCount })
-        );
-      }
-
-      summaryLines.push('', t('dialogs.importSummaryWarning'));
-      const summary = summaryLines.join('\n');
-
-      if (!confirm(summary)) {
-        return;
-      }
-
-      // Import: prefer raw strings if available AND valid, fallback to data
-      // Schema v1 requires all 4 keys (settlements optional)
-      let useRaw = false;
-      if (raw && 
-          raw['household-expenses'] && 
-          raw['household-recurring'] && 
-          raw['household-partner-names'] && 
-          raw['household-settings']) {
-        // Sanity check: validate that ALL raw data can be parsed before trusting it
-        try {
-          JSON.parse(raw['household-expenses']);
-          JSON.parse(raw['household-recurring']);
-          JSON.parse(raw['household-partner-names']);
-          JSON.parse(raw['household-settings']);
-          if (raw['household-settlements']) {
-            JSON.parse(raw['household-settlements']);
-          }
-          useRaw = true;
-        } catch (error) {
-          console.warn('Raw data failed to parse, falling back to parsed data', error);
-        }
-      }
-
-      if (useRaw) {
-        // Use raw storage strings for perfect fidelity
-        const rawExpenses = JSON.parse(raw['household-expenses']);
-        const rawRecurring = JSON.parse(raw['household-recurring']);
-        const rawNames = JSON.parse(raw['household-partner-names']);
-        const rawSettings = JSON.parse(raw['household-settings']);
-        const rawSettlements = raw['household-settlements'] ? JSON.parse(raw['household-settlements']) : [];
-
-        await persistExpenses(rawExpenses);
-        await persistRecurring(rawRecurring);
-        await persistPartnerNames(rawNames);
-        await persistSettings(rawSettings);
-        await persistSettlements(rawSettlements);
-      } else {
-        // Fallback to parsed data
-        await persistExpenses(data.expenses);
-        await persistRecurring(data.recurring);
-        await persistPartnerNames(data.partnerNames);
-        await persistSettings(data.householdSettings || defaultSettings);
-        await persistSettlements(data.settlements || []);
-      }
-
-      // Clear file input for clean UI reset
-      setImportFile(null);
-      // Reset the file input element
-      const fileInput = document.getElementById('import-file') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-
-      // Clear dirty flag (data is now in sync with "vault")
-      setDirty(false);
-
-      alert(t('dialogs.importSuccess'));
-      window.location.reload();
-
-    } catch (error) {
-      console.error('Import error:', error);
-      showToast(t('errors.importFailed'), 'error');
-    } finally {
-      setImportingData(false);
     }
   };
 
