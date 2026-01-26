@@ -23,33 +23,18 @@ import type {
   Expense,
   RecurringTransaction,
   PartnerNames,
-  FormData,
   ChartDataPoint,
   HouseholdSettings,
   Settlement
 } from '../../lib/types';
 import { DEFAULT_CATEGORIES, defaultPartnerNames, defaultSettings } from '../../lib/defaults';
 import {
-  getExpenses,
   setExpenses as persistExpenses,
-  getRecurring,
   setRecurring as persistRecurring,
-  getPartnerNames as loadPartnerNames,
   setPartnerNames as persistPartnerNames,
-  getSettings,
   setSettings as persistSettings,
-  getSettlements,
   setSettlements as persistSettlements,
 } from '../../services/storage';
-import { pickDirectory, supportsDirectoryPicker } from '../../services/platform';
-import { processRecurringTransactions } from '../../services/recurring';
-import {
-  buildExportObject,
-  serializeExport,
-  parseImport,
-  writeJsonToDirectory,
-  downloadJson
-} from '../../services/importExport';
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
@@ -85,7 +70,6 @@ const ExpenseTracker: React.FC = () => {
   // Data persistence operations (extracted to hook)
   const {
     importFile,
-    setImportFile,
     exportingData,
     importingData,
     supportsFileSystem,
@@ -103,11 +87,11 @@ const ExpenseTracker: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'settings' | 'shortcuts'>('settings');
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId] = useState<number | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(true);
   const [partnerNames, setPartnerNames] = useState<PartnerNames>(defaultPartnerNames);
   const [tempNames, setTempNames] = useState<PartnerNames>(defaultPartnerNames);
 
@@ -128,7 +112,7 @@ const ExpenseTracker: React.FC = () => {
   } | null>(null);
 
   // Granular loading states (avoid freezing entire UI)
-  const [savingNonFormTransaction, setSavingTransaction] = useState(false); // For non-form operations (drag-drop, bulk, inline, etc.)
+  const [, setSavingTransaction] = useState(false); // For non-form operations (drag-drop, bulk, inline, etc.)
   const [deletingItem, setDeletingItem] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -170,7 +154,7 @@ const ExpenseTracker: React.FC = () => {
 
   // Vault mode: dirty tracking (localStorage is cache only, export/import is source of truth)
   const [dirty, setDirty] = useState(false);
-  const [lastExportDate, setLastExportDate] = useState<string | null>(null);
+  const [lastExportDate] = useState<string | null>(null);
 
   // Settlements state (for recording repayments between partners)
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -184,7 +168,7 @@ const ExpenseTracker: React.FC = () => {
   });
 
   // File System Access API state (for auto-saving to folder)
-  const [saveDirectory, setSaveDirectory] = useState<FileSystemDirectoryHandle | null>(null);
+  const [saveDirectory] = useState<FileSystemDirectoryHandle | null>(null);
 
   // Phase 1 UX Features: Toast, Category Filter, Last Used Categories
   const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);

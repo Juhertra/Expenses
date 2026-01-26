@@ -5,7 +5,7 @@
 
 export const isElectron = () =>
   typeof window !== 'undefined' &&
-  !!(window.process && (window.process as any).type === 'renderer');
+  !!((window as any).process && (window as any).process.type === 'renderer');
 
 export const isMac = () => typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC');
 export const isWindows = () => typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('WIN');
