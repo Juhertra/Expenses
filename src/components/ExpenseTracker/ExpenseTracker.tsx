@@ -52,6 +52,7 @@ import {
 } from '../../services/importExport';
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
+import { useExpenseForm } from '../../hooks/useExpenseForm';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -67,6 +68,19 @@ type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 const ExpenseTracker: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { currentTheme, theme, setTheme: setAppTheme } = useTheme();
+
+  // Form state and operations (extracted to hook)
+  const {
+    formData,
+    setFormData,
+    savingTransaction,
+    addExpense,
+    updateExpense,
+    editExpense,
+    resetForm,
+    openQuickAdd,
+  } = useExpenseForm();
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -100,7 +114,7 @@ const ExpenseTracker: React.FC = () => {
   const [importFile, setImportFile] = useState<File | null>(null);
 
   // Granular loading states (avoid freezing entire UI)
-  const [savingTransaction, setSavingTransaction] = useState(false);
+  const [savingNonFormTransaction, setSavingTransaction] = useState(false); // For non-form operations (drag-drop, bulk, inline, etc.)
   const [deletingItem, setDeletingItem] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [exportingData, setExportingData] = useState(false);
@@ -178,8 +192,6 @@ const ExpenseTracker: React.FC = () => {
     reassignTo: string;
   } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [lastExpenseCategory, setLastExpenseCategory] = useState<string>('Housing');
-  const [lastIncomeCategory, setLastIncomeCategory] = useState<string>('Other');
 
   // Phase 2 Features: Command Palette, Breadcrumbs, Filters, Charts, Inline Edit, Templates, Bulk Ops, Virtual Scroll
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -212,18 +224,6 @@ const ExpenseTracker: React.FC = () => {
   // Category definitions including icon and color styling.
   // Use categories from household settings (dynamic, user-managed)
   const categories = householdSettings.categories || DEFAULT_CATEGORIES;
-
-  // Form data state for the add/edit modal.
-  const [formData, setFormData] = useState<FormData>({
-    description: '',
-    amount: '',
-    category: 'Housing',
-    type: 'expense',
-    date: new Date().toISOString().split('T')[0],
-    paidBy: 'partner1',
-    isRecurring: false,
-    recurringDay: 1
-  });
 
   /**
    * Load persisted data from storage on mount. This includes expenses,
@@ -494,19 +494,6 @@ const ExpenseTracker: React.FC = () => {
     } finally {
       setSavingTransaction(false);
     }
-  };
-
-  /**
-   * Open quick add modal with pre-selected type and last-used category (Phase 1 Feature #1)
-   */
-  const openQuickAdd = (type: 'expense' | 'income') => {
-    setFormData({
-      ...formData,
-      type,
-      date: new Date().toISOString().split('T')[0],
-      category: type === 'expense' ? lastExpenseCategory : lastIncomeCategory
-    });
-    setShowAddModal(true);
   };
 
   const loadData = async () => {
@@ -834,175 +821,6 @@ const ExpenseTracker: React.FC = () => {
     (dateStr: string) => new Date(dateStr).toLocaleDateString(i18n.language || undefined),
     [i18n.language]
   );
-
-  /**
-   * Create canonical form of a description (for safe matching)
-   * Canonical = lowercase + trim + collapse whitespace
-   */
-  const canonicalForm = (desc: string): string => {
-    return desc.trim().replace(/\s+/g, ' ').toLowerCase();
-  };
-
-  /**
-   * Check for duplicate transactions (same date, amount, canonical description)
-   * Uses canonical form for stable comparison that won't change with normalization rules
-   * @param excludeId - ID to exclude when checking (for updates)
-   */
-  const checkDuplicate = (
-    date: string,
-    amount: number,
-    normalizedDesc: string,
-    excludeId?: number
-  ): Expense | null => {
-    // Allow repeat incomes (partners can record the same income name/amount/date)
-    if (formData.type === 'income') return null;
-    const canonicalDesc = canonicalForm(normalizedDesc);
-    return expenses.find(e =>
-      e.date === date &&
-      Math.abs(e.amount - amount) < 0.01 &&
-      e.type === formData.type &&
-      e.paidBy === formData.paidBy &&
-      canonicalForm(e.description) === canonicalDesc &&
-      e.id !== excludeId
-    ) || null;
-  };
-
-  /**
-   * Validate form data before adding/updating
-   * @returns true if valid, false otherwise
-   */
-  const validateForm = (): boolean => {
-    // Description must not be empty
-    if (!formData.description.trim()) {
-      alert(t('errors.descriptionRequired'));
-      return false;
-    }
-
-    // Amount must be a positive number
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) {
-      alert(t('errors.amountGreaterThanZero'));
-      return false;
-    }
-
-    // Recurring day must be between 1 and 31
-    if (formData.isRecurring) {
-      const day = formData.recurringDay;
-      if (day < 1 || day > 31) {
-        alert(t('errors.recurringDayInvalid'));
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  /**
-   * Add a new expense and optionally a recurring entry based on form data.
-   */
-  const addExpense = async () => {
-    if (!validateForm()) return;
-
-    // Trim description but preserve user's original casing/formatting
-    const userDescription = formData.description.trim();
-
-    // Check for duplicates using canonical form (for comparison only, not storage)
-    const duplicate = checkDuplicate(
-      formData.date,
-      parseFloat(formData.amount),
-      userDescription
-    );
-
-    if (duplicate) {
-      if (!confirm(t('dialogs.duplicateConfirm', { description: duplicate.description, date: duplicate.date }))) {
-        return; // User cancelled
-      }
-    }
-
-    setSavingTransaction(true);
-    try {
-      const newExpense: Expense = {
-        id: Date.now(),
-        description: userDescription, // Store original user-entered description
-        amount: parseFloat(formData.amount),
-        category: formData.category,
-        type: formData.type,
-        date: formData.date,
-        paidBy: formData.paidBy,
-      };
-
-      const newExpenses = [...expenses, newExpense];
-      await saveExpenses(newExpenses);
-      setDirty(true); // Mark as dirty (unsaved changes)
-
-      // Remember last category for quick add (Phase 1 Feature #1)
-      if (newExpense.type === 'expense') {
-        setLastExpenseCategory(newExpense.category);
-      } else {
-        setLastIncomeCategory(newExpense.category);
-      }
-
-      if (formData.isRecurring) {
-        // Clamp recurring day to 1-31 range
-        const clampedDay = Math.max(1, Math.min(31, formData.recurringDay));
-
-        const newRecurringItem: RecurringTransaction = {
-          id: Date.now() + 1,
-          description: userDescription, // Store original user-entered description
-          amount: parseFloat(formData.amount),
-          category: formData.category,
-          type: formData.type,
-          paidBy: formData.paidBy,
-          recurringDay: clampedDay,
-          lastProcessed: new Date().toISOString()
-        };
-        await saveRecurring([...recurring, newRecurringItem]);
-        setDirty(true); // Mark as dirty
-      }
-
-      resetForm();
-    } finally {
-      setSavingTransaction(false);
-    }
-  };
-
-  /**
-   * Update an existing expense based on the editing ID and form data.
-   */
-  const updateExpense = async () => {
-    if (!validateForm()) return;
-
-    // Trim description but preserve user's original casing/formatting
-    const userDescription = formData.description.trim();
-
-    // Check for duplicates using canonical form (excluding current expense being edited)
-    const duplicate = checkDuplicate(
-      formData.date,
-      parseFloat(formData.amount),
-      userDescription,
-      editingId || undefined
-    );
-
-    if (duplicate) {
-      if (!confirm(t('dialogs.duplicateConfirm', { description: duplicate.description, date: duplicate.date }))) {
-        return; // User cancelled
-      }
-    }
-
-    setSavingTransaction(true);
-    try {
-      const newExpenses = expenses.map(exp =>
-        exp.id === editingId
-          ? { ...exp, description: userDescription, amount: parseFloat(formData.amount), category: formData.category, type: formData.type, date: formData.date, paidBy: formData.paidBy }
-          : exp
-      );
-      await saveExpenses(newExpenses);
-      setDirty(true); // Mark as dirty (unsaved changes)
-      resetForm();
-    } finally {
-      setSavingTransaction(false);
-    }
-  };
 
   /**
    * Delete an expense by ID and persist the updated list.
@@ -1359,44 +1177,6 @@ const ExpenseTracker: React.FC = () => {
     } finally {
       setImportingData(false);
     }
-  };
-
-  /**
-   * Reset the form to initial state and close the add/edit modal.
-   */
-  const resetForm = () => {
-    setFormData({
-      description: '',
-      amount: '',
-      category: 'Housing',
-      type: 'expense',
-      date: new Date().toISOString().split('T')[0],
-      paidBy: 'partner1',
-      isRecurring: false,
-      recurringDay: 1
-    });
-    setShowAddModal(false);
-    setEditingId(null);
-  };
-
-  /**
-   * Populate the form with an existing expense's data for editing.
-   *
-   * @param expense Expense object to edit
-   */
-  const editExpense = (expense: Expense) => {
-    setFormData({
-      description: expense.description,
-      amount: expense.amount.toString(),
-      category: expense.category,
-      type: expense.type,
-      date: expense.date,
-      paidBy: expense.paidBy,
-      isRecurring: false,
-      recurringDay: 1
-    });
-    setEditingId(expense.id);
-    setShowAddModal(true);
   };
 
   /**
