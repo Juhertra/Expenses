@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import type {
   Expense,
   RecurringTransaction,
@@ -9,15 +9,10 @@ import type {
 } from '../lib/types';
 import {
   getExpenses,
-  setExpenses as persistExpenses,
   getRecurring,
-  setRecurring as persistRecurring,
   getPartnerNames,
-  setPartnerNames as persistPartnerNames,
   getSettings,
-  setSettings as persistSettings,
   getSettlements,
-  setSettlements as persistSettlements,
 } from '../services/storage/index.ts';
 import { DEFAULT_CATEGORIES, defaultSettings, defaultPartnerNames } from '../lib/defaults';
 import { processRecurringTransactions } from '../services/recurring/index.ts';
@@ -121,36 +116,10 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     console.log('saveData called - to be implemented');
   }, []);
 
-  // Auto-save expenses when changed
-  useEffect(() => {
-    if (expenses.length > 0) {
-      persistExpenses(expenses).catch(console.error);
-    }
-  }, [expenses]);
-
-  // Auto-save recurring when changed
-  useEffect(() => {
-    if (recurring.length > 0) {
-      persistRecurring(recurring).catch(console.error);
-    }
-  }, [recurring]);
-
-  // Auto-save settlements when changed
-  useEffect(() => {
-    if (settlements.length > 0) {
-      persistSettlements(settlements).catch(console.error);
-    }
-  }, [settlements]);
-
-  // Auto-save partner names when changed
-  useEffect(() => {
-    persistPartnerNames(partnerNames).catch(console.error);
-  }, [partnerNames]);
-
-  // Auto-save settings when changed
-  useEffect(() => {
-    persistSettings(householdSettings).catch(console.error);
-  }, [householdSettings]);
+  // NOTE: Auto-save removed from here - persistence is handled explicitly by:
+  // - useExpenseForm hook (for form submissions)
+  // - useDataPersistence hook (for save/export/import operations)
+  // - ExpenseTracker component (for other operations like inline edits, bulk ops, etc.)
 
   const value: DataContextValue = useMemo(() => ({
     // State
