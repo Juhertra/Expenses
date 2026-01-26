@@ -43,6 +43,13 @@ import {
 } from '../../services/storage';
 import { pickDirectory, supportsDirectoryPicker } from '../../services/platform';
 import { processRecurringTransactions } from '../../services/recurring';
+import {
+  buildExportObject,
+  serializeExport,
+  parseImport,
+  writeJsonToDirectory,
+  downloadJson
+} from '../../services/importExport';
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
 
@@ -1122,40 +1129,16 @@ const ExpenseTracker: React.FC = () => {
     }
   };
 
-  const buildExportObject = () => {
-    const exportDate = new Date().toISOString();
-    const raw = {
-      'household-expenses': JSON.stringify(expenses),
-      'household-recurring': JSON.stringify(recurring),
-      'household-partner-names': JSON.stringify(partnerNames),
-      'household-settings': JSON.stringify(householdSettings),
-      'household-settlements': JSON.stringify(settlements),
-    };
-
-    return {
-      schemaVersion: 1,
-      exportDate,
-      data: {
-        expenses,
-        recurring,
-        partnerNames,
-        householdSettings,
-        settlements,
-      },
-      raw,
-    };
-  };
-
-  const writeJsonToDirectory = async (
-    dirHandle: FileSystemDirectoryHandle,
-    filename: string,
-    jsonString: string
-  ) => {
-    const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(jsonString);
-    await writable.close();
-  };
+  /**
+   * Helper to build export payload from current state
+   */
+  const getExportPayload = () => ({
+    expenses,
+    recurring,
+    partnerNames,
+    householdSettings,
+    settlements,
+  });
 
   /**
    * Save data to a stable file (used by auto-save and manual Save).
@@ -1167,8 +1150,9 @@ const ExpenseTracker: React.FC = () => {
   }) => {
     setExportingData(true);
     try {
-      const exportObject = buildExportObject();
-      const jsonString = JSON.stringify(exportObject, null, 2);
+      const payload = getExportPayload();
+      const exportObject = buildExportObject(payload);
+      const jsonString = serializeExport(payload);
       const filename = 'expense-tracker.json';
 
       let targetDirectory = saveDirectory;
@@ -1198,15 +1182,7 @@ const ExpenseTracker: React.FC = () => {
         return;
       }
 
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadJson(filename, jsonString);
 
       setDirty(false);
       setLastExportDate(exportObject.exportDate);
@@ -1229,8 +1205,9 @@ const ExpenseTracker: React.FC = () => {
   const exportData = async () => {
     setExportingData(true);
     try {
-      const exportObject = buildExportObject();
-      const jsonString = JSON.stringify(exportObject, null, 2);
+      const payload = getExportPayload();
+      const exportObject = buildExportObject(payload);
+      const jsonString = serializeExport(payload);
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const filename = `expense-tracker-${timestamp}.json`;
 
@@ -1245,15 +1222,7 @@ const ExpenseTracker: React.FC = () => {
         return;
       }
 
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadJson(filename, jsonString);
 
       setDirty(false);
       setLastExportDate(exportObject.exportDate);
@@ -1287,44 +1256,11 @@ const ExpenseTracker: React.FC = () => {
 
     setImportingData(true);
     try {
-      // Read file
+      // Read and validate file using service layer
       const text = await importFile.text();
-      const importObject = JSON.parse(text);
-
-      // Validate schema v1 (strict - fail fast)
-      if (importObject.schemaVersion !== 1) {
-        alert(t('errors.invalidSchemaVersion'));
-        return;
-      }
-      
-      if (!importObject.data) {
-        alert(t('errors.invalidBackupMissingData'));
-        return;
-      }
+      const importObject = parseImport(text);
 
       const { data, raw } = importObject;
-
-      // Validation: Check data structure - ALL 4 keys required (clean slate v1)
-      if (!Array.isArray(data.expenses)) {
-        alert(t('errors.invalidBackupExpenses'));
-        return;
-      }
-      if (!Array.isArray(data.recurring)) {
-        alert(t('errors.invalidBackupRecurring'));
-        return;
-      }
-      if (!data.partnerNames ||
-          typeof data.partnerNames.partner1 !== 'string' ||
-          typeof data.partnerNames.partner2 !== 'string') {
-        alert(t('errors.invalidBackupPartners'));
-        return;
-      }
-      // household-settings is REQUIRED in schema v1
-      if (!data.householdSettings || typeof data.householdSettings !== 'object') {
-        alert(t('errors.invalidBackupSettings'));
-        return;
-      }
-      // settlements is optional (for backward compatibility)
       const settlementsCount = Array.isArray(data.settlements) ? data.settlements.length : 0;
 
       // Show summary before import
