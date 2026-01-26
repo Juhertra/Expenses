@@ -39,6 +39,7 @@ import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
 import { useDataPersistence } from '../../hooks/useDataPersistence';
+import { useUIContext } from '../../contexts/UIContext';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -54,6 +55,9 @@ type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 const ExpenseTracker: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { currentTheme, theme, setTheme: setAppTheme } = useTheme();
+
+  // UI state (loading managed by UIContext)
+  const { loading } = useUIContext();
 
   // Form state and operations (extracted to hook)
   const {
@@ -91,7 +95,6 @@ const ExpenseTracker: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [loading] = useState(true);
   const [partnerNames, setPartnerNames] = useState<PartnerNames>(defaultPartnerNames);
   const [tempNames, setTempNames] = useState<PartnerNames>(defaultPartnerNames);
 
