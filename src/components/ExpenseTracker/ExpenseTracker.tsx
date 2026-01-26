@@ -1558,7 +1558,7 @@ const ExpenseTracker: React.FC = () => {
             {/* Empty State (Phase 1 Feature #4) */}
             {filteredExpenses.length === 0 && (
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-12 text-center">
-                <div className="text-7xl mb-6">[]</div>
+                <div className="text-7xl mb-6">📊</div>
                 <h3 className="text-3xl font-bold mb-3">{t('app.welcomeTitle')}</h3>
                 <p className="text-slate-400 text-lg mb-8 max-w-2xl mx-auto">
                   {t('app.welcomeBody')}
