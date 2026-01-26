@@ -40,6 +40,8 @@ import { SettingsCenterModal } from './modals';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
 import { useDataPersistence } from '../../hooks/useDataPersistence';
 import { useUIContext } from '../../contexts/UIContext';
+import { useDataContext } from '../../contexts/ExpenseContext';
+import { useModalContext } from '../../contexts/ModalContext';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -56,8 +58,29 @@ const ExpenseTracker: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { currentTheme, theme, setTheme: setAppTheme } = useTheme();
 
-  // UI state (loading managed by UIContext)
+  // Core data from context (single source of truth)
+  const {
+    expenses,
+    setExpenses,
+    recurring,
+    setRecurring,
+    settlements,
+    setSettlements,
+    partnerNames,
+    setPartnerNames,
+    householdSettings,
+    setHouseholdSettings,
+    dirty,
+    setDirty,
+    lastExportDate,
+    saveDirectory,
+  } = useDataContext();
+
+  // UI state from context
   const { loading } = useUIContext();
+
+  // Modal state from context
+  const { showAddModal, setShowAddModal, showSettingsModal, setShowSettingsModal, settingsInitialTab, setSettingsInitialTab } = useModalContext();
 
   // Form state and operations (extracted to hook)
   const {
@@ -86,23 +109,24 @@ const ExpenseTracker: React.FC = () => {
     checkFileSystemSupport,
   } = useDataPersistence();
 
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<'settings' | 'shortcuts'>('settings');
-  const [editingId] = useState<number | null>(null);
+  // Local UI state (component-specific, not shared)
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [partnerNames, setPartnerNames] = useState<PartnerNames>(defaultPartnerNames);
   const [tempNames, setTempNames] = useState<PartnerNames>(defaultPartnerNames);
+  const [tempHouseholdSettings, setTempHouseholdSettings] = useState<HouseholdSettings>(defaultSettings);
 
   useEffect(() => {
     const lang = i18n.language || 'en';
     document.documentElement.lang = lang;
     document.documentElement.dir = i18n.dir(lang);
   }, [i18n, i18n.language]);
+
+  // Sync temp state with context when data loads
+  useEffect(() => {
+    setTempNames(partnerNames);
+    setTempHouseholdSettings(householdSettings);
+  }, [partnerNames, householdSettings]);
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,9 +160,6 @@ const ExpenseTracker: React.FC = () => {
     other: ['📌', '📦', '🗂️', '📁', '🧩']
   };
 
-  const [householdSettings, setHouseholdSettings] = useState<HouseholdSettings>(defaultSettings);
-  const [tempHouseholdSettings, setTempHouseholdSettings] = useState<HouseholdSettings>(defaultSettings);
-
   const resetSettingsDrafts = useCallback(() => {
     setTempNames(partnerNames);
     setTempHouseholdSettings(householdSettings);
@@ -148,19 +169,14 @@ const ExpenseTracker: React.FC = () => {
     resetSettingsDrafts();
     setSettingsInitialTab(tab);
     setShowSettingsModal(true);
-  }, [resetSettingsDrafts]);
+  }, [resetSettingsDrafts, setSettingsInitialTab, setShowSettingsModal]);
 
   const closeSettingsInterface = useCallback(() => {
     resetSettingsDrafts();
     setShowSettingsModal(false);
-  }, [resetSettingsDrafts]);
+  }, [resetSettingsDrafts, setShowSettingsModal]);
 
-  // Vault mode: dirty tracking (localStorage is cache only, export/import is source of truth)
-  const [dirty, setDirty] = useState(false);
-  const [lastExportDate] = useState<string | null>(null);
-
-  // Settlements state (for recording repayments between partners)
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  // Settlement modal state (local to component)
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementForm, setSettlementForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -169,9 +185,6 @@ const ExpenseTracker: React.FC = () => {
     to: 'partner2' as 'partner1' | 'partner2',
     note: ''
   });
-
-  // File System Access API state (for auto-saving to folder)
-  const [saveDirectory] = useState<FileSystemDirectoryHandle | null>(null);
 
   // Phase 1 UX Features: Toast, Category Filter, Last Used Categories
   const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
