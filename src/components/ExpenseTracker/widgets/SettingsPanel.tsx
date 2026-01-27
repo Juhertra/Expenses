@@ -1,5 +1,5 @@
-﻿import React, { useState } from "react";
-import { X, FolderOpen, Check, Sparkles } from "lucide-react";
+﻿import React, { useState, useEffect, useRef } from "react";
+import { X, FolderOpen, Check, Sparkles, CheckCircle } from "lucide-react";
 import { Button } from "../../ui/Button";
 import type { PartnerNames, HouseholdSettings } from "../../../lib/types";
 import type { ThemeMode } from "../../../lib/theme";
@@ -82,6 +82,12 @@ export function SettingsPanel({
   searchQuery = "",
 }: Props) {
   const [importStatus, setImportStatus] = useState<null | "success" | "error">(null);
+  const [namesSaveStatus, setNamesSaveStatus] = useState<null | "saving" | "saved">(null);
+  const [settingsSaveStatus, setSettingsSaveStatus] = useState<null | "saving" | "saved">(null);
+  const namesSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const settingsSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const savedIndicatorTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const themeDef = themes[currentTheme] || { colors: { cardBorder: "border-slate-700", cardBg: "bg-slate-900/60" } };
   const dir = i18n.dir(i18n.language);
 
@@ -101,7 +107,83 @@ export function SettingsPanel({
     tempHouseholdSettings.currencySymbol !== householdSettings.currencySymbol ||
     tempHouseholdSettings.splitMode !== householdSettings.splitMode ||
     tempHouseholdSettings.partner1Ratio !== householdSettings.partner1Ratio;
-  const isSavingDisabled = !(namesDirty || settingsDirty) || savingSettings;
+
+  // Auto-save partner names after 1.5s of no changes
+  useEffect(() => {
+    if (!namesDirty) return;
+
+    // Clear existing timer
+    if (namesSaveTimerRef.current) {
+      clearTimeout(namesSaveTimerRef.current);
+    }
+
+    // Set new timer for debounced save
+    namesSaveTimerRef.current = setTimeout(async () => {
+      setNamesSaveStatus("saving");
+      try {
+        await onSaveNames();
+        setNamesSaveStatus("saved");
+
+        // Clear "saved" indicator after 2s
+        if (savedIndicatorTimerRef.current) clearTimeout(savedIndicatorTimerRef.current);
+        savedIndicatorTimerRef.current = setTimeout(() => {
+          setNamesSaveStatus(null);
+        }, 2000);
+      } catch (err) {
+        console.error("Failed to auto-save names:", err);
+        setNamesSaveStatus(null);
+      }
+    }, 1500);
+
+    return () => {
+      if (namesSaveTimerRef.current) {
+        clearTimeout(namesSaveTimerRef.current);
+      }
+    };
+  }, [tempNames, namesDirty, onSaveNames]);
+
+  // Auto-save household settings after 1.5s of no changes
+  useEffect(() => {
+    if (!settingsDirty) return;
+
+    // Clear existing timer
+    if (settingsSaveTimerRef.current) {
+      clearTimeout(settingsSaveTimerRef.current);
+    }
+
+    // Set new timer for debounced save
+    settingsSaveTimerRef.current = setTimeout(async () => {
+      setSettingsSaveStatus("saving");
+      try {
+        await onSaveHouseholdSettings();
+        setSettingsSaveStatus("saved");
+
+        // Clear "saved" indicator after 2s
+        if (savedIndicatorTimerRef.current) clearTimeout(savedIndicatorTimerRef.current);
+        savedIndicatorTimerRef.current = setTimeout(() => {
+          setSettingsSaveStatus(null);
+        }, 2000);
+      } catch (err) {
+        console.error("Failed to auto-save household settings:", err);
+        setSettingsSaveStatus(null);
+      }
+    }, 1500);
+
+    return () => {
+      if (settingsSaveTimerRef.current) {
+        clearTimeout(settingsSaveTimerRef.current);
+      }
+    };
+  }, [tempHouseholdSettings, settingsDirty, onSaveHouseholdSettings]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (namesSaveTimerRef.current) clearTimeout(namesSaveTimerRef.current);
+      if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current);
+      if (savedIndicatorTimerRef.current) clearTimeout(savedIndicatorTimerRef.current);
+    };
+  }, []);
 
   const highlightText = (text: string) => {
     if (!q) return text;
@@ -178,9 +260,27 @@ export function SettingsPanel({
       <div className="space-y-6">
         {sectionContainer(
           <>
-            <h4 className="text-sm font-semibold text-slate-300">
-              {highlightText(t("settings.sections.general"))}
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-slate-300">
+                {highlightText(t("settings.sections.general"))}
+              </h4>
+              {namesSaveStatus && (
+                <div className="flex items-center gap-2 text-xs">
+                  {namesSaveStatus === "saving" && (
+                    <>
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                      <span className="text-yellow-400">{t("status.autoSaving", "Auto-saving...")}</span>
+                    </>
+                  )}
+                  {namesSaveStatus === "saved" && (
+                    <>
+                      <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                      <span className="text-green-400">{t("status.settingsSaved", "Saved")}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2">
               <label className="block text-sm text-slate-400">{t("settings.language")}</label>
@@ -228,9 +328,27 @@ export function SettingsPanel({
 
         {sectionContainer(
           <>
-            <h4 className="text-sm font-semibold text-slate-300">
-              {highlightText(t("labels.householdSettings"))}
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-slate-300">
+                {highlightText(t("labels.householdSettings"))}
+              </h4>
+              {settingsSaveStatus && (
+                <div className="flex items-center gap-2 text-xs">
+                  {settingsSaveStatus === "saving" && (
+                    <>
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                      <span className="text-yellow-400">{t("status.autoSaving", "Auto-saving...")}</span>
+                    </>
+                  )}
+                  {settingsSaveStatus === "saved" && (
+                    <>
+                      <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                      <span className="text-green-400">{t("status.settingsSaved", "Saved")}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2">
               <label className="block text-sm text-slate-400">{t("labels.currency")}</label>
@@ -433,23 +551,6 @@ export function SettingsPanel({
           </>,
           "data"
         )}
-
-        <div className="flex gap-2">
-          <Button onClick={onClose} variant="secondary" className="flex-1">
-            {t("buttons.cancel")}
-          </Button>
-          <Button
-            onClick={async () => {
-              await onSaveNames();
-              await onSaveHouseholdSettings();
-            }}
-            disabled={isSavingDisabled}
-            variant="accent"
-            className="flex-1"
-          >
-            {savingSettings ? t("buttons.saving") : t("buttons.saveSettings")}
-          </Button>
-        </div>
       </div>
     </div>
   );

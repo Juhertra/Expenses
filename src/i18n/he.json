@@ -239,7 +239,9 @@
     "lastExported": "ייצוא אחרון {{date}}",
     "savingToFolder": "שומר לתיקייה",
     "loading": "טוען...",
-    "processing": "מעבד..."
+    "processing": "מעבד...",
+    "autoSaving": "שומר אוטומטית...",
+    "settingsSaved": "נשמר"
   },
   "tooltips": {
     "saveTo": "שמור לתיקייה",

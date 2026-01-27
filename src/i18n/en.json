@@ -239,7 +239,9 @@
     "lastExported": "Last exported {{date}}",
     "savingToFolder": "Saving to folder",
     "loading": "Loading...",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "autoSaving": "Auto-saving...",
+    "settingsSaved": "Saved"
   },
   "tooltips": {
     "saveTo": "Save to folder",

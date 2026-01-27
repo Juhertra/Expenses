@@ -133,9 +133,13 @@ export function getSuggestedCloudPaths(): CloudDriveInfo[] {
   // Check if running in Electron with suggested folders
   if (typeof window !== 'undefined' && (window as any).electronAPI?.suggestedFolders) {
     const folders = (window as any).electronAPI.suggestedFolders;
-    return folders.map((folder: { name: string; path: string }) =>
-      analyzeFolder(folder.path)
-    );
+
+    // Ensure folders is actually an array
+    if (Array.isArray(folders)) {
+      return folders.map((folder: { name: string; path: string }) =>
+        analyzeFolder(folder.path)
+      );
+    }
   }
 
   // Fallback suggestions for browser (based on common patterns)
