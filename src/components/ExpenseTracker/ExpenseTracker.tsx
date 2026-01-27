@@ -157,6 +157,18 @@ const ExpenseTracker: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Filter presets (placeholder functionality - empty array renders nothing)
+  const [filterPresets] = useState<Array<{
+    name: string;
+    filters: {
+      categories?: string[];
+      minAmount?: number;
+      maxAmount?: number;
+      dateRange?: { start: string; end: string };
+      paidBy?: string[];
+    };
+  }>>([]);
+
   // Household settings state (for currency, split modes, budgets, normalization)
 
   // Curated emoji list for category picker
