@@ -3045,7 +3045,7 @@ const ExpenseTracker: React.FC = () => {
                             <span className="font-medium text-sm sm:text-base truncate">
                               {settlement.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
                             </span>
-                        <span className="text-slate-400 flex-shrink-0">→</span>
+                            <span className="text-slate-400 flex-shrink-0">{isRTL ? '←' : '→'}</span>
                             <span className="font-medium text-sm sm:text-base truncate">
                               {settlement.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
                             </span>
