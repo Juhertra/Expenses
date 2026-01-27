@@ -78,7 +78,6 @@ export function SettingsModal({
           tempHouseholdSettings={tempHouseholdSettings}
           setTempHouseholdSettings={setTempHouseholdSettings}
           householdSettings={householdSettings}
-          savingSettings={savingSettings}
           supportsFileSystem={supportsFileSystem}
           saveDirectory={saveDirectory}
           exportingData={exportingData}

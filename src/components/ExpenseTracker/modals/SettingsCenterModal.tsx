@@ -26,7 +26,6 @@ type Props = {
   setTempHouseholdSettings: React.Dispatch<React.SetStateAction<HouseholdSettings>>;
   householdSettings: HouseholdSettings;
 
-  savingSettings: boolean;
   supportsFileSystem: boolean;
   saveDirectory: FileSystemDirectoryHandle | null;
 

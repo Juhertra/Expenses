@@ -25,7 +25,6 @@ type Props = {
   setTempHouseholdSettings: React.Dispatch<React.SetStateAction<HouseholdSettings>>;
   householdSettings: HouseholdSettings;
 
-  savingSettings: boolean;
   supportsFileSystem: boolean;
   saveDirectory: FileSystemDirectoryHandle | null;
   exportingData: boolean;
@@ -61,7 +60,6 @@ export function SettingsPanel({
   tempHouseholdSettings,
   setTempHouseholdSettings,
   householdSettings,
-  savingSettings,
   supportsFileSystem,
   saveDirectory,
   exportingData,
@@ -84,9 +82,9 @@ export function SettingsPanel({
   const [importStatus, setImportStatus] = useState<null | "success" | "error">(null);
   const [namesSaveStatus, setNamesSaveStatus] = useState<null | "saving" | "saved">(null);
   const [settingsSaveStatus, setSettingsSaveStatus] = useState<null | "saving" | "saved">(null);
-  const namesSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const settingsSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const savedIndicatorTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const namesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settingsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedIndicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const themeDef = themes[currentTheme] || { colors: { cardBorder: "border-slate-700", cardBg: "bg-slate-900/60" } };
   const dir = i18n.dir(i18n.language);
