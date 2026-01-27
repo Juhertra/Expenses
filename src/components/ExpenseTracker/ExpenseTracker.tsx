@@ -77,10 +77,33 @@ const ExpenseTracker: React.FC = () => {
   } = useDataContext();
 
   // UI state from context
-  const { loading } = useUIContext();
+  const {
+    loading,
+    searchQuery, setSearchQuery,
+    selectedCategory, setSelectedCategory,
+    commandQuery, setCommandQuery,
+    chartTooltip, setChartTooltip,
+    suggestions, setSuggestions,
+    selectedIds, setSelectedIds,
+    bulkMode, setBulkMode,
+    transactionPage, setTransactionPage,
+    toast, setToast,
+  } = useUIContext();
 
   // Modal state from context
-  const { showAddModal, setShowAddModal, showSettingsModal, setShowSettingsModal, settingsInitialTab, setSettingsInitialTab } = useModalContext();
+  const {
+    showAddModal, setShowAddModal,
+    showSettingsModal, setShowSettingsModal,
+    settingsInitialTab, setSettingsInitialTab,
+    showCategoryModal, setShowCategoryModal,
+    showSettlementModal, setShowSettlementModal,
+    showCommandPalette, setShowCommandPalette,
+    editingId, setEditingId,
+    editingCategory, setEditingCategory,
+    inlineEditId, setInlineEditId,
+    deleteConfirm, setDeleteConfirm,
+    showDeleteCategoryConfirm, setShowDeleteCategoryConfirm,
+  } = useModalContext();
 
   // Form state and operations (extracted to hook)
   const {
@@ -128,17 +151,7 @@ const ExpenseTracker: React.FC = () => {
     setTempHouseholdSettings(householdSettings);
   }, [partnerNames, householdSettings]);
 
-  // Search and filter state
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Delete confirmation state (unified for expenses and recurring)
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    id: number;
-    description: string;
-    type: 'expense' | 'recurring';
-  } | null>(null);
-
-  // Granular loading states (avoid freezing entire UI)
+  // Granular loading states (avoid freezing entire UI - component-specific)
   const [, setSavingTransaction] = useState(false); // For non-form operations (drag-drop, bulk, inline, etc.)
   const [deletingItem, setDeletingItem] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -176,8 +189,7 @@ const ExpenseTracker: React.FC = () => {
     setShowSettingsModal(false);
   }, [resetSettingsDrafts, setShowSettingsModal]);
 
-  // Settlement modal state (local to component)
-  const [showSettlementModal, setShowSettlementModal] = useState(false);
+  // Form draft state (local to component)
   const [settlementForm, setSettlementForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: '',
@@ -186,50 +198,14 @@ const ExpenseTracker: React.FC = () => {
     note: ''
   });
 
-  // Phase 1 UX Features: Toast, Category Filter, Last Used Categories
-  const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
-  
-  // Category management state
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     icon: '',
     color: 'bg-purple-500'
   });
-  const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState<{
-    categoryName: string;
-    transactionCount: number;
-    reassignTo: string;
-  } | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  // Phase 2 Features: Command Palette, Breadcrumbs, Filters, Charts, Inline Edit, Templates, Bulk Ops, Virtual Scroll
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [commandQuery, setCommandQuery] = useState('');
-  const [filterPresets, _setFilterPresets] = useState<Array<{
-    name: string;
-    filters: {
-      categories?: string[];
-      minAmount?: number;
-      maxAmount?: number;
-      dateRange?: { start: string; end: string };
-      paidBy?: string[];
-    };
-  }>>([]);
-  const [chartTooltip, setChartTooltip] = useState<{
-    day: number;
-    income: number;
-    expense: number;
-    x: number;
-    y: number;
-  } | null>(null);
-  const [inlineEditId, setInlineEditId] = useState<number | null>(null);
+  // Local inline edit draft data (component-specific)
   const [inlineEditData, setInlineEditData] = useState<Partial<Expense>>({});
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [bulkMode, setBulkMode] = useState(false);
-  const [transactionPage, setTransactionPage] = useState(1);
+
   const ITEMS_PER_PAGE = 50; // Phase 2 Feature #12: Pagination for performance
 
   // Category definitions including icon and color styling.
