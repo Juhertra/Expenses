@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -120,7 +120,8 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const value: UIContextValue = {
+  // Memoize context value to prevent unnecessary re-renders
+  const value: UIContextValue = useMemo(() => ({
     // State
     currentView,
     selectedMonth,
@@ -155,7 +156,39 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setLastExpenseCategory,
     setLastIncomeCategory,
     setSuggestions,
-  };
+  }), [
+    currentView,
+    selectedMonth,
+    selectedYear,
+    loading,
+    searchQuery,
+    selectedCategory,
+    transactionPage,
+    bulkMode,
+    selectedIds,
+    chartTooltip,
+    toast,
+    commandQuery,
+    lastExpenseCategory,
+    lastIncomeCategory,
+    suggestions,
+    setCurrentView,
+    setSelectedMonth,
+    setSelectedYear,
+    setLoading,
+    setSearchQuery,
+    setSelectedCategory,
+    setTransactionPage,
+    setBulkMode,
+    setSelectedIds,
+    setChartTooltip,
+    setToast,
+    showToast,
+    setCommandQuery,
+    setLastExpenseCategory,
+    setLastIncomeCategory,
+    setSuggestions,
+  ]);
 
   return (
     <UIContext.Provider value={value}>

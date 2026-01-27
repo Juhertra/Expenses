@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 // Modal context state - Modal visibility and editing state
 export interface ModalContextState {
@@ -102,7 +102,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     setShowDeleteCategoryConfirm(null);
   };
 
-  const value: ModalContextValue = {
+  // Memoize context value to prevent unnecessary re-renders
+  const value: ModalContextValue = useMemo(() => ({
     // State
     showAddModal,
     showSettingsModal,
@@ -132,7 +133,21 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     // Helpers
     openSettingsModal,
     closeAllModals,
-  };
+  }), [
+    showAddModal,
+    showSettingsModal,
+    showCommandPalette,
+    showCategoryModal,
+    showSettlementModal,
+    settingsInitialTab,
+    editingId,
+    editingCategory,
+    inlineEditId,
+    deleteConfirm,
+    showDeleteCategoryConfirm,
+    openSettingsModal,
+    closeAllModals,
+  ]);
 
   return (
     <ModalContext.Provider value={value}>

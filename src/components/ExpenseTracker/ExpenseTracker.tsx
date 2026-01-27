@@ -208,6 +208,25 @@ const ExpenseTracker: React.FC = () => {
     setShowSettingsModal(false);
   }, [resetSettingsDrafts, setShowSettingsModal]);
 
+  /**
+   * Handle description input changes and generate autocomplete suggestions
+   * Extracted to useCallback to prevent stale closures
+   */
+  const handleDescriptionChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, description: value }));
+
+    // Generate suggestions based on existing expense descriptions
+    const query = value.toLowerCase();
+    if (query.length >= 2) {
+      const matches = [...new Set(expenses.map(e => e.description))]
+        .filter(d => d.toLowerCase().includes(query))
+        .slice(0, 5);
+      setSuggestions(matches);
+    } else {
+      setSuggestions([]);
+    }
+  }, [expenses, setFormData, setSuggestions]);
+
   // Form draft state (local to component)
   const [settlementForm, setSettlementForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -329,8 +348,19 @@ const ExpenseTracker: React.FC = () => {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, exportingData, closeSettingsInterface]);
+  }, [
+    dirty,
+    exportingData,
+    saveData,
+    setShowAddModal,
+    setShowCommandPalette,
+    openQuickAdd,
+    closeSettingsInterface,
+    setShowSettlementModal,
+    setDeleteConfirm,
+    openSettingsModal,
+    setCurrentView,
+  ]);
 
   useEffect(() => {
     if (!dirty || exportingData || !supportsFileSystem || !saveDirectory) {
@@ -3236,19 +3266,7 @@ const ExpenseTracker: React.FC = () => {
                   <input
                     type="text"
                     value={formData.description}
-                    onChange={e => {
-                      setFormData({ ...formData, description: e.target.value });
-                      // Generate suggestions
-                      const query = e.target.value.toLowerCase();
-                      if (query.length >= 2) {
-                        const matches = [...new Set(expenses.map(e => e.description))]
-                          .filter(d => d.toLowerCase().includes(query))
-                          .slice(0, 5);
-                        setSuggestions(matches);
-                      } else {
-                        setSuggestions([]);
-                      }
-                    }}
+                    onChange={e => handleDescriptionChange(e.target.value)}
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
                     placeholder={t('placeholders.descriptionExample')}
                   />

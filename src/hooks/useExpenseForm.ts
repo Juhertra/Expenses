@@ -287,16 +287,17 @@ export function useExpenseForm() {
 
   /**
    * Open quick add modal with pre-selected type and last-used category
+   * Uses functional update to avoid depending on formData
    */
   const openQuickAdd = useCallback((type: 'expense' | 'income') => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       type,
       date: new Date().toISOString().split('T')[0],
       category: type === 'expense' ? lastExpenseCategory : lastIncomeCategory
-    });
+    }));
     setShowAddModal(true);
-  }, [formData, lastExpenseCategory, lastIncomeCategory, setShowAddModal]);
+  }, [lastExpenseCategory, lastIncomeCategory, setShowAddModal]);
 
   return {
     // State
