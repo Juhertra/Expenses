@@ -5,26 +5,29 @@ const path = require('path');
 const homeDir = os.homedir();
 const platform = process.platform;
 
+// Build suggested cloud folders as an array of { name, path } objects
 const suggestedFolders = (() => {
+  const folders = {};
+
   if (platform === 'win32') {
-    return {
-      'OneDrive': path.join(homeDir, 'OneDrive'),
-      'Google Drive': path.join(homeDir, 'Google Drive'),
-      'Dropbox': path.join(homeDir, 'Dropbox'),
-    };
+    folders['OneDrive'] = path.join(homeDir, 'OneDrive');
+    folders['Google Drive'] = path.join(homeDir, 'Google Drive');
+    folders['Dropbox'] = path.join(homeDir, 'Dropbox');
+  } else if (platform === 'darwin') {
+    folders['iCloud Drive'] = path.join(homeDir, 'Library', 'Mobile Documents', 'com~apple~CloudDocs');
+    folders['Dropbox'] = path.join(homeDir, 'Dropbox');
+    folders['OneDrive'] = path.join(homeDir, 'OneDrive');
+    folders['Google Drive'] = path.join(homeDir, 'Google Drive');
+  } else {
+    folders['Dropbox'] = path.join(homeDir, 'Dropbox');
+    folders['Nextcloud'] = path.join(homeDir, 'Nextcloud');
   }
-  if (platform === 'darwin') {
-    return {
-      'iCloud Drive': path.join(homeDir, 'Library', 'Mobile Documents', 'com~apple~CloudDocs'),
-      'Dropbox': path.join(homeDir, 'Dropbox'),
-      'OneDrive': path.join(homeDir, 'OneDrive'),
-      'Google Drive': path.join(homeDir, 'Google Drive'),
-    };
-  }
-  return {
-    'Dropbox': path.join(homeDir, 'Dropbox'),
-    'Nextcloud': path.join(homeDir, 'Nextcloud'),
-  };
+
+  // Convert to array format expected by cloud detection
+  return Object.entries(folders).map(([name, folderPath]) => ({
+    name,
+    path: folderPath
+  }));
 })();
 
 // Minimal storage shim backed by data:* IPC handlers

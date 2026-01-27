@@ -34,50 +34,17 @@ export const defaultPartnerNames = {
 };
 
 /**
- * Seed data for first-run localStorage initialization (web only).
+ * Seed data for first-run initialization.
+ * Ships with EMPTY data - users start with a clean slate.
+ * If a saved file exists, that data will be loaded instead.
  */
 export function getDefaultSeedData() {
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-
-  const formatDate = (day: number) =>
-    `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
   return {
     partnerNames: {
-      partner1: 'Hernan',
-      partner2: 'Partner',
+      partner1: 'Partner 1',
+      partner2: 'Partner 2',
     },
-    expenses: [
-      {
-        id: Date.now() - 3000,
-        description: 'Monthly Rent',
-        amount: 1500,
-        category: 'Housing',
-        type: 'expense',
-        date: formatDate(1),
-        paidBy: 'joint',
-      },
-      {
-        id: Date.now() - 2000,
-        description: 'Grocery Shopping',
-        amount: 120.5,
-        category: 'Food',
-        type: 'expense',
-        date: formatDate(5),
-        paidBy: 'partner1',
-      },
-      {
-        id: Date.now() - 1000,
-        description: 'Salary',
-        amount: 4500,
-        category: 'Other',
-        type: 'income',
-        date: formatDate(1),
-        paidBy: 'partner1',
-      },
-    ],
+    expenses: [],
     recurring: [],
   };
 }
