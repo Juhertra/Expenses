@@ -354,5 +354,24 @@
     "oceanBlue": "כחול ים",
     "minimal": "מינימלי",
     "themeLabel": "ערכת נושא"
+  },
+  "emojiThemes": {
+    "home": "בית",
+    "food": "אוכל",
+    "transport": "תחבורה",
+    "shopping": "קניות",
+    "entertainment": "בידור",
+    "utilities": "שירותים",
+    "health": "בריאות",
+    "finance": "כספים",
+    "education": "חינוך",
+    "pets": "חיות מחמד",
+    "sports": "ספורט",
+    "work": "עבודה",
+    "travel": "טיולים",
+    "nature": "טבע",
+    "weather": "מזג אוויר",
+    "tech": "טכנולוגיה",
+    "other": "אחר"
   }
 }

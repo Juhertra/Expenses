@@ -354,5 +354,24 @@
     "oceanBlue": "Ocean Blue",
     "minimal": "Minimal",
     "themeLabel": "Theme"
+  },
+  "emojiThemes": {
+    "home": "Home",
+    "food": "Food",
+    "transport": "Transport",
+    "shopping": "Shopping",
+    "entertainment": "Entertainment",
+    "utilities": "Utilities",
+    "health": "Health",
+    "finance": "Finance",
+    "education": "Education",
+    "pets": "Pets",
+    "sports": "Sports",
+    "work": "Work",
+    "travel": "Travel",
+    "nature": "Nature",
+    "weather": "Weather",
+    "tech": "Technology",
+    "other": "Other"
   }
 }

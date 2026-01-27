@@ -173,16 +173,23 @@ const ExpenseTracker: React.FC = () => {
 
   // Curated emoji list for category picker
   const CURATED_EMOJIS = {
-    home: ['🏠', '🏡', '🏘️', '🏚️', '🏢'],
-    food: ['🍔', '🍕', '🍜', '🍣', '🥗', '🍩'],
-    transport: ['🚗', '🚌', '🚕', '🚙', '🚲', '✈️', '🚆'],
-    shopping: ['🛍️', '🛒', '🎁', '👗', '👟'],
-    entertainment: ['🎮', '🎬', '🎤', '🎧', '🎟️'],
-    utilities: ['💡', '🔌', '🧯', '🚰', '🏷️'],
-    health: ['💊', '🩺', '💉', '🧴', '🍎'],
-    finance: ['💰', '🏦', '💳', '📈', '🧾'],
-    education: ['📚', '📝', '🎓', '✏️', '📖'],
-    other: ['📌', '📦', '🗂️', '📁', '🧩']
+    home: ['🏠', '🏡', '🏘️', '🏢', '🏚️', '🏗️', '🏛️', '⛪', '🏰', '🏯'],
+    food: ['🍔', '🍕', '🍜', '🍣', '🥗', '🍩', '🍝', '🍱', '🥘', '🍲', '🥙', '🌮', '🍛', '🥟', '🍦', '🧁', '☕', '🍷'],
+    transport: ['🚗', '🚌', '🚕', '🚙', '🚲', '✈️', '🚆', '🚂', '🚊', '🛴', '🛵', '🚤', '⛽', '🚏', '🛣️'],
+    shopping: ['🛍️', '🛒', '🎁', '👗', '👟', '👔', '👕', '🧥', '💄', '💍', '🎀', '🕶️', '👜', '🎒'],
+    entertainment: ['🎮', '🎬', '🎤', '🎧', '🎟️', '🎪', '🎨', '🎭', '🎹', '🎸', '🎺', '🎯', '🎳', '🎲', '🎰', '🎢'],
+    utilities: ['💡', '🔌', '🧯', '🚰', '🏷️', '🔧', '🔨', '⚡', '💧', '🚿', '🧹', '🧺', '🗑️', '📞'],
+    health: ['💊', '🩺', '💉', '🧴', '🍎', '⚕️', '🏥', '🧘', '💪', '🦷', '👓', '🩹', '🧬'],
+    finance: ['💰', '🏦', '💳', '📈', '🧾', '💵', '💴', '💶', '💷', '💸', '💹', '🪙', '📊', '💼'],
+    education: ['📚', '📝', '🎓', '✏️', '📖', '📕', '📗', '📘', '🖊️', '✒️', '🖍️', '📐', '📏', '🎒', '🧮'],
+    pets: ['🐕', '🐈', '🐩', '🐱', '🐶', '🐾', '🦴', '🐟', '🐠', '🐦', '🦜', '🐹', '🐰'],
+    sports: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🥊', '🥋', '⛳', '🏊', '🏋️', '🚴', '⛷️', '🏇'],
+    work: ['💼', '👔', '📱', '💻', '⌨️', '🖱️', '🖨️', '📧', '📞', '📠', '🗂️', '📋', '📌', '📎'],
+    travel: ['✈️', '🗺️', '🧳', '🏖️', '🗼', '🗽', '🎡', '🎢', '🏕️', '⛺', '🏔️', '🗻', '🌋', '🏝️'],
+    nature: ['🌳', '🌲', '🌴', '🌱', '🌿', '🍀', '🌺', '🌻', '🌼', '🌷', '🌹', '🌾', '🍃', '🍂'],
+    weather: ['☀️', '🌤️', '⛅', '🌥️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '❄️', '⭐', '🌙', '🌈'],
+    tech: ['💻', '📱', '⌨️', '🖥️', '🖨️', '📷', '📹', '🎮', '🕹️', '💾', '💿', '📀', '🔌', '🔋'],
+    other: ['📌', '📦', '🗂️', '📁', '🧩', '🎯', '🎲', '🎪', '🎭', '🏆', '🎖️', '🏅', '⚙️', '🔔']
   };
 
   const resetSettingsDrafts = useCallback(() => {
@@ -3525,10 +3532,11 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Category Add/Edit Modal */}
         {showCategoryModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 max-h-[90vh] overflow-y-auto my-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full border border-slate-700/50 shadow-2xl max-h-[90vh] overflow-y-auto my-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                   {editingCategory ? t('labels.editCategoryTitle') : t('labels.addCategoryTitle')}
                 </h3>
                 <button
@@ -3536,82 +3544,85 @@ const ExpenseTracker: React.FC = () => {
                     setShowCategoryModal(false);
                     setEditingCategory(null);
                   }}
-                  className="p-2 hover:bg-slate-700 rounded-lg"
+                  className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-5">
                 {/* Category Name */}
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">{t('labels.categoryName')}</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">{t('labels.categoryName')}</label>
                   <input
                     type="text"
-                    value={getCategoryLabel(categoryForm.name)}
+                    value={categoryForm.name}
                     onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
+                    className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
                     placeholder={t('labels.categoryNamePlaceholder')}
+                    autoFocus
                   />
                 </div>
 
                 {/* Emoji Picker */}
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">{t('labels.iconEmoji')}</label>
-                  
+                  <label className="block text-sm font-medium text-slate-300 mb-3">{t('labels.iconEmoji')}</label>
+
                   {/* Selected Emoji Display */}
-                  <div className="flex items-center justify-center mb-3">
-                    <div className="text-5xl bg-slate-700 rounded-lg p-3 border-2 border-slate-600">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="text-6xl bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl p-4 border-2 border-slate-600 shadow-lg">
                       {categoryForm.icon || '🏷️'}
                     </div>
                   </div>
 
-                  {/* Emoji Picker Grid */}
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                    {Object.entries(CURATED_EMOJIS).map(([theme, emojis]) => {
-                      const usedEmojis = getUsedEmojis();
-                      return (
-                        <div key={theme} className="space-y-1">
-                          <p className="text-xs text-slate-500 capitalize sticky top-0 bg-slate-800 py-1">
-                            {t(`emojiThemes.${theme}`, { defaultValue: theme })}
-                          </p>
-                          <div className="grid grid-cols-8 gap-2">
-                            {emojis.map(emoji => {
-                              const isUsed = usedEmojis.has(emoji);
-                              return (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  onClick={() => !isUsed && setCategoryForm({ ...categoryForm, icon: emoji })}
-                                  disabled={isUsed}
-                                  className={`
-                                    text-2xl p-2 rounded transition-all
-                                    ${isUsed 
-                                      ? 'opacity-30 cursor-not-allowed bg-slate-800' 
-                                      : 'hover:bg-slate-600 cursor-pointer bg-slate-700 hover:scale-110'}
-                                    ${categoryForm.icon === emoji ? 'ring-2 ring-purple-500 bg-slate-600' : ''}
-                                  `}
-                                  title={
-                                    isUsed
-                                      ? t('tooltips.emojiAlreadyUsed')
-                                      : t('tooltips.selectEmoji')
-                                  }
-                                >
-                                  {emoji}
-                                </button>
-                              );
-                            })}
+                  {/* Emoji Picker Grid with better styling */}
+                  <div className="bg-slate-900/30 rounded-xl p-3 border border-slate-700/50">
+                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                      {Object.entries(CURATED_EMOJIS).map(([theme, emojis]) => {
+                        const usedEmojis = getUsedEmojis();
+                        return (
+                          <div key={theme} className="space-y-2">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider sticky top-0 bg-slate-900/50 backdrop-blur-sm py-1.5 px-1 rounded">
+                              {t(`emojiThemes.${theme}`, { defaultValue: theme })}
+                            </p>
+                            <div className="grid grid-cols-9 gap-1.5">
+                              {emojis.map(emoji => {
+                                const isUsed = usedEmojis.has(emoji);
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => !isUsed && setCategoryForm({ ...categoryForm, icon: emoji })}
+                                    disabled={isUsed}
+                                    className={`
+                                      text-2xl p-2 rounded-lg transition-all
+                                      ${isUsed
+                                        ? 'opacity-20 cursor-not-allowed bg-slate-800/30'
+                                        : 'hover:bg-slate-600/50 cursor-pointer bg-slate-700/30 hover:scale-125 active:scale-95'}
+                                      ${categoryForm.icon === emoji ? 'ring-2 ring-purple-500 bg-slate-600 scale-110' : ''}
+                                    `}
+                                    title={
+                                      isUsed
+                                        ? t('tooltips.emojiAlreadyUsed')
+                                        : t('tooltips.selectEmoji')
+                                    }
+                                  >
+                                    {emoji}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
                 {/* Color Picker */}
                 <div>
-                  <label className="block text-sm text-slate-400 mb-2">{t('labels.color')}</label>
-                  <div className="grid grid-cols-6 gap-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-3">{t('labels.color')}</label>
+                  <div className="grid grid-cols-6 gap-3">
                     {[
                       'bg-red-500', 'bg-orange-500', 'bg-yellow-500',
                       'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
@@ -3620,32 +3631,33 @@ const ExpenseTracker: React.FC = () => {
                     ].map(color => (
                       <button
                         key={color}
+                        type="button"
                         onClick={() => setCategoryForm({ ...categoryForm, color })}
-                        className={`w-10 h-10 rounded-lg ${color} ${
+                        className={`w-full aspect-square rounded-xl ${color} ${
                           categoryForm.color === color
-                            ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-800'
-                            : 'hover:scale-110'
-                        } transition-transform`}
+                            ? 'ring-4 ring-white/50 ring-offset-2 ring-offset-slate-800 scale-110'
+                            : 'hover:scale-110 shadow-lg'
+                        } transition-all duration-200 active:scale-95`}
                       />
                     ))}
                   </div>
                 </div>
 
                 {/* Preview */}
-                <div className="bg-slate-700/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-2">{t('labels.preview')}</p>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 ${categoryForm.color} rounded-xl flex items-center justify-center text-2xl`}>
+                <div className="bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-xl p-4 border border-slate-700/50">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{t('labels.preview')}</p>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 ${categoryForm.color} rounded-xl flex items-center justify-center text-3xl shadow-lg`}>
                       {categoryForm.icon || '🏷️'}
                     </div>
-                    <span className="font-medium">
-                      {getCategoryLabel(categoryForm.name || t('labels.categoryNamePlaceholder'))}
+                    <span className="font-semibold text-lg">
+                      {categoryForm.name ? getCategoryLabel(categoryForm.name) : t('labels.categoryNamePlaceholder')}
                     </span>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-2">
                   <Button
                     onClick={() => {
                       setShowCategoryModal(false);
@@ -3658,7 +3670,7 @@ const ExpenseTracker: React.FC = () => {
                   </Button>
                   <Button
                     onClick={() => editingCategory ? editCategory(editingCategory) : addCategory()}
-                    disabled={savingSettings}
+                    disabled={savingSettings || !categoryForm.name.trim()}
                     variant="accent"
                     className="flex-1"
                   >
