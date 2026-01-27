@@ -373,5 +373,51 @@
     "weather": "Weather",
     "tech": "Technology",
     "other": "Other"
+  },
+  "welcome": {
+    "title": "Welcome to Expenses!",
+    "subtitle": "Let's set up your data storage",
+    "benefit1Title": "Cloud Sync",
+    "benefit1Desc": "Access your expenses from any device",
+    "benefit2Title": "Your Data",
+    "benefit2Desc": "Stored in your own cloud folder",
+    "benefit3Title": "Auto-Save",
+    "benefit3Desc": "Never lose your data again",
+    "suggestedClouds": "Recommended Cloud Storage",
+    "detected": "Detected on your system",
+    "chooseCustomFolder": "Choose a Different Folder",
+    "skipForNow": "Skip for now (use localStorage)",
+    "skipWarning": "You can set this up later in Settings"
+  },
+  "folderSelection": {
+    "title": "Select Save Folder",
+    "subtitle": "Where should we save your data?",
+    "infoTitle": "Why select a folder?",
+    "info1": "Your data is saved to a file in this folder",
+    "info2": "Auto-saves every change (1.5s debounce)",
+    "info3": "Use a cloud folder to sync across devices",
+    "recommended": "Recommended (Cloud Synced)",
+    "available": "Available",
+    "orChoose": "Or choose any folder",
+    "browse": "Browse for Folder..."
+  },
+  "saveStatus": {
+    "saving": "Saving...",
+    "noFolder": "Select folder",
+    "saved": "All changes saved",
+    "unsaved": "Unsaved changes",
+    "ready": "Ready",
+    "justNow": "Just now",
+    "oneMinuteAgo": "1 minute ago",
+    "minutesAgo": "{{count}} minutes ago",
+    "oneHourAgo": "1 hour ago",
+    "hoursAgo": "{{count}} hours ago",
+    "saveLocation": "Save Location",
+    "cloudSynced": "Cloud synced",
+    "noFolderSelected": "No folder selected",
+    "clickToSelect": "Click to select a folder",
+    "lastSaved": "Last Saved",
+    "autoSaveEnabled": "Auto-save enabled (1.5s delay)",
+    "usingLocalStorage": "Currently using browser localStorage (not synced)"
   }
 }

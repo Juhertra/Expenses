@@ -37,11 +37,15 @@ import {
 } from '../../services/storage';
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
+import { WelcomeModal, FolderSelectionModal } from '../modals';
+import { SaveStatusIndicator } from '../shared/SaveStatusIndicator';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
 import { useDataPersistence } from '../../hooks/useDataPersistence';
 import { useUIContext } from '../../contexts/UIContext';
 import { useDataContext } from '../../contexts/ExpenseContext';
 import { useModalContext } from '../../contexts/ModalContext';
+import { getSuggestedCloudPaths, type CloudDriveInfo } from '../../lib/cloudDriveDetection';
+import { isFirstLaunch, markWelcomeSeen } from '../../lib/firstLaunch';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -98,7 +102,9 @@ const ExpenseTracker: React.FC = () => {
     showCategoryModal, setShowCategoryModal,
     showSettlementModal, setShowSettlementModal,
     showCommandPalette, setShowCommandPalette,
-    editingId, setEditingId,
+    showWelcomeModal, setShowWelcomeModal,
+    showFolderSelectionModal, setShowFolderSelectionModal,
+    editingId,
     editingCategory, setEditingCategory,
     inlineEditId, setInlineEditId,
     deleteConfirm, setDeleteConfirm,
@@ -244,6 +250,9 @@ const ExpenseTracker: React.FC = () => {
   // Local inline edit draft data (component-specific)
   const [inlineEditData, setInlineEditData] = useState<Partial<Expense>>({});
 
+  // Cloud folder suggestions state
+  const [suggestedClouds, setSuggestedClouds] = useState<CloudDriveInfo[]>([]);
+
   const ITEMS_PER_PAGE = 50; // Phase 2 Feature #12: Pagination for performance
 
   // Category definitions including icon and color styling.
@@ -258,6 +267,15 @@ const ExpenseTracker: React.FC = () => {
   useEffect(() => {
     loadData();
     checkFileSystemSupport();
+
+    // Load suggested cloud folders
+    const clouds = getSuggestedCloudPaths();
+    setSuggestedClouds(clouds);
+
+    // Check if this is first launch and show welcome modal
+    if (isFirstLaunch()) {
+      setShowWelcomeModal(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1351,6 +1369,54 @@ const ExpenseTracker: React.FC = () => {
     [i18n.language, t]
   );
 
+  /**
+   * Handle cloud folder selection from welcome/folder selection modals
+   */
+  const handleCloudFolderSelection = async (_cloud: CloudDriveInfo) => {
+    setShowWelcomeModal(false);
+    setShowFolderSelectionModal(false);
+
+    // Mark welcome as seen
+    markWelcomeSeen();
+
+    // Trigger folder picker with the cloud path as context
+    // In Electron, this will use the suggested path
+    // In browser, we'll just open the picker
+    await chooseSaveDirectory();
+  };
+
+  /**
+   * Handle custom folder selection from welcome/folder selection modals
+   */
+  const handleCustomFolderSelection = async () => {
+    setShowWelcomeModal(false);
+    setShowFolderSelectionModal(false);
+
+    // Mark welcome as seen
+    markWelcomeSeen();
+
+    // Open the folder picker
+    await chooseSaveDirectory();
+  };
+
+  /**
+   * Handle skipping welcome modal
+   */
+  const handleSkipWelcome = () => {
+    setShowWelcomeModal(false);
+    markWelcomeSeen();
+    // User can set up folder later via Settings
+  };
+
+  /**
+   * Open folder selection modal
+   */
+  const openFolderSelection = () => {
+    const clouds = getSuggestedCloudPaths();
+    setSuggestedClouds(clouds);
+    setShowFolderSelectionModal(true);
+  };
+
   // Show a loading state while retrieving data from storage.
   if (loading) {
     return (
@@ -1386,46 +1452,29 @@ const ExpenseTracker: React.FC = () => {
               <p className="text-purple-200 text-xs sm:text-sm truncate">
                 {partnerNames.partner1} &amp; {partnerNames.partner2}
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                {dirty ? (
-                  <span className="px-3 py-1 rounded-full bg-yellow-500/15 border border-yellow-500/40 text-yellow-200 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                    {saveDirectory
-                      ? t('status.unsavedChangesWillSaveTo', { path: saveDirectory.name })
-                      : supportsFileSystem
-                        ? t('status.unsavedChangesNoAutoSave')
-                        : t('status.unsavedChanges')}
-                  </span>
-                ) : (
-                  <span className="px-3 py-1 rounded-full bg-green-500/15 border border-green-500/40 text-green-200 flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5" />
-                    {saveDirectory
-                      ? t('status.autoSavingTo', { path: saveDirectory.name })
-                      : !supportsFileSystem
-                        ? t('status.autoSaveNotAvailable')
-                        : t('status.allSaved')}
-                    {lastExportDate && (
-                      <span className="text-slate-400 ml-1">
-                        {new Date(lastExportDate).toLocaleTimeString()}
-                      </span>
-                    )}
-                  </span>
-                )}
+              <div className="mt-2">
+                <SaveStatusIndicator
+                  dirty={dirty}
+                  saving={exportingData}
+                  lastSaveDate={lastExportDate}
+                  saveDirectory={saveDirectory}
+                  onSelectFolder={openFolderSelection}
+                />
               </div>
             </div>
           </div>
 
           <div className={`flex gap-2 flex-wrap items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Button
-              onClick={() => saveData()}
-              disabled={exportingData || !dirty}
-              variant="success"
+              onClick={() => saveDirectory ? saveData() : openFolderSelection()}
+              disabled={exportingData}
+              variant={saveDirectory ? "success" : "accent"}
               size="md"
               iconStart={<Save className="w-4 h-4" />}
-              title={saveDirectory ? t('tooltips.saveTo', { name: saveDirectory.name }) : t('tooltips.save')}
-              className="shadow-lg shadow-green-500/30"
+              title={saveDirectory ? t('tooltips.saveTo', { name: saveDirectory.name }) : t('tooltips.selectFolder', 'Select save folder')}
+              className={saveDirectory ? "shadow-lg shadow-green-500/30" : "shadow-lg shadow-purple-500/30"}
             >
-              {exportingData ? t('buttons.saving') : t('buttons.save')}
+              {exportingData ? t('buttons.saving') : (saveDirectory ? t('buttons.save') : t('buttons.selectFolder', 'Select Folder'))}
             </Button>
 
             <Button
@@ -3760,6 +3809,24 @@ const ExpenseTracker: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Welcome Modal (First Launch) */}
+        <WelcomeModal
+          visible={showWelcomeModal}
+          suggestedClouds={suggestedClouds}
+          onSelectCloud={handleCloudFolderSelection}
+          onChooseCustomFolder={handleCustomFolderSelection}
+          onSkip={handleSkipWelcome}
+        />
+
+        {/* Folder Selection Modal */}
+        <FolderSelectionModal
+          visible={showFolderSelectionModal}
+          onClose={() => setShowFolderSelectionModal(false)}
+          suggestedClouds={suggestedClouds}
+          onSelectCloud={handleCloudFolderSelection}
+          onChooseCustomFolder={handleCustomFolderSelection}
+        />
 
       </div>
     </div>

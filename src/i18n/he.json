@@ -373,5 +373,51 @@
     "weather": "מזג אוויר",
     "tech": "טכנולוגיה",
     "other": "אחר"
+  },
+  "welcome": {
+    "title": "ברוכים הבאים ל-Expenses!",
+    "subtitle": "בוא נגדיר את אחסון הנתונים שלך",
+    "benefit1Title": "סנכרון ענן",
+    "benefit1Desc": "גישה להוצאות שלך מכל מכשיר",
+    "benefit2Title": "הנתונים שלך",
+    "benefit2Desc": "מאוחסנים בתיקיית הענן שלך",
+    "benefit3Title": "שמירה אוטומטית",
+    "benefit3Desc": "לעולם לא תאבד את הנתונים שלך",
+    "suggestedClouds": "אחסון ענן מומלץ",
+    "detected": "זוהה במערכת שלך",
+    "chooseCustomFolder": "בחר תיקייה אחרת",
+    "skipForNow": "דלג לעת עתה (השתמש ב-localStorage)",
+    "skipWarning": "תוכל להגדיר זאת מאוחר יותר בהגדרות"
+  },
+  "folderSelection": {
+    "title": "בחר תיקיית שמירה",
+    "subtitle": "היכן נשמור את הנתונים שלך?",
+    "infoTitle": "למה לבחור תיקייה?",
+    "info1": "הנתונים שלך נשמרים לקובץ בתיקייה זו",
+    "info2": "שמירה אוטומטית כל שינוי (עיכוב 1.5 שניות)",
+    "info3": "השתמש בתיקיית ענן לסנכרון בין מכשירים",
+    "recommended": "מומלץ (מסונכרן בענן)",
+    "available": "זמין",
+    "orChoose": "או בחר כל תיקייה",
+    "browse": "עיין בתיקיות..."
+  },
+  "saveStatus": {
+    "saving": "שומר...",
+    "noFolder": "בחר תיקייה",
+    "saved": "כל השינויים נשמרו",
+    "unsaved": "שינויים שלא נשמרו",
+    "ready": "מוכן",
+    "justNow": "ממש עכשיו",
+    "oneMinuteAgo": "לפני דקה",
+    "minutesAgo": "לפני {{count}} דקות",
+    "oneHourAgo": "לפני שעה",
+    "hoursAgo": "לפני {{count}} שעות",
+    "saveLocation": "מיקום שמירה",
+    "cloudSynced": "מסונכרן בענן",
+    "noFolderSelected": "לא נבחרה תיקייה",
+    "clickToSelect": "לחץ לבחירת תיקייה",
+    "lastSaved": "נשמר לאחרונה",
+    "autoSaveEnabled": "שמירה אוטומטית מופעלת (עיכוב 1.5 שניות)",
+    "usingLocalStorage": "משתמש כרגע ב-localStorage של הדפדפן (לא מסונכרן)"
   }
 }

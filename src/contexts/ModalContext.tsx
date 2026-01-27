@@ -9,6 +9,8 @@ export interface ModalContextState {
   showCommandPalette: boolean;
   showCategoryModal: boolean;
   showSettlementModal: boolean;
+  showWelcomeModal: boolean;
+  showFolderSelectionModal: boolean;
 
   // Settings modal tab
   settingsInitialTab: 'settings' | 'shortcuts';
@@ -40,6 +42,8 @@ interface ModalContextValue extends ModalContextState {
   setShowCommandPalette: React.Dispatch<React.SetStateAction<boolean>>;
   setShowCategoryModal: React.Dispatch<React.SetStateAction<boolean>>;
   setShowSettlementModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowWelcomeModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowFolderSelectionModal: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Settings modal tab setter
   setSettingsInitialTab: React.Dispatch<React.SetStateAction<'settings' | 'shortcuts'>>;
@@ -69,6 +73,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showFolderSelectionModal, setShowFolderSelectionModal] = useState(false);
 
   // Settings modal tab
   const [settingsInitialTab, setSettingsInitialTab] = useState<'settings' | 'shortcuts'>('settings');
@@ -95,6 +101,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     setShowCommandPalette(false);
     setShowCategoryModal(false);
     setShowSettlementModal(false);
+    setShowWelcomeModal(false);
+    setShowFolderSelectionModal(false);
     setEditingId(null);
     setEditingCategory(null);
     setInlineEditId(null);
@@ -110,6 +118,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     showCommandPalette,
     showCategoryModal,
     showSettlementModal,
+    showWelcomeModal,
+    showFolderSelectionModal,
     settingsInitialTab,
     editingId,
     editingCategory,
@@ -123,6 +133,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     setShowCommandPalette,
     setShowCategoryModal,
     setShowSettlementModal,
+    setShowWelcomeModal,
+    setShowFolderSelectionModal,
     setSettingsInitialTab,
     setEditingId,
     setEditingCategory,
@@ -139,6 +151,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     showCommandPalette,
     showCategoryModal,
     showSettlementModal,
+    showWelcomeModal,
+    showFolderSelectionModal,
     settingsInitialTab,
     editingId,
     editingCategory,
