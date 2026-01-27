@@ -15,7 +15,6 @@ interface SettingsModalProps {
   tempHouseholdSettings: HouseholdSettings;
   setTempHouseholdSettings: React.Dispatch<React.SetStateAction<HouseholdSettings>>;
   householdSettings: HouseholdSettings;
-  savingSettings: boolean;
   supportsFileSystem: boolean;
   saveDirectory: FileSystemDirectoryHandle | null;
   exportingData: boolean;
@@ -44,7 +43,6 @@ export function SettingsModal({
   tempHouseholdSettings,
   setTempHouseholdSettings,
   householdSettings,
-  savingSettings,
   supportsFileSystem,
   saveDirectory,
   exportingData,
