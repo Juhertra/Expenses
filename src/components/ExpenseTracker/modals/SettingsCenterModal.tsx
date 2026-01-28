@@ -6,6 +6,7 @@ import type { PartnerNames, HouseholdSettings } from "../../../lib/types";
 import type { ThemeMode } from "../../../lib/theme";
 import { themes } from "../../../lib/theme";
 import { SettingsPanel } from "../widgets/SettingsPanel";
+import { Button } from "../../ui/Button";
 
 type SectionId = "general" | "household" | "data" | "appearance";
 type TabId = "settings" | "shortcuts";
@@ -114,8 +115,9 @@ export default function SettingsCenterModal(props: Props) {
     if (!container) return;
     const el = container.querySelector<HTMLElement>(`#settings-section-${id}`);
     if (el) {
-      const top = el.offsetTop - container.offsetTop;
-      container.scrollTo({ top, behavior });
+      // Account for padding at the top of the content area (24px for proper spacing)
+      const top = el.offsetTop - container.offsetTop - 24;
+      container.scrollTo({ top: Math.max(0, top), behavior });
     }
   };
 
@@ -274,7 +276,15 @@ export default function SettingsCenterModal(props: Props) {
     if (!isOpen || tab !== "settings" || noMatches) return;
     const container = contentRef.current;
     if (!container) return;
-    const sections = Array.from(container.querySelectorAll<HTMLElement>('[data-settings-section]'));
+
+    // Only observe sections that are currently visible (not filtered out by search)
+    const currentSections = visibleSections.length ? visibleSections : allSections;
+    const sections = Array.from(container.querySelectorAll<HTMLElement>('[data-settings-section]'))
+      .filter((el) => {
+        const id = el.getAttribute("data-settings-section");
+        return id && currentSections.includes(id as SectionId);
+      });
+
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
@@ -293,7 +303,7 @@ export default function SettingsCenterModal(props: Props) {
     );
     sections.forEach((sec) => observer.observe(sec));
     return () => observer.disconnect();
-  }, [isOpen, tab, noMatches, section]);
+  }, [isOpen, tab, noMatches, section, visibleSections, allSections]);
 
   // Search routing
   useEffect(() => {
@@ -341,23 +351,23 @@ export default function SettingsCenterModal(props: Props) {
 
           {/* Tabs */}
           <div className={`${dir === "rtl" ? "mr-6" : "ml-6"} flex items-center bg-slate-800/60 rounded-2xl p-1 border border-slate-700 ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
-            <button
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
-                tab === "settings" ? `${themeDef.colors.accentPrimary} text-white` : "text-slate-300 hover:text-white"
-              }`}
+            <Button
+              variant={tab === "settings" ? "accent" : "ghost"}
+              size="sm"
               onClick={() => setTab("settings")}
+              className={`!rounded-xl ${tab === "settings" ? "" : "text-slate-300"}`}
             >
               {tt("settings.tabs.settings", "Settings")}
-            </button>
-            <button
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
-                tab === "shortcuts" ? `${themeDef.colors.accentPrimary} text-white` : "text-slate-300 hover:text-white"
-              }`}
+            </Button>
+            <Button
+              variant={tab === "shortcuts" ? "accent" : "ghost"}
+              size="sm"
               onClick={() => setTab("shortcuts")}
+              iconStart={<Keyboard className="w-4 h-4" />}
+              className={`!rounded-xl ${tab === "shortcuts" ? "" : "text-slate-300"}`}
             >
-              <Keyboard className="w-4 h-4" />
               {tt("settings.tabs.shortcuts", "Shortcuts")}
-            </button>
+            </Button>
           </div>
 
           {/* Search */}
@@ -372,27 +382,30 @@ export default function SettingsCenterModal(props: Props) {
               className={`w-full bg-transparent outline-none text-sm text-white placeholder:text-slate-500 ${dir === "rtl" ? "text-right" : "text-left"}`}
             />
             {query && (
-              <button
-                className="text-slate-400 hover:text-white"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setQuery("");
-                  setSection("general");
-                  scrollToSection("general", "auto");
+                  // Keep current section when clearing search instead of forcing jump to "general"
+                  // The IntersectionObserver will handle updating the active section as the user scrolls
                 }}
-                aria-label="Clear search"
+                className="!p-0 !px-1 text-slate-400 hover:text-white"
+                aria-label={tt("buttons.clearSearch", "Clear search")}
               >
                 ×
-              </button>
+              </Button>
             )}
           </div>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className={`p-2 rounded-xl hover:bg-slate-800/70 transition ${dir === "rtl" ? "mr-2" : "ml-2"}`}
-            aria-label="Close"
-          >
-            <X className="w-5 h-5 text-slate-200" />
-          </button>
+            iconStart={<X className="w-5 h-5" />}
+            className={`!px-2 ${dir === "rtl" ? "mr-2" : "ml-2"}`}
+            aria-label={tt("buttons.close", "Close")}
+          />
         </div>
 
         {/* Body */}
@@ -405,23 +418,25 @@ export default function SettingsCenterModal(props: Props) {
             >
               <div className="space-y-2">
                 {SECTIONS.filter((s) => currentSections.includes(s.id)).map(({ id, icon: Icon, labelKey }) => (
-                  <button
+                  <Button
                     key={id}
                     data-animate="sidebar-item"
                     data-id={id}
+                    variant={section === id ? "accent" : "ghost"}
+                    size="sm"
                     onClick={() => {
                       setSection(id);
                       scrollToSection(id);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition border ${
+                    iconStart={<Icon className="w-4 h-4" />}
+                    className={`w-full !justify-start !rounded-2xl !py-3 ${
                       section === id
-                        ? `${themeDef.colors.accentPrimary}/20 ${themeDef.colors.focus}/40 text-white`
-                        : "bg-transparent border-transparent text-slate-300 hover:bg-slate-800/50 hover:text-white"
-                    } ${dir === "rtl" ? "flex-row-reverse text-right" : ""}`}
+                        ? `!${themeDef.colors.accentPrimary}/20 border !${themeDef.colors.focus}/40`
+                        : "!bg-transparent border border-transparent text-slate-300 hover:!bg-slate-800/50"
+                    }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-sm font-semibold">{tt(labelKey, id)}</span>
-                  </button>
+                    {tt(labelKey, id)}
+                  </Button>
                 ))}
               </div>
 
