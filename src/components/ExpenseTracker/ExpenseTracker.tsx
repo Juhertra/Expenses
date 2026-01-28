@@ -338,7 +338,6 @@ const ExpenseTracker: React.FC = () => {
       if (e.key === 'Escape') {
         setShowAddModal(false);
         closeSettingsInterface();
-        setShowSettlementModal(false);
         setShowCommandPalette(false);
         setDeleteConfirm(null);
       }
@@ -366,7 +365,6 @@ const ExpenseTracker: React.FC = () => {
     setShowCommandPalette,
     openQuickAdd,
     closeSettingsInterface,
-    setShowSettlementModal,
     setDeleteConfirm,
     openSettingsModal,
     setCurrentView,
@@ -951,10 +949,6 @@ const ExpenseTracker: React.FC = () => {
 
   const partner2Paid = filteredExpenses
     .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const jointPaid = filteredExpenses
-    .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
     .reduce((sum, exp) => sum + exp.amount, 0);
 
   // Split mode: Calculate fair share based on household settings
