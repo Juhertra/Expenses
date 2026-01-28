@@ -368,7 +368,8 @@ export default function SettingsCenterModal(props: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={tt("settings.searchPlaceholder", "Search settings...")}
-              className="w-full bg-transparent outline-none text-sm text-white placeholder:text-slate-500"
+              dir={dir}
+              className={`w-full bg-transparent outline-none text-sm text-white placeholder:text-slate-500 ${dir === "rtl" ? "text-right" : "text-left"}`}
             />
             {query && (
               <button
@@ -395,12 +396,12 @@ export default function SettingsCenterModal(props: Props) {
         </div>
 
         {/* Body */}
-        <div className="grid grid-cols-12 h-[calc(90vh-72px)] overflow-hidden" dir={dir}>
+        <div className={`flex h-[calc(90vh-72px)] overflow-hidden ${dir === "rtl" ? "flex-row-reverse" : ""}`} dir={dir}>
           {/* Sidebar - only show for settings tab */}
           {tab === "settings" && (
             <div
               ref={sidebarRef}
-              className={`col-span-3 ${dir === "rtl" ? "border-l" : "border-r"} ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-4 overflow-y-auto h-full`}
+              className={`w-1/4 flex-shrink-0 ${dir === "rtl" ? "border-l" : "border-r"} ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-4 overflow-y-auto h-full`}
             >
               <div className="space-y-2">
                 {SECTIONS.filter((s) => currentSections.includes(s.id)).map(({ id, icon: Icon, labelKey }) => (
@@ -429,7 +430,7 @@ export default function SettingsCenterModal(props: Props) {
           )}
 
           {/* Content */}
-          <div ref={contentRef} className={`${tab === "shortcuts" ? "col-span-12" : "col-span-9"} p-6 overflow-y-auto h-full ${themeDef.colors.cardBg}`}>
+          <div ref={contentRef} className={`flex-1 p-6 overflow-y-auto h-full ${themeDef.colors.cardBg}`}>
             {tab === "shortcuts" ? (
               <div className="space-y-6">
                 <div>
@@ -447,7 +448,7 @@ export default function SettingsCenterModal(props: Props) {
                       { keys: ['3'], desc: tt('nav.categories', 'Categories') },
                       { keys: ['4'], desc: tt('nav.balance', 'Balance') }
                     ].map((s, i) => (
-                      <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
+                      <div key={i} className={`flex justify-between p-3 bg-slate-700/30 rounded-lg ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
                         <span className="text-sm text-slate-300">{s.desc}</span>
                         <kbd className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono min-w-[2rem] text-center">{s.keys[0]}</kbd>
                       </div>
@@ -467,9 +468,9 @@ export default function SettingsCenterModal(props: Props) {
                       { keys: [isMac ? '⌘' : 'Ctrl', 'K'], desc: tt('shortcuts.commandPalette', 'Command palette') },
                       { keys: ['Esc'], desc: tt('shortcuts.closeModal', 'Close modal') }
                     ].map((s, i) => (
-                      <div key={i} className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
+                      <div key={i} className={`flex justify-between p-3 bg-slate-700/30 rounded-lg ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
                         <span className="text-sm text-slate-300">{s.desc}</span>
-                        <div className="flex gap-1">
+                        <div className={`flex gap-1 ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
                           {s.keys.map((k, j) => (
                             <kbd key={j} className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono">{k}</kbd>
                           ))}
