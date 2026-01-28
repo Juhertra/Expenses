@@ -14,9 +14,7 @@ import {
   PieChart,
   Activity,
   Save,
-  HelpCircle,
-  Zap,
-  Calendar
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import type {
@@ -87,7 +85,6 @@ const ExpenseTracker: React.FC = () => {
     searchQuery, setSearchQuery,
     selectedCategory, setSelectedCategory,
     commandQuery, setCommandQuery,
-    chartTooltip, setChartTooltip,
     suggestions, setSuggestions,
     selectedIds, setSelectedIds,
     bulkMode, setBulkMode,
@@ -1596,7 +1593,12 @@ const ExpenseTracker: React.FC = () => {
             getCategoryLabel={getCategoryLabel}
             onOpenQuickAdd={openQuickAdd}
             onSetShowAddModal={setShowAddModal}
-            onPrefillForm={setFormData}
+            onPrefillForm={(data) => {
+              setFormData(prev => ({
+                ...prev,
+                ...data
+              }));
+            }}
             onAddFrequentExpense={async (exp) => {
               setSavingTransaction(true);
               try {

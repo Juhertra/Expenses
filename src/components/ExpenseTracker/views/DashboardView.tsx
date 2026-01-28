@@ -7,7 +7,6 @@ import {
   TrendingDown,
   TrendingUp,
   Trash2,
-  BarChart3,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/Button';
@@ -107,7 +106,7 @@ interface DashboardViewProps {
 
 export function DashboardView({
   filteredExpenses,
-  expenses,
+  expenses: _expenses,
   recurring,
   categories,
   partnerNames,
