@@ -102,9 +102,16 @@ export async function loadExpenses(): Promise<Expense[]> {
 
 /**
  * Save expenses to storage
+ * @returns true if successful, false if quota/storage error
  */
-export async function saveExpenses(expenses: Expense[]): Promise<void> {
-  await window.storage.set(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+export async function saveExpenses(expenses: Expense[]): Promise<boolean> {
+  try {
+    await window.storage.set(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+    return true;
+  } catch (error) {
+    console.error('Failed to save expenses (quota exceeded or storage blocked?):', error);
+    return false;
+  }
 }
 
 /**
@@ -123,9 +130,16 @@ export async function loadRecurring(): Promise<RecurringTransaction[]> {
 
 /**
  * Save recurring transactions to storage
+ * @returns true if successful, false if quota/storage error
  */
-export async function saveRecurring(recurring: RecurringTransaction[]): Promise<void> {
-  await window.storage.set(STORAGE_KEYS.RECURRING, JSON.stringify(recurring));
+export async function saveRecurring(recurring: RecurringTransaction[]): Promise<boolean> {
+  try {
+    await window.storage.set(STORAGE_KEYS.RECURRING, JSON.stringify(recurring));
+    return true;
+  } catch (error) {
+    console.error('Failed to save recurring transactions (quota exceeded or storage blocked?):', error);
+    return false;
+  }
 }
 
 /**
@@ -144,9 +158,16 @@ export async function loadPartnerNames(): Promise<PartnerNames> {
 
 /**
  * Save partner names to storage
+ * @returns true if successful, false if quota/storage error
  */
-export async function savePartnerNames(names: PartnerNames): Promise<void> {
-  await window.storage.set(STORAGE_KEYS.PARTNER_NAMES, JSON.stringify(names));
+export async function savePartnerNames(names: PartnerNames): Promise<boolean> {
+  try {
+    await window.storage.set(STORAGE_KEYS.PARTNER_NAMES, JSON.stringify(names));
+    return true;
+  } catch (error) {
+    console.error('Failed to save partner names (quota exceeded or storage blocked?):', error);
+    return false;
+  }
 }
 
 /**
@@ -165,9 +186,16 @@ export async function loadSettings(): Promise<HouseholdSettings | null> {
 
 /**
  * Save household settings to storage
+ * @returns true if successful, false if quota/storage error
  */
-export async function saveSettings(settings: HouseholdSettings): Promise<void> {
-  await window.storage.set(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+export async function saveSettings(settings: HouseholdSettings): Promise<boolean> {
+  try {
+    await window.storage.set(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    return true;
+  } catch (error) {
+    console.error('Failed to save household settings (quota exceeded or storage blocked?):', error);
+    return false;
+  }
 }
 
 /**
@@ -186,9 +214,16 @@ export async function loadSettlements(): Promise<Settlement[]> {
 
 /**
  * Save settlements to storage
+ * @returns true if successful, false if quota/storage error
  */
-export async function saveSettlements(settlements: Settlement[]): Promise<void> {
-  await window.storage.set(STORAGE_KEYS.SETTLEMENTS, JSON.stringify(settlements));
+export async function saveSettlements(settlements: Settlement[]): Promise<boolean> {
+  try {
+    await window.storage.set(STORAGE_KEYS.SETTLEMENTS, JSON.stringify(settlements));
+    return true;
+  } catch (error) {
+    console.error('Failed to save settlements (quota exceeded or storage blocked?):', error);
+    return false;
+  }
 }
 
 /**

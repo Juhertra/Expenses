@@ -21,7 +21,7 @@ export function useExpenseForm() {
     setRecurring,
     setDirty,
   } = useDataContext();
-  const { lastExpenseCategory, lastIncomeCategory, setLastExpenseCategory, setLastIncomeCategory } = useUIContext();
+  const { lastExpenseCategory, lastIncomeCategory, setLastExpenseCategory, setLastIncomeCategory, showToast } = useUIContext();
   const { setShowAddModal, editingId, setEditingId } = useModalContext();
 
   // Form data state
@@ -103,18 +103,26 @@ export function useExpenseForm() {
 
   /**
    * Save expenses to storage and update state
+   * @returns true if successful, false if storage quota exceeded
    */
-  const saveExpenses = useCallback(async (newExpenses: Expense[]) => {
-    await persistExpenses(newExpenses);
-    setExpenses(newExpenses);
+  const saveExpenses = useCallback(async (newExpenses: Expense[]): Promise<boolean> => {
+    const success = await persistExpenses(newExpenses);
+    if (success) {
+      setExpenses(newExpenses);
+    }
+    return success;
   }, [setExpenses]);
 
   /**
    * Save recurring transactions to storage and update state
+   * @returns true if successful, false if storage quota exceeded
    */
-  const saveRecurring = useCallback(async (newRecurring: RecurringTransaction[]) => {
-    await persistRecurring(newRecurring);
-    setRecurring(newRecurring);
+  const saveRecurring = useCallback(async (newRecurring: RecurringTransaction[]): Promise<boolean> => {
+    const success = await persistRecurring(newRecurring);
+    if (success) {
+      setRecurring(newRecurring);
+    }
+    return success;
   }, [setRecurring]);
 
   /**
@@ -170,7 +178,12 @@ export function useExpenseForm() {
       };
 
       const newExpenses = [...expenses, newExpense];
-      await saveExpenses(newExpenses);
+      const expensesSaved = await saveExpenses(newExpenses);
+
+      if (!expensesSaved) {
+        showToast(t('errors.storageFailed', { defaultValue: 'Failed to save to storage. Your data may not be persisted.' }), 'error');
+      }
+
       setDirty(true); // Mark as dirty (unsaved changes)
 
       // Remember last category for quick add
@@ -194,7 +207,12 @@ export function useExpenseForm() {
           recurringDay: clampedDay,
           lastProcessed: new Date().toISOString()
         };
-        await saveRecurring([...recurring, newRecurringItem]);
+        const recurringSaved = await saveRecurring([...recurring, newRecurringItem]);
+
+        if (!recurringSaved) {
+          showToast(t('errors.storageFailed', { defaultValue: 'Failed to save recurring transaction to storage.' }), 'error');
+        }
+
         setDirty(true); // Mark as dirty
       }
 
@@ -247,7 +265,12 @@ export function useExpenseForm() {
           ? { ...exp, description: userDescription, amount: parseFloat(formData.amount), category: formData.category, type: formData.type, date: formData.date, paidBy: formData.paidBy }
           : exp
       );
-      await saveExpenses(newExpenses);
+      const saved = await saveExpenses(newExpenses);
+
+      if (!saved) {
+        showToast(t('errors.storageFailed', { defaultValue: 'Failed to save changes to storage.' }), 'error');
+      }
+
       setDirty(true); // Mark as dirty (unsaved changes)
       resetForm();
     } finally {
