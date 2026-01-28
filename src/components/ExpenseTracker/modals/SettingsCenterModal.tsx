@@ -7,6 +7,7 @@ import type { ThemeMode } from "../../../lib/theme";
 import { themes } from "../../../lib/theme";
 import { SettingsPanel } from "../widgets/SettingsPanel";
 import { Button } from "../../ui/Button";
+import { useFocusTrap } from "../../../hooks/useFocusTrap";
 
 type SectionId = "general" | "household" | "data" | "appearance";
 type TabId = "settings" | "shortcuts";
@@ -82,6 +83,9 @@ export default function SettingsCenterModal(props: Props) {
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac');
 
   const tt = (key: string, fallback: string) => (i18n.exists(key) ? t(key) : fallback);
+
+  // Trap focus within modal for keyboard accessibility
+  useFocusTrap(panelRef, isOpen);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query.trim().toLowerCase()), 160);

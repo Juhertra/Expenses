@@ -242,6 +242,7 @@ export function SettingsPanel({
       data-search={(sectionKeywords[id] || []).join(" ")}
       data-active={activeSection === id}
       data-animate="card"
+      aria-labelledby={`settings-heading-${id}`}
       className={`space-y-4 p-4 rounded-xl border ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} ${extra} ${
         matchesSection(id) ? "" : "hidden"
       }`}
@@ -271,7 +272,7 @@ export function SettingsPanel({
         {sectionContainer(
           <>
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-slate-300">
+              <h4 id="settings-heading-general" className="text-sm font-semibold text-slate-300">
                 {highlightText(t("settings.sections.general"))}
               </h4>
               {namesSaveStatus && (
@@ -339,7 +340,7 @@ export function SettingsPanel({
         {sectionContainer(
           <>
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-slate-300">
+              <h4 id="settings-heading-household" className="text-sm font-semibold text-slate-300">
                 {highlightText(t("labels.householdSettings"))}
               </h4>
               {settingsSaveStatus && (
@@ -441,7 +442,7 @@ export function SettingsPanel({
 
         {sectionContainer(
           <>
-            <h4 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+            <h4 id="settings-heading-appearance" className="text-sm font-semibold text-slate-300 flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               {highlightText(t("settings.appearance"))}
             </h4>
@@ -495,9 +496,13 @@ export function SettingsPanel({
 
         {sectionContainer(
           <>
+            <h4 id="settings-heading-data" className="text-sm font-semibold text-slate-300 mb-4">
+              {highlightText(t("settings.sections.dataBackup"))}
+            </h4>
+
             {supportsFileSystem && (
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-300">{t("labels.autoSaveFolder")}</h4>
+                <h5 className="text-sm font-semibold text-slate-300">{t("labels.autoSaveFolder")}</h5>
                 <p className="text-xs text-slate-400">{t("messages.autoSaveHelp")}</p>
 
                 <button
@@ -513,7 +518,7 @@ export function SettingsPanel({
             )}
 
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-300">{t("labels.dataBackup")}</h4>
+              <h5 className="text-sm font-semibold text-slate-300">{t("labels.dataBackup")}</h5>
               <p className="text-xs text-slate-400">{t("messages.exportHelp")}</p>
 
               <Button
