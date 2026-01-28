@@ -38,3 +38,9 @@ const localStorageMock = {
     localStorageMock.setItem(key, value);
   },
 };
+
+// Reset localStorage state between tests to prevent test pollution
+import { beforeEach } from 'vitest';
+beforeEach(() => {
+  store.clear();
+});
