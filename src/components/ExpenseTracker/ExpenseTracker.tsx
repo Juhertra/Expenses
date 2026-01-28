@@ -1769,7 +1769,7 @@ const ExpenseTracker: React.FC = () => {
                           setShowAddModal(true);
                           showToast(t('toasts.prefilled', { description: exp.description }), 'success');
                         }}
-                        className="bg-slate-700/50 hover:bg-slate-600 px-4 py-3 rounded-xl transition-all hover:scale-105 border border-slate-600 hover:border-purple-500"
+                        className={`bg-slate-700/50 hover:bg-slate-600 px-4 py-3 rounded-xl transition-all hover:scale-105 border border-slate-600 ${theme.colors.cardBorderHover}`}
                         title={t('tooltips.editAndAdd', { description: exp.description })}
                       >
                         <div className="text-2xl mb-1">{categories[exp.category]?.icon}</div>
@@ -2800,7 +2800,7 @@ const ExpenseTracker: React.FC = () => {
                       updateTransactionCategory(txId, category);
                       showToast(t('toasts.movedToCategory', { category }), 'success');
                     }}
-                    className="bg-slate-700/50 rounded-xl p-6 border-2 border-dashed border-transparent hover:border-purple-500 transition-colors relative group"
+                    className={`bg-slate-700/50 rounded-xl p-6 border-2 border-dashed border-transparent ${theme.colors.cardBorderHover} transition-colors relative group`}
                     title={t('tooltips.dropToRecategorize')}
                   >
                     {/* Edit & Delete Buttons */}
@@ -3225,7 +3225,7 @@ const ExpenseTracker: React.FC = () => {
                     value={settlementForm.from}
                     onChange={(e) => setSettlementForm({ ...settlementForm, from: e.target.value as 'partner1' | 'partner2' })}
                     dir={dir}
-                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                   >
                     <option value="partner1">{partnerNames.partner1}</option>
                     <option value="partner2">{partnerNames.partner2}</option>
@@ -3238,7 +3238,7 @@ const ExpenseTracker: React.FC = () => {
                     value={settlementForm.to}
                     onChange={(e) => setSettlementForm({ ...settlementForm, to: e.target.value as 'partner1' | 'partner2' })}
                     dir={dir}
-                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                   >
                     <option value="partner1">{partnerNames.partner1}</option>
                     <option value="partner2">{partnerNames.partner2}</option>
@@ -3655,7 +3655,7 @@ const ExpenseTracker: React.FC = () => {
                     type="text"
                     value={categoryForm.name}
                     onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                    className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+                    className={`w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 ${getFocusClasses()} transition-all`}
                     placeholder={t('labels.categoryNamePlaceholder')}
                     autoFocus
                   />
