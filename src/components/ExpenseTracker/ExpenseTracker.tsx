@@ -37,7 +37,7 @@ import {
 } from '../../services/storage';
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
-import { WelcomeModal, FolderSelectionModal } from '../modals';
+import { WelcomeModal, FolderSelectionModal, AddCategoryModal } from '../modals';
 import { SaveStatusIndicator } from '../shared/SaveStatusIndicator';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
 import { useDataPersistence } from '../../hooks/useDataPersistence';
@@ -589,15 +589,17 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Add a new category
    */
-  const addCategory = async () => {
-    const trimmedName = categoryForm.name.trim();
-    
+  const addCategory = async (categoryData?: { name: string; icon: string; color: string }) => {
+    // Use either passed data or categoryForm
+    const data = categoryData || categoryForm;
+    const trimmedName = data.name.trim();
+
     // Validation
     if (!trimmedName) {
       showToast(t('errors.categoryNameRequired'), 'error');
       return;
     }
-    if (!categoryForm.icon) {
+    if (!data.icon) {
       showToast(t('errors.categoryEmojiRequired'), 'error');
       return;
     }
@@ -605,22 +607,22 @@ const ExpenseTracker: React.FC = () => {
       showToast(t('errors.categoryAlreadyExists'), 'error');
       return;
     }
-    
+
     setSavingSettings(true);
     try {
       const updatedCategories = {
         ...householdSettings.categories,
         [trimmedName]: {
-          icon: categoryForm.icon,
-          color: categoryForm.color
+          icon: data.icon,
+          color: data.color
         }
       };
-      
+
       const updatedSettings = {
         ...householdSettings,
         categories: updatedCategories
       };
-      
+
       await persistSettings(updatedSettings);
       setHouseholdSettings(updatedSettings);
       setTempHouseholdSettings(updatedSettings);
@@ -3610,8 +3612,23 @@ const ExpenseTracker: React.FC = () => {
           </div>
         )}
 
-        {/* Category Add/Edit Modal */}
-        {showCategoryModal && (
+        {/* Category Add Modal (New Design) */}
+        {showCategoryModal && !editingCategory && (
+          <AddCategoryModal
+            isOpen={showCategoryModal}
+            onClose={() => {
+              setShowCategoryModal(false);
+              setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
+            }}
+            onAdd={(category) => {
+              addCategory(category);
+            }}
+            existingCategories={Object.keys(categories)}
+          />
+        )}
+
+        {/* Category Edit Modal (Legacy) */}
+        {showCategoryModal && editingCategory && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full border border-slate-700/50 shadow-2xl max-h-[90vh] overflow-y-auto my-auto">
               {/* Header */}

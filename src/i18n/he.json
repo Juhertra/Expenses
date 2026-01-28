@@ -421,5 +421,33 @@
     "lastSaved": "נשמר לאחרונה",
     "autoSaveEnabled": "שמירה אוטומטית מופעלת (עיכוב 1.5 שניות)",
     "usingLocalStorage": "משתמש כרגע ב-localStorage של הדפדפן (לא מסונכרן)"
+  },
+  "category": {
+    "addTitle": "הוסף קטגוריה",
+    "nameLabel": "שם קטגוריה",
+    "namePlaceholder": "הזן שם קטגוריה",
+    "iconLabel": "אייקון / אימוג'י",
+    "colorLabel": "צבע תווית",
+    "searchPlaceholder": "חפש אייקונים...",
+    "preview": "תצוגה מקדימה",
+    "previewPlaceholder": "שם קטגוריה",
+    "customCategory": "קטגוריה מותאמת אישית",
+    "noIconsFound": "לא נמצאו אייקונים התואמים את החיפוש",
+    "errors": {
+      "nameRequired": "שם קטגוריה נדרש",
+      "nameExists": "קטגוריה עם השם הזה כבר קיימת"
+    },
+    "iconCategories": {
+      "transport": "תחבורה",
+      "shopping": "קניות",
+      "food": "מזון ואוכל",
+      "home": "בית ומגורים",
+      "entertainment": "בידור",
+      "health": "בריאות וכושר",
+      "finance": "פיננסים וחשבונות",
+      "education": "חינוך ועבודה",
+      "pets": "חיות מחמד",
+      "misc": "שונות"
+    }
   }
 }

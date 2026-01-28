@@ -421,5 +421,33 @@
     "lastSaved": "Last Saved",
     "autoSaveEnabled": "Auto-save enabled (1.5s delay)",
     "usingLocalStorage": "Currently using browser localStorage (not synced)"
+  },
+  "category": {
+    "addTitle": "Add Category",
+    "nameLabel": "Category Name",
+    "namePlaceholder": "Enter category name",
+    "iconLabel": "Icon / Emoji",
+    "colorLabel": "Label Color",
+    "searchPlaceholder": "Search icons...",
+    "preview": "Preview",
+    "previewPlaceholder": "Category name",
+    "customCategory": "Custom category",
+    "noIconsFound": "No icons found matching your search",
+    "errors": {
+      "nameRequired": "Category name is required",
+      "nameExists": "A category with this name already exists"
+    },
+    "iconCategories": {
+      "transport": "Transport",
+      "shopping": "Shopping",
+      "food": "Food & Dining",
+      "home": "Home & Living",
+      "entertainment": "Entertainment",
+      "health": "Health & Fitness",
+      "finance": "Finance & Bills",
+      "education": "Education & Work",
+      "pets": "Pets",
+      "misc": "Miscellaneous"
+    }
   }
 }
