@@ -46,7 +46,7 @@ import { useDataContext } from '../../contexts/ExpenseContext';
 import { useModalContext } from '../../contexts/ModalContext';
 import { getSuggestedCloudPaths, type CloudDriveInfo } from '../../lib/cloudDriveDetection';
 import { isFirstLaunch, markWelcomeSeen } from '../../lib/firstLaunch';
-import { BalanceView } from './views';
+import { BalanceView, CategoriesView } from './views';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -642,15 +642,17 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Edit an existing category
    */
-  const editCategory = async (oldName: string) => {
-    const trimmedName = categoryForm.name.trim();
-    
+  const editCategory = async (oldName: string, categoryData?: { name: string; icon: string; color: string }) => {
+    // Use either passed data or categoryForm
+    const data = categoryData || categoryForm;
+    const trimmedName = data.name.trim();
+
     // Validation
     if (!trimmedName) {
       showToast(t('errors.categoryNameRequired'), 'error');
       return;
     }
-    if (!categoryForm.icon) {
+    if (!data.icon) {
       showToast(t('errors.categoryEmojiRequired'), 'error');
       return;
     }
@@ -658,11 +660,11 @@ const ExpenseTracker: React.FC = () => {
       showToast(t('errors.categoryNameExists'), 'error');
       return;
     }
-    
+
     setSavingSettings(true);
     try {
       const updatedCategories = { ...householdSettings.categories };
-      
+
       // If name changed, update all transactions
       if (trimmedName !== oldName) {
         const updatedExpenses = expenses.map(exp =>
@@ -670,28 +672,28 @@ const ExpenseTracker: React.FC = () => {
         );
         setExpenses(updatedExpenses);
         await persistExpenses(updatedExpenses);
-        
+
         // Update recurring transactions
         const updatedRecurring = recurring.map(rec =>
           rec.category === oldName ? { ...rec, category: trimmedName } : rec
         );
         setRecurring(updatedRecurring);
         await persistRecurring(updatedRecurring);
-        
+
         // Remove old category, add new
         delete updatedCategories[oldName];
       }
-      
+
       updatedCategories[trimmedName] = {
-        icon: categoryForm.icon,
-        color: categoryForm.color
+        icon: data.icon,
+        color: data.color
       };
-      
+
       const updatedSettings = {
         ...householdSettings,
         categories: updatedCategories
       };
-      
+
       await persistSettings(updatedSettings);
       setHouseholdSettings(updatedSettings);
       setTempHouseholdSettings(updatedSettings);
@@ -2722,218 +2724,29 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Categories view */}
         {currentView === 'categories' && (
-          <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">{t('labels.expensesByCategory')}</h3>
-              <Button
-                onClick={() => {
-                  setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
-                  setEditingCategory(null);
-                  setShowCategoryModal(true);
-                }}
-                variant="accent"
-                iconStart={<PlusCircle className="w-4 h-4" />}
-                title={t('buttons.addCategory')}
-              >
-                {t('buttons.addCategory')}
-              </Button>
-            </div>
-
-            {/* Empty State (Phase 1 Feature #4) */}
-            {totalExpense === 0 && (
-              <div className="text-center py-16">
-                <div className="text-6xl mb-4" aria-hidden="true">🔍</div>
-                <h4 className="text-xl font-semibold mb-2">{t('messages.noExpensesThisMonth')}</h4>
-                <p className="text-slate-400 mb-6">{t('messages.addExpensesForCategoryBreakdown')}</p>
-                <Button
-                  onClick={() => openQuickAdd('expense')}
-                  variant="expense"
-                  iconStart={<TrendingDown className="w-5 h-5" />}
-                  className="px-6 py-3"
-                >
-                  {t('buttons.addExpense')}
-                </Button>
-              </div>
-            )}
-
-            {totalExpense > 0 && (
-              <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(categoryTotals).map(([category, amount]) => {
-                return (
-                  <div
-                    key={category}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const txId = parseInt(e.dataTransfer.getData('transactionId'));
-                      updateTransactionCategory(txId, category);
-                      showToast(t('toasts.movedToCategory', { category }), 'success');
-                    }}
-                    className={`bg-slate-700/50 rounded-xl p-6 border-2 border-dashed border-transparent ${theme.colors.cardBorderHover} transition-colors relative group`}
-                    title={t('tooltips.dropToRecategorize')}
-                  >
-                    {/* Edit & Delete Buttons */}
-                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCategoryForm({
-                            name: getCategoryLabel(category),
-                            icon: categories[category].icon,
-                            color: categories[category].color
-                          });
-                          setEditingCategory(category);
-                          setShowCategoryModal(true);
-                        }}
-                        className="p-2 hover:bg-slate-600 rounded-lg transition-colors bg-slate-800/90"
-                        title={t('tooltips.editCategory')}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          confirmDeleteCategory(category);
-                        }}
-                        className="p-2 hover:bg-red-600 rounded-lg transition-colors bg-slate-800/90"
-                        title={t('tooltips.deleteCategory')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-4 mb-4">
-                      <div
-                        className={`w-16 h-16 ${categories[category]?.color} rounded-xl flex items-center justify-center text-3xl`}
-                      >
-                        {categories[category]?.icon}
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-slate-400 text-sm">{getCategoryLabel(category)}</div>
-                        <div className="text-2xl font-bold">{withLtr(formatCurrency(amount))}</div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">{t('labels.percentage')}</span>
-                        <span className="font-medium">
-                          {withLtr(`${((amount / totalExpense) * 100).toFixed(1)}%`)}
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-600 rounded-full h-2">
-                        <div
-                          className={`${categories[category]?.color} h-2 rounded-full`}
-                          style={{ width: `${(amount / totalExpense) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              </div>
-
-              {/* Pie Chart Visualization (Phase 2 Feature #5) */}
-              <div className="mt-6 bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
-                <h3 className="text-lg font-bold mb-4">{t('labels.categoryDistribution')}</h3>
-                <div className="flex flex-col lg:flex-row gap-6 items-center">
-                  {/* Visual Pie Chart using CSS */}
-                  <div className="relative w-64 h-64 flex-shrink-0">
-                    <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
-                      {Object.entries(categoryTotals)
-                        .sort(([, a], [, b]) => b - a)
-                        .map(([category, amount], idx, arr) => {
-                          const percentage = (amount / totalExpense) * 100;
-                          const startAngle = arr
-                            .slice(0, idx)
-                            .reduce((sum, [, amt]) => sum + (amt / totalExpense) * 100, 0);
-                          
-                          const path = createPieSlice(percentage, startAngle);
-                          const labelPos = calculateLabelPosition(percentage, startAngle);
-                          const color = categories[category]?.color.replace('bg-', '');
-                          
-                          // Map Tailwind color classes to actual colors
-                          const colorMap: Record<string, string> = {
-                            'orange-500': '#f97316',
-                            'green-500': '#22c55e',
-                            'blue-500': '#3b82f6',
-                            'yellow-500': '#eab308',
-                            'red-500': '#ef4444',
-                            'purple-500': '#a855f7',
-                            'pink-500': '#ec4899',
-                            'indigo-500': '#6366f1',
-                            'cyan-500': '#06b6d4',
-                            'emerald-500': '#10b981',
-                            'gray-500': '#6b7280'
-                          };
-                          
-                          return (
-                            <g key={category}>
-                              <path
-                                d={path}
-                                fill={colorMap[color] || '#6b7280'}
-                                className="hover:opacity-80 cursor-pointer transition-opacity"
-                                onClick={() => {
-                                  setSelectedCategory(category);
-                                  setCurrentView('transactions');
-                                  showToast(t('toasts.filteringBy', { category: getCategoryLabel(category) }), 'success');
-                                }}
-                              >
-                                <title>{`${getCategoryLabel(category)}: ${percentage.toFixed(1)}%`}</title>
-                              </path>
-                              {percentage > 2 && (
-                                <text
-                                  x={labelPos.x}
-                                  y={labelPos.y}
-                                  className="text-xs fill-white font-bold"
-                                  textAnchor="middle"
-                                  dominantBaseline="middle"
-                                  transform={`rotate(90 ${labelPos.x} ${labelPos.y})`}
-                                >
-                                  {percentage.toFixed(1)}%
-                                </text>
-                              )}
-                            </g>
-                          );
-                        })}
-                    </svg>
-                  </div>
-                  
-                  {/* Legend */}
-                  <div className="flex-1 space-y-2 w-full">
-                    {Object.entries(categoryTotals)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([category, amount]) => {
-                        const percentage = (amount / totalExpense) * 100;
-                        return (
-                          <div
-                            key={category}
-                            className="flex items-center justify-between p-2 hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors"
-                            onClick={() => {
-                              setSelectedCategory(category);
-                              setCurrentView('transactions');
-                              showToast(t('toasts.filteringBy', { category: getCategoryLabel(category) }), 'success');
-                            }}
-                          >
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div className={`w-3 h-3 rounded-full ${categories[category]?.color} flex-shrink-0`} />
-                              <span className="text-sm truncate">
-                                {categories[category]?.icon} {getCategoryLabel(category)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3 flex-shrink-0">
-                              <span className="text-sm font-medium">{withLtr(formatCurrency(amount))}</span>
-                              <span className="text-xs text-slate-400 w-12 text-right">{withLtr(`${percentage.toFixed(1)}%`)}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              </div>
-              </>
-            )}
-          </div>
+          <CategoriesView
+            expenses={filteredExpenses}
+            householdSettings={householdSettings}
+            theme={theme}
+            formatCurrency={formatCurrency}
+            withLtr={withLtr}
+            getCategoryLabel={getCategoryLabel}
+            savingSettings={savingSettings}
+            onAddCategory={async (categoryData) => {
+              await addCategory(categoryData);
+            }}
+            onEditCategory={async (oldName, categoryData) => {
+              await editCategory(oldName, categoryData);
+            }}
+            onDeleteCategory={confirmDeleteCategory}
+            onUpdateTransactionCategory={updateTransactionCategory}
+            onOpenQuickAdd={openQuickAdd}
+            onFilterByCategory={(category) => {
+              setSelectedCategory(category);
+              setCurrentView('transactions');
+            }}
+            showToast={showToast}
+          />
         )}
 
         {/* Balance view */}
