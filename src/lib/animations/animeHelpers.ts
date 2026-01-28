@@ -21,7 +21,8 @@ export const withOnFinish = (animation: AnimeInstance | undefined, onFinish: () 
     onFinish();
     return;
   }
-  animation.finished.then(onFinish).catch(() => onFinish());
+  // In animejs v4, use onComplete callback
+  animation.onComplete = onFinish;
 };
 
 export const fadeScaleIn = (target: AnimationTarget, duration = 200) => {
@@ -31,8 +32,7 @@ export const fadeScaleIn = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'scale(1)';
     return undefined;
   }
-  return animate({
-    targets: target,
+  return animate(target, {
     opacity: [0, 1],
     scale: [0.96, 1],
     easing: 'easeOutQuad',
@@ -47,8 +47,7 @@ export const fadeScaleOut = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'scale(0.96)';
     return undefined;
   }
-  return animate({
-    targets: target,
+  return animate(target, {
     opacity: [1, 0],
     scale: [1, 0.96],
     easing: 'easeInQuad',
@@ -62,8 +61,7 @@ export const fadeIn = (target: AnimationTarget, duration = 200) => {
     target.style.opacity = '1';
     return undefined;
   }
-  return animate({
-    targets: target,
+  return animate(target, {
     opacity: [0, 1],
     easing: 'easeOutQuad',
     duration,
@@ -76,8 +74,7 @@ export const fadeOut = (target: AnimationTarget, duration = 200) => {
     target.style.opacity = '0';
     return undefined;
   }
-  return animate({
-    targets: target,
+  return animate(target, {
     opacity: [1, 0],
     easing: 'easeInQuad',
     duration,
@@ -91,8 +88,7 @@ export const slideFadeInUp = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'translateY(0px)';
     return undefined;
   }
-  return animate({
-    targets: target,
+  return animate(target, {
     translateY: [8, 0],
     opacity: [0, 1],
     easing: 'easeOutQuad',
@@ -107,8 +103,7 @@ export const slideFadeOutDown = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'translateY(8px)';
     return undefined;
   }
-  return animate({
-    targets: target,
+  return animate(target, {
     translateY: [0, 8],
     opacity: [1, 0],
     easing: 'easeInQuad',
