@@ -381,7 +381,7 @@ const ExpenseTracker: React.FC = () => {
   ]);
 
   useEffect(() => {
-    if (!dirty || exportingData || !supportsFileSystem || !saveDirectory) {
+    if (!dirty || exportingData) {
       return;
     }
 
@@ -390,7 +390,14 @@ const ExpenseTracker: React.FC = () => {
     }
 
     autoSaveTimer.current = setTimeout(() => {
-      saveData({ allowDownload: false, showToast: false, promptForDirectory: false });
+      // If FSA is available and directory is set, create backup file
+      if (supportsFileSystem && saveDirectory) {
+        saveData({ allowDownload: false, showToast: false, promptForDirectory: false });
+      } else {
+        // Web users without FSA or directory: data is already in localStorage
+        // Clear dirty flag since persistent storage is up-to-date
+        setDirty(false);
+      }
     }, 1500);
 
     return () => {
@@ -403,6 +410,8 @@ const ExpenseTracker: React.FC = () => {
     exportingData,
     supportsFileSystem,
     saveDirectory,
+    saveData,
+    setDirty,
     expenses,
     recurring,
     partnerNames,
