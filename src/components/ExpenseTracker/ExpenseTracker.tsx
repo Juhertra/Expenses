@@ -1454,7 +1454,7 @@ const ExpenseTracker: React.FC = () => {
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-950/85 via-slate-900/80 to-purple-900/70 border border-slate-800/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 mb-6 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0 flex-1">
-            <div className="w-12 h-12 flex-shrink-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/40">
+            <div className={`w-12 h-12 flex-shrink-0 bg-gradient-to-br ${theme.colors.accentGradient} rounded-xl flex items-center justify-center shadow-lg`}>
               <BarChart3 className="w-6 h-6" />
             </div>
             <div className="min-w-0 flex-1">
@@ -1650,20 +1650,22 @@ const ExpenseTracker: React.FC = () => {
                   {t('app.welcomeBody')}
                 </p>
                 <div className="flex gap-4 justify-center">
-                  <button
+                  <Button
                     onClick={() => openQuickAdd('expense')}
-                    className="px-8 py-4 bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-3 transition-colors text-lg font-medium"
+                    variant="expense"
+                    iconStart={<TrendingDown className="w-6 h-6" />}
+                    className="px-8 py-4 text-lg"
                   >
-                    <TrendingDown className="w-6 h-6" />
                     {t('buttons.addFirstExpense')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => openQuickAdd('income')}
-                    className="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-3 transition-colors text-lg font-medium"
+                    variant="income"
+                    iconStart={<TrendingUp className="w-6 h-6" />}
+                    className="px-8 py-4 text-lg"
                   >
-                    <TrendingUp className="w-6 h-6" />
                     {t('buttons.addIncome')}
-                  </button>
+                  </Button>
                 </div>
                 <p className="text-slate-500 text-sm mt-6">
                   {t('app.shortcutHint')}
@@ -2357,19 +2359,16 @@ const ExpenseTracker: React.FC = () => {
                   {t('buttons.addTransaction')}
                 </Button>
                 {/* Bulk Mode Toggle (Phase 2 Feature #10) */}
-                <button
+                <Button
                   onClick={() => {
                     setBulkMode(!bulkMode);
                     setSelectedIds(new Set());
                   }}
-                  className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                    bulkMode 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
-                      : 'bg-slate-800/70 hover:bg-slate-700 border border-slate-700'
-                  }`}
+                  variant={bulkMode ? 'accent' : 'secondary'}
+                  size="sm"
                 >
                   {bulkMode ? t('buttons.exitBulkMode') : t('buttons.bulkSelect')}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -2621,15 +2620,17 @@ const ExpenseTracker: React.FC = () => {
                         ))}
                       </select>
                       <div className="flex gap-1">
-                        <button
+                        <Button
                           onClick={() => saveInlineEdit(exp.id)}
                           disabled={savingTransaction}
-                          className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm flex items-center gap-1 flex-1 justify-center disabled:opacity-50"
+                          variant="success"
+                          size="sm"
+                          iconStart={<Check className="w-4 h-4" />}
                           title={t('tooltips.saveChanges')}
+                          className="flex-1"
                         >
-                          <Check className="w-4 h-4" />
-                          <span>{t('buttons.save')}</span>
-                        </button>
+                          {t('buttons.save')}
+                        </Button>
                         <button
                           onClick={() => {
                             setInlineEditId(null);
@@ -2772,13 +2773,14 @@ const ExpenseTracker: React.FC = () => {
                 <div className="text-6xl mb-4" aria-hidden="true">🔍</div>
                 <h4 className="text-xl font-semibold mb-2">{t('messages.noExpensesThisMonth')}</h4>
                 <p className="text-slate-400 mb-6">{t('messages.addExpensesForCategoryBreakdown')}</p>
-                <button
+                <Button
                   onClick={() => openQuickAdd('expense')}
-                  className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors inline-flex items-center gap-2"
+                  variant="expense"
+                  iconStart={<TrendingDown className="w-5 h-5" />}
+                  className="px-6 py-3"
                 >
-                  <TrendingDown className="w-5 h-5" />
                   {t('buttons.addExpense')}
-                </button>
+                </Button>
               </div>
             )}
 
