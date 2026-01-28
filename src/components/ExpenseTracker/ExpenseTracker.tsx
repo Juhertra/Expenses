@@ -1454,7 +1454,7 @@ const ExpenseTracker: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Toast Notification (Phase 1 Feature #2D) */}
         {toast && (
-          <div className={`fixed top-6 right-6 px-6 py-3 rounded-lg shadow-2xl z-50 animate-slide-in flex items-center gap-3 ${
+          <div className={`fixed top-6 ${isRTL ? 'left-6' : 'right-6'} px-6 py-3 rounded-lg shadow-2xl z-50 animate-slide-in flex items-center gap-3 ${
             toast.type === 'success' ? `${theme.colors.successBg} text-white` : `${theme.colors.errorBg} text-white`
           }`}>
             {toast.type === 'success' ? <Check className="w-5 h-5 flex-shrink-0" /> : <X className="w-5 h-5 flex-shrink-0" />}
