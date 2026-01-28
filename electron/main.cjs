@@ -108,7 +108,32 @@ const atomicWrite = async (filePath, contents) => {
 };
 
 const writeDataFile = async (contents, targetPath) => {
-  const filePath = targetPath || (await resolveDataFilePath(true));
+  const filePath = targetPath || (await resolveDataFilePath(false));
+  if (!filePath) {
+    throw new Error('No data file path configured. Please select a location first.');
+  }
+
+  // Validate contents before writing
+  if (!contents || typeof contents !== 'string') {
+    throw new Error('Invalid contents: must be a non-empty string');
+  }
+
+  try {
+    const parsed = JSON.parse(contents);
+    // Validate schema version
+    if (!parsed.schemaVersion || typeof parsed.schemaVersion !== 'number') {
+      throw new Error('Invalid data: missing or invalid schemaVersion');
+    }
+    if (parsed.schemaVersion > SCHEMA_VERSION) {
+      console.warn(`Writing data with newer schema version ${parsed.schemaVersion}`);
+    }
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error('Invalid contents: not valid JSON');
+    }
+    throw err;
+  }
+
   await atomicWrite(filePath, contents);
   watchDataFile(filePath);
   return filePath;

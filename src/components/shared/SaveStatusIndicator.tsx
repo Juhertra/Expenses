@@ -18,7 +18,8 @@ export function SaveStatusIndicator({
   saveDirectory,
   onSelectFolder,
 }: SaveStatusIndicatorProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.dir() === 'rtl';
   const [cloudInfo, setCloudInfo] = useState<CloudDriveInfo | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -118,7 +119,7 @@ export function SaveStatusIndicator({
 
       {/* Tooltip */}
       {showTooltip && (
-        <div className="absolute top-full right-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl p-4 z-50">
+        <div className={`absolute top-full ${isRTL ? 'left-0' : 'right-0'} mt-2 w-72 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl p-4 z-50`}>
           <div className="space-y-3">
             {/* Folder info */}
             {saveDirectory ? (

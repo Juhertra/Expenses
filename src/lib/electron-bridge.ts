@@ -75,12 +75,28 @@ export const storage = {
 
 // File system helpers (stub for Electron IPC integration)
 export const fileSystem = {
-  supportsDirectoryPicker: () => typeof (window as any).showDirectoryPicker !== 'undefined',
+  supportsDirectoryPicker: () => {
+    // Electron doesn't use directory picker API, but has file-based storage
+    if (isElectron()) {
+      return !!((window as any).electronAPI?.selectDataFile);
+    }
+    // Web uses File System Access API
+    return typeof (window as any).showDirectoryPicker !== 'undefined';
+  },
   async showDirectoryPicker() {
     if (isElectron()) {
-      // Expect preload to expose an IPC-backed picker if needed
-      if ((window as any).electronAPI?.showDirectoryPicker) {
-        return (window as any).electronAPI.showDirectoryPicker();
+      // In Electron, trigger file selection dialog
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI?.selectDataFile) {
+        // Get suggested cloud folder path or use documents
+        const homeDir = electronAPI.homeDir || '';
+        const result = await electronAPI.selectDataFile(homeDir);
+
+        // Electron returns file path string, but web expects directory handle
+        // Return a mock handle that signals success
+        if (result) {
+          return { name: 'Electron Storage', kind: 'electron-file' };
+        }
       }
       return null;
     }

@@ -77,9 +77,10 @@ export function useDataPersistence() {
         await persistRecurring(result.updatedRecurring);
         setExpenses(result.updatedExpenses);
         setRecurring(result.updatedRecurring);
+        setDirty(true); // Mark data as changed so exports include auto-added transactions
       }
     },
-    [setExpenses, setRecurring]
+    [setExpenses, setRecurring, setDirty]
   );
 
   /**

@@ -32,25 +32,48 @@ const suggestedFolders = (() => {
 
 // Minimal storage shim backed by data:* IPC handlers
 const STORAGE_SCHEMA_VERSION = 1;
+const MAX_PAYLOAD_SIZE = 10 * 1024 * 1024; // 10MB limit
+
 const readRaw = async () => {
   const contents = await ipcRenderer.invoke('data:read');
   if (!contents) return {};
   try {
     const parsed = JSON.parse(contents);
+
+    // Validate schema version
+    if (parsed.schemaVersion && parsed.schemaVersion > STORAGE_SCHEMA_VERSION) {
+      console.warn(`Data file schema version ${parsed.schemaVersion} is newer than supported version ${STORAGE_SCHEMA_VERSION}`);
+    }
+
     if (parsed.raw && typeof parsed.raw === 'object') return parsed.raw;
     return {};
   } catch (err) {
+    console.error('Failed to parse data file:', err);
     return {};
   }
 };
 
 const writeRaw = async (raw) => {
+  // Validate raw data structure
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Invalid raw data: must be an object');
+  }
+
   const payload = {
     schemaVersion: STORAGE_SCHEMA_VERSION,
     exportDate: new Date().toISOString(),
     raw,
   };
-  await ipcRenderer.invoke('data:write', JSON.stringify(payload, null, 2));
+
+  const jsonString = JSON.stringify(payload, null, 2);
+
+  // Validate payload size
+  const payloadSize = new Blob([jsonString]).size;
+  if (payloadSize > MAX_PAYLOAD_SIZE) {
+    throw new Error(`Payload too large: ${payloadSize} bytes (max ${MAX_PAYLOAD_SIZE})`);
+  }
+
+  await ipcRenderer.invoke('data:write', jsonString);
 };
 
 contextBridge.exposeInMainWorld('storage', {
