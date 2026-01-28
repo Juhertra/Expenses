@@ -1,8 +1,7 @@
-﻿// @ts-ignore - animejs v4 bundle has legacy default export
-import anime from 'animejs/dist/bundles/anime.esm.js';
+﻿import { animate, remove } from 'animejs';
 
 type AnimationTarget = HTMLElement | null | undefined;
-type AnimeInstance = ReturnType<typeof anime>;
+type AnimeInstance = ReturnType<typeof animate>;
 
 /**
  * Simple, reusable animation helpers for small UI transitions.
@@ -32,7 +31,7 @@ export const fadeScaleIn = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'scale(1)';
     return undefined;
   }
-  return anime({
+  return animate({
     targets: target,
     opacity: [0, 1],
     scale: [0.96, 1],
@@ -48,7 +47,7 @@ export const fadeScaleOut = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'scale(0.96)';
     return undefined;
   }
-  return anime({
+  return animate({
     targets: target,
     opacity: [1, 0],
     scale: [1, 0.96],
@@ -63,7 +62,7 @@ export const fadeIn = (target: AnimationTarget, duration = 200) => {
     target.style.opacity = '1';
     return undefined;
   }
-  return anime({
+  return animate({
     targets: target,
     opacity: [0, 1],
     easing: 'easeOutQuad',
@@ -77,7 +76,7 @@ export const fadeOut = (target: AnimationTarget, duration = 200) => {
     target.style.opacity = '0';
     return undefined;
   }
-  return anime({
+  return animate({
     targets: target,
     opacity: [1, 0],
     easing: 'easeInQuad',
@@ -92,7 +91,7 @@ export const slideFadeInUp = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'translateY(0px)';
     return undefined;
   }
-  return anime({
+  return animate({
     targets: target,
     translateY: [8, 0],
     opacity: [0, 1],
@@ -108,7 +107,7 @@ export const slideFadeOutDown = (target: AnimationTarget, duration = 200) => {
     target.style.transform = 'translateY(8px)';
     return undefined;
   }
-  return anime({
+  return animate({
     targets: target,
     translateY: [0, 8],
     opacity: [1, 0],
@@ -120,5 +119,5 @@ export const slideFadeOutDown = (target: AnimationTarget, duration = 200) => {
 export const cancelAnimation = (target?: HTMLElement | null) => {
   if (!target) return;
   if (typeof window === 'undefined') return;
-  anime.remove(target);
+  remove(target);
 };
