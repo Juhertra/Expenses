@@ -89,6 +89,18 @@ export function SettingsPanel({
   const themeDef = themes[currentTheme] || { colors: { cardBorder: "border-slate-700", cardBg: "bg-slate-900/60" } };
   const dir = i18n.dir(i18n.language);
 
+  // Get theme-aware focus ring classes for inputs/selects
+  const getFocusClasses = () => {
+    switch (currentTheme) {
+      case 'ocean-blue':
+        return 'focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+      case 'minimal':
+        return 'focus:border-slate-500 focus:ring-2 focus:ring-slate-500/20';
+      default:
+        return 'focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20';
+    }
+  };
+
   const q = searchQuery.trim().toLowerCase();
 
   const sectionKeywords: Record<SectionId, string[]> = {
@@ -290,7 +302,7 @@ export function SettingsPanel({
                   window.localStorage.setItem("app-locale", nextLang);
                 }}
                 dir={dir}
-                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 ${getFocusClasses()} outline-none transition-all`}
               >
                 <option value="en">{t("settings.languages.en")}</option>
                 <option value="he">{t("settings.languages.he")}</option>
@@ -362,7 +374,7 @@ export function SettingsPanel({
                   });
                 }}
                 dir={dir}
-                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 ${getFocusClasses()} outline-none transition-all`}
               >
                 <option value="ILS">{t("settings.currencyILS")}</option>
                 <option value="USD">{t("settings.currencyUSD")}</option>
@@ -381,7 +393,7 @@ export function SettingsPanel({
                   })
                 }
                 dir={dir}
-                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                className={`w-full ${cardBgInput} ${cardBorderInput} rounded-lg ${dir === "rtl" ? "pr-10 pl-4" : "pl-4 pr-10"} py-2 ${getFocusClasses()} outline-none transition-all`}
               >
                 <option value="equal">{t("settings.splitEqual")}</option>
                 <option value="proportional">{t("settings.splitProportional")}</option>

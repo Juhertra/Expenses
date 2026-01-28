@@ -1315,6 +1315,18 @@ const ExpenseTracker: React.FC = () => {
   const isRTL = (i18n.dir && i18n.dir() === 'rtl') || (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
   const dir = i18n.dir ? i18n.dir() : 'ltr';
 
+  // Get theme-aware focus ring classes for inputs/selects
+  const getFocusClasses = () => {
+    switch (currentTheme) {
+      case 'ocean-blue':
+        return 'focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+      case 'minimal':
+        return 'focus:border-slate-500 focus:ring-2 focus:ring-slate-500/20';
+      default:
+        return 'focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20';
+    }
+  };
+
   const monthFormatter = useMemo(
     () => new Intl.DateTimeFormat(i18n.language || undefined, { month: 'short' }),
     [i18n.language]
@@ -1561,7 +1573,7 @@ const ExpenseTracker: React.FC = () => {
               value={selectedMonth}
               onChange={e => setSelectedMonth(parseInt(e.target.value))}
               dir={dir}
-              className={`flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${isRTL ? 'pr-10 pl-3 sm:pl-4' : 'pl-3 pr-10 sm:pr-4'} py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base`}
+              className={`flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 ${getFocusClasses()} ${isRTL ? 'pr-10 pl-3 sm:pl-4' : 'pl-3 pr-10 sm:pr-4'} py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base`}
             >
               {months.map((month, idx) => (
                 <option key={idx} value={idx}>
@@ -1573,7 +1585,7 @@ const ExpenseTracker: React.FC = () => {
               value={selectedYear}
               onChange={e => setSelectedYear(parseInt(e.target.value))}
               dir={dir}
-              className={`flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${isRTL ? 'pr-10 pl-3 sm:pl-4' : 'pl-3 pr-10 sm:pr-4'} py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base`}
+              className={`flex-1 sm:flex-initial min-w-[110px] shrink-0 bg-slate-800/50 backdrop-blur border border-slate-700 hover:border-slate-600 ${getFocusClasses()} ${isRTL ? 'pr-10 pl-3 sm:pl-4' : 'pl-3 pr-10 sm:pr-4'} py-2 rounded-lg text-white cursor-pointer transition-all duration-200 outline-none text-sm sm:text-base`}
             >
               {getAvailableYears().map(year => (
                 <option key={year} value={year}>
@@ -3376,7 +3388,7 @@ const ExpenseTracker: React.FC = () => {
                       setFormData({ ...formData, category: e.target.value })
                     }
                     dir={dir}
-                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                   >
                     {Object.keys(categories).map(cat => (
                       <option key={cat} value={cat}>
@@ -3393,7 +3405,7 @@ const ExpenseTracker: React.FC = () => {
                       setFormData({ ...formData, type: e.target.value as 'expense' | 'income' })
                     }
                     dir={dir}
-                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                   >
                     <option value="expense">{t('labels.expense')}</option>
                     <option value="income">{t('labels.income')}</option>
@@ -3418,7 +3430,7 @@ const ExpenseTracker: React.FC = () => {
                       setFormData({ ...formData, paidBy: e.target.value as 'partner1' | 'partner2' | 'joint' })
                     }
                     dir={dir}
-                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all`}
+                    className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-3' : 'pl-3 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                   >
                     <option value="partner1">{partnerNames.partner1}</option>
                     <option value="partner2">{partnerNames.partner2}</option>
