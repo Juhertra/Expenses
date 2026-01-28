@@ -1,5 +1,4 @@
-﻿// @ts-ignore animejs ESM build lacks bundled types for this path
-import anime from 'animejs/lib/anime.es.js';
+﻿import anime from 'animejs';
 
 type AnimationTarget = HTMLElement | null | undefined;
 type AnimeInstance = ReturnType<typeof anime>;
