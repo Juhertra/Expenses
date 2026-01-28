@@ -330,7 +330,7 @@ export default function SettingsCenterModal(props: Props) {
         {/* Top Bar */}
         <div className={`flex items-center gap-3 px-5 py-4 border-b ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg}`}>
           <div className={`flex items-center gap-3 ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${themeDef.colors.accentGradient} flex items-center justify-center`}>
               <Sliders className="w-5 h-5 text-white" />
             </div>
             <div className={dir === "rtl" ? "text-right" : "text-left"}>

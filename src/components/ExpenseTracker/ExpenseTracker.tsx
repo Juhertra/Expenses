@@ -3633,7 +3633,7 @@ const ExpenseTracker: React.FC = () => {
             <div className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full border border-slate-700/50 shadow-2xl max-h-[90vh] overflow-y-auto my-auto">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                <h3 className={`text-2xl font-bold bg-gradient-to-r ${theme.colors.accentGradient} bg-clip-text text-transparent`}>
                   {editingCategory ? t('labels.editCategoryTitle') : t('labels.addCategoryTitle')}
                 </h3>
                 <button
