@@ -1,4 +1,5 @@
-﻿import anime from 'animejs';
+﻿// @ts-ignore - animejs v4 bundle has legacy default export
+import anime from 'animejs/dist/bundles/anime.esm.js';
 
 type AnimationTarget = HTMLElement | null | undefined;
 type AnimeInstance = ReturnType<typeof anime>;

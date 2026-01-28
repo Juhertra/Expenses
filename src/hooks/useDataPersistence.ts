@@ -125,7 +125,7 @@ export function useDataPersistence() {
           const mockHandle = {
             name: 'Electron Storage',
             kind: 'electron-file' as const,
-          } as FileSystemDirectoryHandle;
+          } as unknown as FileSystemDirectoryHandle;
           setSaveDirectory(mockHandle);
         }
       }

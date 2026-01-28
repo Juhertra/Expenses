@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search } from 'lucide-react';
 import { ModalBase } from '../shared/ModalBase';
@@ -141,8 +141,7 @@ export function AddCategoryModal({
             }}
             placeholder={t('category.namePlaceholder', 'Enter category name')}
             dir={i18n.dir()}
-            className="w-full"
-            error={!!error}
+            className={`w-full ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : ''}`}
           />
           {error && (
             <p className="text-red-400 text-sm mt-1">{error}</p>
