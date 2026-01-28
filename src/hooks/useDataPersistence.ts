@@ -116,6 +116,19 @@ export function useDataPersistence() {
       setRecurring(loadedRecurring);
 
       await processRecurring(loadedRecurring, loadedExpenses);
+
+      // Check if Electron has a data file configured
+      if ((window as any).electronAPI?.getDataFilePath) {
+        const filePath = await (window as any).electronAPI.getDataFilePath();
+        if (filePath) {
+          // Create a mock directory handle for Electron to indicate storage is configured
+          const mockHandle = {
+            name: 'Electron Storage',
+            kind: 'electron-file' as const,
+          } as FileSystemDirectoryHandle;
+          setSaveDirectory(mockHandle);
+        }
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -129,6 +142,7 @@ export function useDataPersistence() {
     setExpenses,
     setRecurring,
     processRecurring,
+    setSaveDirectory,
   ]);
 
   /**
