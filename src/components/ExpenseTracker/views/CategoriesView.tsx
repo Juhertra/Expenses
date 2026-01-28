@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { PlusCircle, Edit2, Trash2, TrendingDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/Button';
-import type { Expense, HouseholdSettings, ThemeDefinition } from '../../../lib/types';
-import { CATEGORY_LABELS_HE } from '../../../i18n';
+import type { Expense, HouseholdSettings } from '../../../lib/types';
+import type { Theme } from '../../../lib/theme';
 
 interface CategoriesViewProps {
   expenses: Expense[];
   householdSettings: HouseholdSettings;
-  theme: ThemeDefinition;
+  theme: Theme;
   formatCurrency: (amount: number) => string;
   withLtr: (content: React.ReactNode) => React.ReactNode;
   getCategoryLabel: (name: string) => string;
@@ -19,7 +19,7 @@ interface CategoriesViewProps {
   onUpdateTransactionCategory: (txId: number, newCategory: string) => Promise<void>;
   onOpenQuickAdd: (type: 'expense' | 'income') => void;
   onFilterByCategory: (category: string) => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  showToast: (message: string, type: 'success' | 'error') => void;
 }
 
 export function CategoriesView({
@@ -38,7 +38,7 @@ export function CategoriesView({
   onFilterByCategory,
   showToast,
 }: CategoriesViewProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   // Local modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);

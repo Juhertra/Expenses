@@ -101,7 +101,6 @@ const ExpenseTracker: React.FC = () => {
     showSettingsModal, setShowSettingsModal,
     settingsInitialTab, setSettingsInitialTab,
     showCategoryModal, setShowCategoryModal,
-    showSettlementModal, setShowSettlementModal,
     showCommandPalette, setShowCommandPalette,
     showWelcomeModal, setShowWelcomeModal,
     showFolderSelectionModal, setShowFolderSelectionModal,
@@ -954,14 +953,6 @@ const ExpenseTracker: React.FC = () => {
     .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
     .reduce((sum, exp) => sum + exp.amount, 0);
 
-  const partner1Income = filteredExpenses
-    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'income')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const partner2Income = filteredExpenses
-    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'income')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
   const jointPaid = filteredExpenses
     .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
     .reduce((sum, exp) => sum + exp.amount, 0);
@@ -977,9 +968,6 @@ const ExpenseTracker: React.FC = () => {
   const totalSharedExpenses = partner1Paid + partner2Paid;
   const partner1FairShare = totalSharedExpenses * splitRatio;
   const partner2FairShare = totalSharedExpenses * (1 - splitRatio);
-  
-  // For progress bar display: include all payment types to calculate percentages correctly
-  const totalAllPayments = partner1Paid + partner2Paid + jointPaid;
   
   // Balance calculation: What they paid minus what they should have paid
   // Positive balance = partner is OWED money (overpaid)
@@ -1254,38 +1242,6 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Phase 2 Feature #5: Helper functions for pie chart generation
    */
-  const createPieSlice = (anglePercent: number, startAngle: number): string => {
-    const centerX = 100;
-    const centerY = 100;
-    const radius = 80;
-    
-    const angle = (anglePercent / 100) * 2 * Math.PI;
-    const start = (startAngle / 100) * 2 * Math.PI - Math.PI / 2;
-    const end = start + angle;
-    
-    const x1 = centerX + radius * Math.cos(start);
-    const y1 = centerY + radius * Math.sin(start);
-    const x2 = centerX + radius * Math.cos(end);
-    const y2 = centerY + radius * Math.sin(end);
-    
-    const largeArc = angle > Math.PI ? 1 : 0;
-    
-    return `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-  };
-
-  const calculateLabelPosition = (anglePercent: number, startAngle: number): { x: number; y: number } => {
-    const centerX = 100;
-    const centerY = 100;
-    const labelRadius = 60;
-    
-    const midAngle = ((startAngle + anglePercent / 2) / 100) * 2 * Math.PI - Math.PI / 2; // Restore: offset needed
-    
-    return {
-      x: centerX + labelRadius * Math.cos(midAngle),
-      y: centerY + labelRadius * Math.sin(midAngle)
-    };
-  };
-
   const isRTL = (i18n.dir && i18n.dir() === 'rtl') || (typeof document !== 'undefined' && document.documentElement.dir === 'rtl');
   const dir = i18n.dir ? i18n.dir() : 'ltr';
 

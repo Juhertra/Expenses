@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DollarSign, PlusCircle, Trash2, X } from 'lucide-react';
+import { PlusCircle, Trash2, X } from 'lucide-react';
 import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '../../../lib/types';
-import type { ThemeDefinition } from '../../../lib/theme';
+import type { Theme } from '../../../lib/theme';
 import { Button } from '../../ui/Button';
 
 interface BalanceViewProps {
@@ -10,7 +10,7 @@ interface BalanceViewProps {
   settlements: Settlement[];
   partnerNames: PartnerNames;
   householdSettings: HouseholdSettings;
-  theme: ThemeDefinition;
+  theme: Theme;
   formatCurrency: (amount: number) => string;
   formatDateLocalized: (date: string) => string;
   withLtr: (content: React.ReactNode) => React.ReactNode;
@@ -24,7 +24,7 @@ export function BalanceView({
   settlements,
   partnerNames,
   householdSettings,
-  theme,
+  theme: _theme,
   formatCurrency,
   formatDateLocalized,
   withLtr,
