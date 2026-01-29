@@ -15,7 +15,7 @@ import {
   setSettings as persistSettings,
   setSettlements as persistSettlements,
 } from '../services/storage';
-import { pickDirectory, supportsDirectoryPicker } from '../services/platform';
+import { pickDirectory, supportsDirectoryPicker, isElectron } from '../services/platform';
 import { processRecurringTransactions } from '../services/recurring';
 import {
   buildExportObject,
@@ -206,14 +206,20 @@ export function useDataPersistence() {
         }
 
         if (supportsFileSystem && targetDirectory) {
-          await writeJsonToDirectory(targetDirectory, filename, jsonString);
+          // In Electron, data is already persisted via storage API, skip file write
+          const isElectronStorage = isElectron() || (targetDirectory as any).kind === 'electron-file';
+
+          if (!isElectronStorage) {
+            await writeJsonToDirectory(targetDirectory, filename, jsonString);
+          }
+
           setDirty(false);
           setLastExportDate(exportObject.exportDate);
           if (options?.showToast !== false) {
-            showToast(
-              t('toasts.savedTo', { path: `${targetDirectory.name}/${filename}` }),
-              'success'
-            );
+            const message = isElectronStorage
+              ? t('toasts.dataSaved')
+              : t('toasts.savedTo', { path: `${targetDirectory.name}/${filename}` });
+            showToast(message, 'success');
           }
           return;
         }
