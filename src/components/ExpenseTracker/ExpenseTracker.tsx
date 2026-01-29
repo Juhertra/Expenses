@@ -902,49 +902,63 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Filter expenses based on the selected month and year, plus search query, plus category filter (Phase 1 Feature #8)
    */
-  const filteredExpenses = expenses.filter(exp => {
-    const expDate = new Date(exp.date);
-    const matchesDate = (
-      expDate.getMonth() === selectedMonth &&
-      expDate.getFullYear() === selectedYear
-    );
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(exp => {
+      const expDate = new Date(exp.date);
+      const matchesDate = (
+        expDate.getMonth() === selectedMonth &&
+        expDate.getFullYear() === selectedYear
+      );
 
-    if (!matchesDate) return false;
+      if (!matchesDate) return false;
 
-    // Apply category filter (Phase 1 Feature #8)
-    if (selectedCategory && exp.category !== selectedCategory) return false;
+      // Apply category filter (Phase 1 Feature #8)
+      if (selectedCategory && exp.category !== selectedCategory) return false;
 
-    // Apply search filter (description, category, or paidBy)
-    if (searchQuery === '') return true;
+      // Apply search filter (description, category, or paidBy)
+      if (searchQuery === '') return true;
 
-    const query = searchQuery.toLowerCase();
-    return (
-      exp.description.toLowerCase().includes(query) ||
-      exp.category.toLowerCase().includes(query) ||
-      exp.paidBy.toLowerCase().includes(query) ||
-      (exp.paidBy === 'partner1' && partnerNames.partner1.toLowerCase().includes(query)) ||
-      (exp.paidBy === 'partner2' && partnerNames.partner2.toLowerCase().includes(query))
-    );
-  });
+      const query = searchQuery.toLowerCase();
+      return (
+        exp.description.toLowerCase().includes(query) ||
+        exp.category.toLowerCase().includes(query) ||
+        exp.paidBy.toLowerCase().includes(query) ||
+        (exp.paidBy === 'partner1' && partnerNames.partner1.toLowerCase().includes(query)) ||
+        (exp.paidBy === 'partner2' && partnerNames.partner2.toLowerCase().includes(query))
+      );
+    });
+  }, [expenses, selectedMonth, selectedYear, selectedCategory, searchQuery, partnerNames]);
 
   // Compute totals for income, expenses, and balances.
-  const totalIncome = filteredExpenses
-    .filter(exp => exp.type === 'income')
-    .reduce((sum, exp) => sum + exp.amount, 0);
+  const totalIncome = useMemo(
+    () => filteredExpenses
+      .filter(exp => exp.type === 'income')
+      .reduce((sum, exp) => sum + exp.amount, 0),
+    [filteredExpenses]
+  );
 
-  const totalExpense = filteredExpenses
-    .filter(exp => exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
+  const totalExpense = useMemo(
+    () => filteredExpenses
+      .filter(exp => exp.type === 'expense')
+      .reduce((sum, exp) => sum + exp.amount, 0),
+    [filteredExpenses]
+  );
 
   const balance = totalIncome - totalExpense;
 
-  const partner1Paid = filteredExpenses
-    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
+  const partner1Paid = useMemo(
+    () => filteredExpenses
+      .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
+      .reduce((sum, exp) => sum + exp.amount, 0),
+    [filteredExpenses]
+  );
 
-  const partner2Paid = filteredExpenses
-    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
+  const partner2Paid = useMemo(
+    () => filteredExpenses
+      .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
+      .reduce((sum, exp) => sum + exp.amount, 0),
+    [filteredExpenses]
+  );
 
   // Split mode: Calculate fair share based on household settings
   // For equal: 50/50 split; for proportional: use partner1Ratio
@@ -978,17 +992,23 @@ const ExpenseTracker: React.FC = () => {
   partner2Balance += netSettlementToPartner1;
 
   // Calculate totals per category for expenses.
-  const categoryTotals = filteredExpenses
-    .filter(exp => exp.type === 'expense')
-    .reduce((acc, exp) => {
-      acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
-      return acc;
-    }, {} as Record<string, number>);
+  const categoryTotals = useMemo(
+    () => filteredExpenses
+      .filter(exp => exp.type === 'expense')
+      .reduce((acc, exp) => {
+        acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+        return acc;
+      }, {} as Record<string, number>),
+    [filteredExpenses]
+  );
 
   // Sort categories by total amount and take top six for the dashboard.
-  const sortedCategories = Object.entries(categoryTotals)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 6);
+  const sortedCategories = useMemo(
+    () => Object.entries(categoryTotals)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6),
+    [categoryTotals]
+  );
 
   /**
    * Compute frequent expenses for quick-add widget (Phase 1 Feature #7)
@@ -1087,7 +1107,7 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Generate chart data for daily expenses and income for the selected month.
    */
-  const getChartData = (): ChartDataPoint[] => {
+  const chartData = useMemo((): ChartDataPoint[] => {
     const data: ChartDataPoint[] = [];
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
 
@@ -1109,92 +1129,92 @@ const ExpenseTracker: React.FC = () => {
       data.push({ day, expense: dayExpenses, income: dayIncome });
     }
     return data;
-  };
+  }, [filteredExpenses, selectedYear, selectedMonth]);
 
-  const chartData = getChartData();
-  const computedMax = Math.max(...chartData.map(d => Math.max(d.expense, d.income)), 1);
-  // Dynamic "nice" max - keeps scaling friendly for small amounts
-  const maxAmount = computedMax <= 10 ? 10 : computedMax <= 50 ? 50 : computedMax <= 100 ? 100 : Math.ceil(computedMax / 100) * 100;
+  const maxAmount = useMemo(() => {
+    const computedMax = Math.max(...chartData.map(d => Math.max(d.expense, d.income)), 1);
+    // Dynamic "nice" max - keeps scaling friendly for small amounts
+    return computedMax <= 10 ? 10 : computedMax <= 50 ? 50 : computedMax <= 100 ? 100 : Math.ceil(computedMax / 100) * 100;
+  }, [chartData]);
 
   const MIN_BAR_PX = 2;
 
   // Check if entire month is empty
-  const hasAnyData = chartData.some(d => d.expense > 0 || d.income > 0);
+  const hasAnyData = useMemo(
+    () => chartData.some(d => d.expense > 0 || d.income > 0),
+    [chartData]
+  );
 
   /**
    * Calculate insights for the current month (for dashboard widget)
    */
-  const getInsights = () => {
+  const insights = useMemo(() => {
     const monthExpenses = filteredExpenses.filter(e => e.type === 'expense');
-    
+
     // Largest expense
-    const largest = monthExpenses.reduce((max, e) => 
-      e.amount > max.amount ? e : max, 
+    const largest = monthExpenses.reduce((max, e) =>
+      e.amount > max.amount ? e : max,
       { amount: 0, description: t('labels.none'), category: '' }
     );
-    
+
     // Days with spending (unique days)
     const daysWithSpending = new Set(
       monthExpenses.map(e => new Date(e.date).getDate())
     ).size;
-    
+
     // Average daily spend (only count days with spending)
-    const avgDaily = daysWithSpending > 0 
-      ? totalExpense / daysWithSpending 
+    const avgDaily = daysWithSpending > 0
+      ? totalExpense / daysWithSpending
       : 0;
-    
+
     // Top category by spend
     const topCategoryEntry = Object.entries(categoryTotals)
       .sort(([,a], [,b]) => b - a)[0];
     const topCategory = topCategoryEntry ? topCategoryEntry[0] : t('labels.none');
-    
-    return { largest, avgDaily, topCategory, daysWithSpending };
-  };
 
-  const insights = getInsights();
+    return { largest, avgDaily, topCategory, daysWithSpending };
+  }, [filteredExpenses, totalExpense, categoryTotals, t]);
 
   /**
    * Calculate month-over-month category delta (current month vs previous month)
    */
-  const getCategoryDelta = () => {
+  const categoryDeltas = useMemo(() => {
     // Current month category totals (already computed above as categoryTotals)
-    
+
     // Previous month
     const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
     const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-    
+
     const prevExpenses = expenses.filter(e => {
       const d = new Date(e.date);
-      return e.type === 'expense' && 
-             d.getMonth() === prevMonth && 
+      return e.type === 'expense' &&
+             d.getMonth() === prevMonth &&
              d.getFullYear() === prevYear;
     });
-    
+
     const prevCategoryTotals: Record<string, number> = {};
     prevExpenses.forEach(e => {
       prevCategoryTotals[e.category] = (prevCategoryTotals[e.category] || 0) + e.amount;
     });
-    
+
     // Calculate delta for all categories that appear in either month
     const allCategories = new Set([
       ...Object.keys(categoryTotals),
       ...Object.keys(prevCategoryTotals)
     ]);
-    
+
     return Array.from(allCategories).map(cat => ({
       category: cat,
       current: categoryTotals[cat] || 0,
       previous: prevCategoryTotals[cat] || 0,
       delta: (categoryTotals[cat] || 0) - (prevCategoryTotals[cat] || 0)
     })).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-  };
-
-  const categoryDeltas = getCategoryDelta();
+  }, [expenses, selectedMonth, selectedYear, categoryTotals]);
 
   /**
    * Phase 2 Feature #6: Calculate spending trends over last 6 months
    */
-  const getTrendData = () => {
+  const trendData = useMemo(() => {
     const trendMonths = [];
     const now = new Date();
     // Use last 6 completed months (exclude current partial month)
@@ -1217,16 +1237,20 @@ const ExpenseTracker: React.FC = () => {
     }
 
     return trendMonths;
-  };
+  }, [expenses]);
 
-  const trendData = getTrendData();
-  const maxTrend = Math.max(...trendData.map(d => d.amount), 1);
+  const maxTrend = useMemo(
+    () => Math.max(...trendData.map(d => d.amount), 1),
+    [trendData]
+  );
 
   // Prediction: align with plotted data (all six completed months)
-  const prediction =
-    trendData.length > 0
+  const prediction = useMemo(
+    () => trendData.length > 0
       ? trendData.reduce((sum, d) => sum + d.amount, 0) / trendData.length
-      : 0;
+      : 0,
+    [trendData]
+  );
 
   /**
    * Phase 2 Feature #5: Helper functions for pie chart generation
