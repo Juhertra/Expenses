@@ -548,7 +548,7 @@ const ExpenseTracker: React.FC = () => {
   };
 
   /**
-   * Persist partner names to storage and close the settings modal if open.
+   * Persist partner names to storage.
    */
   const saveNames = async () => {
     setSavingSettings(true);
@@ -556,9 +556,6 @@ const ExpenseTracker: React.FC = () => {
       await persistPartnerNames(tempNames);
       setPartnerNames(tempNames);
       setDirty(true); // Mark as dirty (unsaved changes)
-      if (showSettingsModal) {
-        setShowSettingsModal(false);
-      }
     } finally {
       setSavingSettings(false);
     }
@@ -1515,7 +1512,7 @@ const ExpenseTracker: React.FC = () => {
           </div>
 
           {/* Month and year selectors */}
-          <div className="flex gap-2 sm:ml-auto sm:pl-4 flex-wrap">
+          <div className={`flex gap-2 ${isRTL ? 'sm:mr-auto sm:pr-4' : 'sm:ml-auto sm:pl-4'} flex-wrap`}>
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(parseInt(e.target.value))}
@@ -1716,7 +1713,7 @@ const ExpenseTracker: React.FC = () => {
               <div className="space-y-4">
                 {/* Description with Auto-suggestions (Phase 2 Feature #9) */}
                 <div className="relative">
-                  <label className="block text-sm text-slate-400 mb-1">
+                  <label className="block text-sm text-slate-400 mb-2">
                     {t('labels.description')}
                   </label>
                   <input
@@ -1760,7 +1757,7 @@ const ExpenseTracker: React.FC = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">
+                  <label className="block text-sm text-slate-400 mb-2">
                     {t('labels.amount')}
                   </label>
                   <input
@@ -1775,7 +1772,7 @@ const ExpenseTracker: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">
+                  <label className="block text-sm text-slate-400 mb-2">
                     {t('labels.category')}
                   </label>
                   <select
@@ -1794,7 +1791,7 @@ const ExpenseTracker: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">{t('labels.type')}</label>
+                  <label className="block text-sm text-slate-400 mb-2">{t('labels.type')}</label>
                   <select
                     value={formData.type}
                     onChange={e =>
@@ -1808,7 +1805,7 @@ const ExpenseTracker: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">{t('labels.date')}</label>
+                  <label className="block text-sm text-slate-400 mb-2">{t('labels.date')}</label>
                   <input
                     type="date"
                     value={formData.date}
@@ -1819,7 +1816,7 @@ const ExpenseTracker: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">{t('labels.paidBy')}</label>
+                  <label className="block text-sm text-slate-400 mb-2">{t('labels.paidBy')}</label>
                   <select
                     value={formData.paidBy}
                     onChange={e =>
@@ -1851,7 +1848,7 @@ const ExpenseTracker: React.FC = () => {
                     </div>
                     {formData.isRecurring && (
                       <div>
-                        <label className="block text-sm text-slate-400 mb-1">
+                        <label className="block text-sm text-slate-400 mb-2">
                           {t('labels.dayOfMonth')}
                         </label>
                         <input
@@ -2194,7 +2191,9 @@ const ExpenseTracker: React.FC = () => {
                     reassignTo: e.target.value
                   })
                 }
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 mb-6"
+                dir={dir}
+                className={`w-full bg-slate-700 border border-slate-600 hover:border-slate-500 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 mb-6 ${getFocusClasses()} outline-none transition-all`}
+                aria-label={t('labels.category')}
               >
                 {Object.keys(categories)
                   .filter(c => c !== showDeleteCategoryConfirm.categoryName)

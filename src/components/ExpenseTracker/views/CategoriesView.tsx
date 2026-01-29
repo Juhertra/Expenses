@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PlusCircle, Trash2, TrendingDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../../ui/Button';
+import { Button, IconButton } from '../../ui';
 import { AddCategoryModal } from '../../modals/AddCategoryModal';
 import type { Expense, HouseholdSettings } from '../../../lib/types';
 import type { Theme } from '../../../lib/theme';
@@ -113,7 +113,7 @@ export function CategoriesView({
 
   const handleCategoryClick = (category: string) => {
     onFilterByCategory(category);
-    showToast(t('toasts.filteringBy', { category: getCategoryLabel(category) }), 'success');
+    showToast(t('toasts.filteringBy', { name: getCategoryLabel(category) }), 'success');
   };
 
   return (
@@ -167,16 +167,17 @@ export function CategoriesView({
                   >
                     {/* Delete Button (Edit temporarily disabled until modal supports it) */}
                     <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
+                      <IconButton
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteCategory(category);
                         }}
-                        className="p-2 hover:bg-red-600 rounded-lg transition-colors bg-slate-800/90"
+                        variant="danger"
+                        size="sm"
                         title={t('tooltips.deleteCategory')}
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </IconButton>
                     </div>
 
                     <div className="flex items-center gap-4 mb-4">
@@ -246,6 +247,7 @@ export function CategoriesView({
                                 textAnchor="middle"
                                 dominantBaseline="middle"
                                 transform={`rotate(90 ${labelPos.x} ${labelPos.y})`}
+                                direction="ltr"
                               >
                                 {percentage.toFixed(1)}%
                               </text>

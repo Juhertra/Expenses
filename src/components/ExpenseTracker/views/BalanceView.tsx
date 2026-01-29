@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PlusCircle, Trash2, X } from 'lucide-react';
 import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '../../../lib/types';
 import type { Theme } from '../../../lib/theme';
-import { Button } from '../../ui/Button';
+import { Button, IconButton } from '../../ui';
 
 interface BalanceViewProps {
   expenses: Expense[];
@@ -327,13 +327,14 @@ export function BalanceView({
                       <span className="text-xl font-bold text-green-400">
                         {withLtr(formatCurrency(settlement.amount))}
                       </span>
-                      <button
+                      <IconButton
                         onClick={() => onDeleteSettlement(settlement.id)}
-                        className="p-2 hover:bg-red-600 rounded-lg transition-colors"
+                        variant="danger"
+                        size="sm"
                         title={t('tooltips.deleteSettlement')}
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </IconButton>
                     </div>
                   </div>
                 ))}
@@ -344,8 +345,14 @@ export function BalanceView({
 
       {/* Settlement recording modal */}
       {showSettlementModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
+          onClick={() => setShowSettlementModal(false)}
+        >
+          <div
+            className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold">{t('labels.recordSettlement')}</h3>
               <button

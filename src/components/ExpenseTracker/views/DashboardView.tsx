@@ -9,7 +9,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../../ui/Button';
+import { Button, IconButton } from '../../ui';
 import type { Expense, RecurringTransaction, PartnerNames } from '../../../lib/types';
 import type { Theme } from '../../../lib/theme';
 
@@ -794,16 +794,17 @@ export function DashboardView({
                               : 'text-red-400'
                           }`}
                         >
-                          {rec.type === 'income' ? '+' : '-'}$
-                          {rec.amount.toFixed(2)}
+                          {withLtr(`${rec.type === 'income' ? '+' : '-'}${formatCurrency(rec.amount)}`)}
                         </div>
                       </div>
-                      <button
+                      <IconButton
                         onClick={() => onDeleteRecurring(rec.id, rec.description)}
-                        className="p-2 hover:bg-red-600 rounded-lg transition-colors"
+                        variant="danger"
+                        size="sm"
+                        title={t('tooltips.deleteTransaction')}
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </IconButton>
                     </div>
                   </div>
                 ))}

@@ -7,7 +7,7 @@ import type {
   HouseholdSettings,
 } from '../../../lib/types';
 import type { Theme } from '../../../lib/theme';
-import { Button } from '../../ui';
+import { Button, IconButton } from '../../ui';
 
 interface FilterPreset {
   name: string;
@@ -385,7 +385,9 @@ export function TransactionsView({
                 <select
                   value={inlineEditData.category ?? exp.category}
                   onChange={(e) => setInlineEditData({...inlineEditData, category: e.target.value})}
-                  className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm"
+                  dir={i18n.dir()}
+                  className={`bg-slate-700 border border-slate-600 hover:border-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 rounded ${isRTL ? 'pr-8 pl-2' : 'pl-2 pr-8'} py-1 text-sm outline-none transition-all`}
+                  aria-label={t('labels.category')}
                 >
                   {Object.keys(categories).map(cat => (
                     <option key={cat} value={cat}>
@@ -501,17 +503,18 @@ export function TransactionsView({
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button
+                  <IconButton
                     data-action="delete"
                     onClick={(e) => {
                       e.stopPropagation();
                       confirmDeleteExpense(exp.id, exp.description);
                     }}
-                    className="p-1.5 sm:p-2 hover:bg-red-600 rounded-lg transition-colors"
+                    variant="danger"
+                    size="sm"
                     title={t('tooltips.deleteTransaction')}
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </IconButton>
                 </div>
               )}
             </div>

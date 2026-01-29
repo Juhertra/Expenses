@@ -454,7 +454,7 @@ export function SettingsPanel({
                   onClick={() => setAppTheme("dark-purple")}
                   className={`relative p-4 rounded-xl transition-all ${
                     currentTheme === "dark-purple"
-                      ? "ring-2 ring-purple-500 bg-gradient-to-br from-purple-900 to-pink-900"
+                      ? `ring-2 ${themes["dark-purple"].colors.focus} bg-gradient-to-br from-purple-900 to-pink-900`
                       : "bg-gradient-to-br from-purple-900/50 to-pink-900/50 hover:from-purple-900/70 hover:to-pink-900/70"
                   }`}
                 >
@@ -467,7 +467,7 @@ export function SettingsPanel({
                   onClick={() => setAppTheme("ocean-blue")}
                   className={`relative p-4 rounded-xl transition-all ${
                     currentTheme === "ocean-blue"
-                      ? "ring-2 ring-blue-500 bg-gradient-to-br from-blue-900 to-cyan-900"
+                      ? `ring-2 ${themes["ocean-blue"].colors.focus} bg-gradient-to-br from-blue-900 to-cyan-900`
                       : "bg-gradient-to-br from-blue-900/50 to-cyan-900/50 hover:from-blue-900/70 hover:to-cyan-900/70"
                   }`}
                 >
@@ -480,7 +480,7 @@ export function SettingsPanel({
                   onClick={() => setAppTheme("minimal")}
                   className={`relative p-4 rounded-xl transition-all ${
                     currentTheme === "minimal"
-                      ? "ring-2 ring-slate-500 bg-gradient-to-br from-slate-900 to-slate-800"
+                      ? `ring-2 ${themes["minimal"].colors.focus} bg-gradient-to-br from-slate-900 to-slate-800`
                       : "bg-gradient-to-br from-slate-900/50 to-slate-800/50 hover:from-slate-900/70 hover:to-slate-800/70"
                   }`}
                 >
