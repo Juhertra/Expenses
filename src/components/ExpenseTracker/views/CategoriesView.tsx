@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PlusCircle, Edit2, Trash2, TrendingDown } from 'lucide-react';
+import { PlusCircle, Trash2, TrendingDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/Button';
 import { AddCategoryModal } from '../../modals/AddCategoryModal';
@@ -30,9 +30,9 @@ export function CategoriesView({
   formatCurrency,
   withLtr,
   getCategoryLabel,
-  savingSettings,
+  savingSettings: _savingSettings,
   onAddCategory,
-  onEditCategory,
+  onEditCategory: _onEditCategory,
   onDeleteCategory,
   onUpdateTransactionCategory,
   onOpenQuickAdd,
@@ -165,24 +165,8 @@ export function CategoriesView({
                     className={`bg-slate-700/50 rounded-xl p-6 border-2 border-dashed border-transparent ${theme.colors.cardBorderHover} transition-colors relative group`}
                     title={t('tooltips.dropToRecategorize')}
                   >
-                    {/* Edit & Delete Buttons */}
+                    {/* Delete Button (Edit temporarily disabled until modal supports it) */}
                     <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCategoryForm({
-                            name: getCategoryLabel(category),
-                            icon: categories[category].icon,
-                            color: categories[category].color
-                          });
-                          setEditingCategory(category);
-                          setShowCategoryModal(true);
-                        }}
-                        className="p-2 hover:bg-slate-600 rounded-lg transition-colors bg-slate-800/90"
-                        title={t('tooltips.editCategory')}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
