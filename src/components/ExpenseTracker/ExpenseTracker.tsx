@@ -5,8 +5,6 @@ import {
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Edit2,
-  Trash2,
   X,
   Check,
   Settings,

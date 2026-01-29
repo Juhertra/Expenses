@@ -5,8 +5,8 @@ import type {
   Expense,
   PartnerNames,
   HouseholdSettings,
-  Theme,
 } from '../../../lib/types';
+import type { Theme } from '../../../lib/theme';
 import { Button } from '../../ui';
 
 interface FilterPreset {
@@ -74,6 +74,7 @@ export function TransactionsView({
   categories,
   partnerNames,
   householdSettings,
+  theme: _theme,
   searchQuery,
   selectedCategory,
   bulkMode,

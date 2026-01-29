@@ -5,16 +5,40 @@ import type {
   PartnerNames,
   HouseholdSettings,
   Settlement,
-  Theme,
-  InsightsData,
-  CategoryDelta,
   ChartDataPoint,
-  TrendDataPoint,
-  FrequentExpense,
 } from '../../lib/types';
+import type { Theme } from '../../lib/theme';
 import { BalanceView, CategoriesView, DashboardView, TransactionsView } from './views';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
+
+// Local type definitions (matching DashboardView)
+interface InsightsData {
+  largest: {
+    amount: number;
+    description: string;
+  };
+  avgDaily: number;
+  topCategory: string;
+  daysWithSpending: number;
+}
+
+interface CategoryDelta {
+  category: string;
+  delta: number;
+}
+
+interface TrendDataPoint {
+  year: number;
+  month: number;
+  amount: number;
+}
+
+interface FrequentExpense {
+  description: string;
+  category: string;
+  amount: number;
+}
 
 interface FilterPreset {
   name: string;
@@ -102,7 +126,7 @@ interface ViewRouterProps {
   formatPercent: (value: number) => React.ReactNode;
   withLtr: (content: React.ReactNode) => React.ReactNode;
   getCategoryLabel: (name: string) => string;
-  getFocusClasses: (accentColor: string) => string;
+  getFocusClasses: () => string;
   showToast: (message: string, type: 'success' | 'error') => void;
 
   // Actions
@@ -114,13 +138,13 @@ interface ViewRouterProps {
   editExpense: (expense: Expense) => void;
   confirmDeleteExpense: (id: number, description: string) => void;
   confirmDeleteRecurring: (id: number, description: string) => void;
-  deleteSettlement: (id: number) => void;
+  deleteSettlement: (id: number) => Promise<void>;
   addCategory: (categoryData: any) => Promise<void>;
   editCategory: (oldName: string, categoryData: any) => Promise<void>;
   confirmDeleteCategory: (name: string) => void;
-  updateTransactionCategory: (oldCategory: string, newCategory: string) => void;
-  persistExpenses: (expenses: Expense[]) => Promise<void>;
-  persistSettlements: (settlements: Settlement[]) => Promise<void>;
+  updateTransactionCategory: (txId: number, newCategory: string) => Promise<void>;
+  persistExpenses: (expenses: Expense[]) => Promise<boolean>;
+  persistSettlements: (settlements: Settlement[]) => Promise<boolean>;
 
   // Translation
   t: (key: string, options?: any) => string;
@@ -242,7 +266,7 @@ export function ViewRouter({
           onOpenQuickAdd={openQuickAdd}
           onSetShowAddModal={setShowAddModal}
           onPrefillForm={(data) => {
-            setFormData(prev => ({
+            setFormData((prev: any) => ({
               ...prev,
               ...data
             }));
