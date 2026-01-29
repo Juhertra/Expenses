@@ -1043,14 +1043,14 @@ const ExpenseTracker: React.FC = () => {
     { icon: Activity, label: t('commands.goToTransactions'), description: t('commands.viewAllTransactions'), action: () => setCurrentView('transactions'), keywords: ['list', 'all'] },
     { icon: PieChart, label: t('commands.goToCategories'), description: t('commands.viewByCategory'), action: () => setCurrentView('categories'), keywords: ['breakdown'] },
     { icon: DollarSign, label: t('commands.goToBalance'), description: t('commands.viewSettlement'), action: () => setCurrentView('balance'), keywords: ['settlement', 'owe'] },
-    
+
     // Actions
     { icon: PlusCircle, label: t('commands.addTransaction'), description: t('commands.createEntry'), action: () => setShowAddModal(true), shortcut: 'Cmd+N' },
     { icon: TrendingDown, label: t('commands.addExpense'), description: t('commands.quickExpense'), action: () => openQuickAdd('expense'), shortcut: 'E' },
     { icon: TrendingUp, label: t('commands.addIncome'), description: t('commands.quickIncome'), action: () => openQuickAdd('income'), shortcut: 'I' },
     { icon: Settings, label: t('commands.openSettings'), description: t('commands.configureApp'), action: () => openSettingsModal(), shortcut: 'Cmd+,' },
       { icon: Save, label: t('commands.exportData'), description: t('commands.saveBackup'), action: () => exportData() },
-    
+
     // Search transactions (top 5 recent)
     ...filteredExpenses.slice(0, 5).map(exp => ({
       icon: DollarSign,
@@ -1062,8 +1062,7 @@ const ExpenseTracker: React.FC = () => {
       action: () => { editExpense(exp); setShowCommandPalette(false); },
       keywords: [exp.category, exp.paidBy]
     }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [filteredExpenses, currentView]);
+  ], [filteredExpenses, currentView, t, formatCurrency, formatDateLocalized]);
 
   const filteredCommands = useMemo(() => {
     if (!commandQuery) return commands;
@@ -1281,14 +1280,19 @@ const ExpenseTracker: React.FC = () => {
 
   // Keep chronological order; mirror positions for RTL instead of reversing data.
   const renderTrend = useMemo(() => trendData, [trendData]);
-  const withLtr = (node: React.ReactNode) => (isRTL ? <span className="ltr-text">{node}</span> : node);
+
+  const withLtr = useCallback(
+    (node: React.ReactNode) => (isRTL ? <span className="ltr-text">{node}</span> : node),
+    [isRTL]
+  );
+
   const formatSigned = useCallback(
     (amount: number, type: 'income' | 'expense') => {
       const sign = amount < 0 ? '-' : type === 'income' ? '+' : '-';
       const val = Math.abs(amount);
       return withLtr(`${sign}${formatCurrency(val)}`);
     },
-    [withLtr]
+    [withLtr, formatCurrency]
   );
 
   const formatPercent = useCallback(
