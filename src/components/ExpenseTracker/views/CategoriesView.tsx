@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PlusCircle, Edit2, Trash2, TrendingDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../ui/Button';
+import { AddCategoryModal } from '../../modals/AddCategoryModal';
 import type { Expense, HouseholdSettings } from '../../../lib/types';
 import type { Theme } from '../../../lib/theme';
 
@@ -42,12 +43,6 @@ export function CategoriesView({
 
   // Local modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryForm, setCategoryForm] = useState({
-    name: '',
-    icon: '',
-    color: 'bg-purple-500'
-  });
 
   const categories = householdSettings.categories;
 
@@ -94,35 +89,7 @@ export function CategoriesView({
     };
   };
 
-  // Get currently used emojis (excluding the one being edited)
-  const getUsedEmojis = (): Set<string> => {
-    const used = new Set<string>();
-    Object.values(categories).forEach(cat => used.add(cat.icon));
-    if (editingCategory && categories[editingCategory]) {
-      used.delete(categories[editingCategory].icon);
-    }
-    return used;
-  };
 
-  const usedEmojis = getUsedEmojis();
-
-  // Available emojis for category selection
-  const AVAILABLE_EMOJIS = ['🍕', '🚗', '🏠', '💊', '🎬', '🛒', '✈️', '🎓', '👔', '🎁', '📱', '🍽️', '🔌', '🏋️', '🐕', '🚰', '📺', '🧹', '🛠️', '🎨'];
-
-  // Available colors for categories
-  const AVAILABLE_COLORS = [
-    'bg-orange-500',
-    'bg-green-500',
-    'bg-blue-500',
-    'bg-yellow-500',
-    'bg-red-500',
-    'bg-purple-500',
-    'bg-pink-500',
-    'bg-indigo-500',
-    'bg-cyan-500',
-    'bg-emerald-500',
-    'bg-gray-500',
-  ];
 
   // Map Tailwind color classes to actual hex colors for SVG
   const colorMap: Record<string, string> = {
@@ -139,61 +106,9 @@ export function CategoriesView({
     'gray-500': '#6b7280'
   };
 
-  const handleAddCategory = async () => {
-    const trimmedName = categoryForm.name.trim();
-
-    // Validation
-    if (!trimmedName) {
-      showToast(t('errors.categoryNameRequired'), 'error');
-      return;
-    }
-    if (!categoryForm.icon) {
-      showToast(t('errors.categoryEmojiRequired'), 'error');
-      return;
-    }
-    if (categories[trimmedName]) {
-      showToast(t('errors.categoryAlreadyExists'), 'error');
-      return;
-    }
-
-    await onAddCategory({
-      name: trimmedName,
-      icon: categoryForm.icon,
-      color: categoryForm.color
-    });
-
+  const handleAddCategory = async (categoryData: { name: string; icon: string; color: string }) => {
+    await onAddCategory(categoryData);
     setShowCategoryModal(false);
-    setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
-  };
-
-  const handleEditCategory = async () => {
-    if (!editingCategory) return;
-
-    const trimmedName = categoryForm.name.trim();
-
-    // Validation
-    if (!trimmedName) {
-      showToast(t('errors.categoryNameRequired'), 'error');
-      return;
-    }
-    if (!categoryForm.icon) {
-      showToast(t('errors.categoryEmojiRequired'), 'error');
-      return;
-    }
-    if (trimmedName !== editingCategory && categories[trimmedName]) {
-      showToast(t('errors.categoryNameExists'), 'error');
-      return;
-    }
-
-    await onEditCategory(editingCategory, {
-      name: trimmedName,
-      icon: categoryForm.icon,
-      color: categoryForm.color
-    });
-
-    setShowCategoryModal(false);
-    setEditingCategory(null);
-    setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
   };
 
   const handleCategoryClick = (category: string) => {
@@ -207,11 +122,7 @@ export function CategoriesView({
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold">{t('labels.expensesByCategory')}</h3>
           <Button
-            onClick={() => {
-              setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
-              setEditingCategory(null);
-              setShowCategoryModal(true);
-            }}
+            onClick={() => setShowCategoryModal(true)}
             variant="accent"
             iconStart={<PlusCircle className="w-4 h-4" />}
             title={t('buttons.addCategory')}
@@ -393,116 +304,13 @@ export function CategoriesView({
         )}
       </div>
 
-      {/* Add/Edit Category Modal */}
-      {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-xl font-bold mb-6">
-                {editingCategory ? t('labels.editCategoryTitle') : t('labels.addCategoryTitle')}
-              </h3>
-
-              <div className="space-y-6">
-                {/* Category Name */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    {t('labels.categoryName')}
-                  </label>
-                  <input
-                    type="text"
-                    value={categoryForm.name}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
-                    placeholder={t('labels.categoryNamePlaceholder')}
-                    autoFocus
-                  />
-                </div>
-
-                {/* Emoji Selection */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    {t('labels.categoryIcon')}
-                  </label>
-                  <div className="grid grid-cols-10 gap-2">
-                    {AVAILABLE_EMOJIS.map((emoji) => {
-                      const isUsed = usedEmojis.has(emoji);
-                      return (
-                        <button
-                          key={emoji}
-                          onClick={() => !isUsed && setCategoryForm({ ...categoryForm, icon: emoji })}
-                          disabled={isUsed}
-                          className={`
-                            text-2xl p-2 rounded-lg transition-all
-                            ${categoryForm.icon === emoji ? 'ring-2 ring-purple-500 bg-slate-600 scale-110' : ''}
-                            ${isUsed ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-600 hover:scale-110'}
-                          `}
-                          title={isUsed ? t('labels.iconInUse') : ''}
-                        >
-                          {emoji}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Color Selection */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    {t('labels.categoryColor')}
-                  </label>
-                  <div className="flex gap-3 flex-wrap">
-                    {AVAILABLE_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => setCategoryForm({ ...categoryForm, color })}
-                        className={`
-                          w-10 h-10 ${color} rounded-lg transition-transform
-                          ${categoryForm.color === color ? 'ring-2 ring-white scale-110' : 'hover:scale-110'}
-                        `}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Preview */}
-                <div className="bg-slate-700/50 rounded-xl p-6">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 ${categoryForm.color} rounded-xl flex items-center justify-center text-3xl shadow-lg`}>
-                      {categoryForm.icon || '🏷️'}
-                    </div>
-                    <div className="text-lg font-medium">
-                      {categoryForm.name ? getCategoryLabel(categoryForm.name) : t('labels.categoryNamePlaceholder')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Actions */}
-              <div className="flex gap-3 mt-6">
-                <Button
-                  onClick={() => {
-                    setShowCategoryModal(false);
-                    setEditingCategory(null);
-                    setCategoryForm({ name: '', icon: '', color: 'bg-purple-500' });
-                  }}
-                  variant="secondary"
-                  className="flex-1"
-                >
-                  {t('buttons.cancel')}
-                </Button>
-                <Button
-                  onClick={() => editingCategory ? handleEditCategory() : handleAddCategory()}
-                  disabled={savingSettings || !categoryForm.name.trim()}
-                  variant="accent"
-                  className="flex-1"
-                >
-                  {savingSettings ? t('buttons.saving') : (editingCategory ? t('buttons.update') : t('buttons.add'))}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add Category Modal */}
+      <AddCategoryModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        onAdd={handleAddCategory}
+        existingCategories={Object.keys(categories)}
+      />
     </>
   );
 }
