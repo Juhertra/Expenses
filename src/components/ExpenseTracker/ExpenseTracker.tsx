@@ -44,7 +44,7 @@ import { useDataContext } from '../../contexts/ExpenseContext';
 import { useModalContext } from '../../contexts/ModalContext';
 import { getSuggestedCloudPaths, type CloudDriveInfo } from '../../lib/cloudDriveDetection';
 import { isFirstLaunch, markWelcomeSeen } from '../../lib/firstLaunch';
-import { BalanceView, CategoriesView, DashboardView, TransactionsView } from './views';
+import { ViewRouter } from './ViewRouter';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -1559,192 +1559,88 @@ const ExpenseTracker: React.FC = () => {
           )}
         </div>
 
-        {/* Dashboard view */}
-        {currentView === 'dashboard' && (
-          <DashboardView
-            filteredExpenses={filteredExpenses}
-            expenses={expenses}
-            recurring={recurring}
-            categories={categories}
-            partnerNames={partnerNames}
-            theme={theme}
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            totalExpense={totalExpense}
-            totalIncome={totalIncome}
-            balance={balance}
-            insights={insights}
-            categoryDeltas={categoryDeltas}
-            sortedCategories={sortedCategories}
-            frequentExpenses={frequentExpenses}
-            chartData={chartData}
-            maxAmount={maxAmount}
-            hasAnyData={hasAnyData}
-            renderTrend={renderTrend}
-            maxTrend={maxTrend}
-            prediction={prediction}
-            months={months}
-            MIN_BAR_PX={MIN_BAR_PX}
-            formatCurrency={formatCurrency}
-            formatDateLocalized={formatDateLocalized}
-            formatSigned={formatSigned}
-            formatPercent={formatPercent}
-            withLtr={withLtr}
-            getCategoryLabel={getCategoryLabel}
-            onOpenQuickAdd={openQuickAdd}
-            onSetShowAddModal={setShowAddModal}
-            onPrefillForm={(data) => {
-              setFormData(prev => ({
-                ...prev,
-                ...data
-              }));
-            }}
-            onAddFrequentExpense={async (exp) => {
-              setSavingTransaction(true);
-              try {
-                const newExpense: Expense = {
-                  id: Date.now(),
-                  description: exp.description,
-                  amount: exp.amount,
-                  category: exp.category,
-                  type: 'expense',
-                  date: new Date().toISOString().split('T')[0],
-                  paidBy: 'partner1',
-                  isAuto: false
-                };
-                const updated = [...expenses, newExpense];
-                setExpenses(updated);
-                await persistExpenses(updated);
-                setDirty(true);
-              } catch (error) {
-                showToast(t('errors.addTransactionFailed'), 'error');
-              } finally {
-                setSavingTransaction(false);
-              }
-            }}
-            onFilterByCategory={(category) => {
-              setSelectedCategory(category);
-              setCurrentView('transactions');
-            }}
-            onViewTransactions={() => setCurrentView('transactions')}
-            onViewMonth={(month, year) => {
-              setSelectedMonth(month);
-              setSelectedYear(year);
-              setCurrentView('transactions');
-              setTransactionPage(1);
-              setSearchQuery('');
-            }}
-            onFilterByDay={(dateStr) => {
-              setSearchQuery(dateStr);
-              setCurrentView('transactions');
-            }}
-            onEditExpense={editExpense}
-            onDeleteRecurring={confirmDeleteRecurring}
-            showToast={showToast}
-            savingTransaction={savingTransaction}
-          />
-        )}
+        {/* Views */}
+        <ViewRouter
+          currentView={currentView}
+          filteredExpenses={filteredExpenses}
+          expenses={expenses}
+          recurring={recurring}
+          settlements={settlements}
+          categories={categories}
+          partnerNames={partnerNames}
+          householdSettings={householdSettings}
+          theme={theme}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          searchQuery={searchQuery}
+          selectedCategory={selectedCategory}
+          bulkMode={bulkMode}
+          selectedIds={selectedIds}
+          inlineEditId={inlineEditId}
+          inlineEditData={inlineEditData}
+          transactionPage={transactionPage}
+          filterPresets={filterPresets}
+          totalExpense={totalExpense}
+          totalIncome={totalIncome}
+          balance={balance}
+          insights={insights}
+          categoryDeltas={categoryDeltas}
+          sortedCategories={sortedCategories}
+          frequentExpenses={frequentExpenses}
+          chartData={chartData}
+          maxAmount={maxAmount}
+          hasAnyData={hasAnyData}
+          renderTrend={renderTrend}
+          maxTrend={maxTrend}
+          prediction={prediction}
+          months={months}
+          MIN_BAR_PX={MIN_BAR_PX}
+          ITEMS_PER_PAGE={ITEMS_PER_PAGE}
+          savingTransaction={savingTransaction}
+          deletingItem={deletingItem}
+          savingSettings={savingSettings}
+          setShowAddModal={setShowAddModal}
+          setFormData={setFormData}
+          setExpenses={setExpenses}
+          setDirty={setDirty}
+          setSavingTransaction={setSavingTransaction}
+          setBulkMode={setBulkMode}
+          setSelectedIds={setSelectedIds}
+          setSelectedCategory={setSelectedCategory}
+          setSearchQuery={setSearchQuery}
+          setTransactionPage={setTransactionPage}
+          setInlineEditId={setInlineEditId}
+          setInlineEditData={setInlineEditData}
+          setSelectedMonth={setSelectedMonth}
+          setSelectedYear={setSelectedYear}
+          setCurrentView={setCurrentView}
+          setSettlements={setSettlements}
+          formatCurrency={formatCurrency}
+          formatDateLocalized={formatDateLocalized}
+          formatSigned={formatSigned}
+          formatPercent={formatPercent}
+          withLtr={withLtr}
+          getCategoryLabel={getCategoryLabel}
+          getFocusClasses={getFocusClasses}
+          showToast={showToast}
+          openQuickAdd={openQuickAdd}
+          toggleSelection={toggleSelection}
+          bulkCategorize={bulkCategorize}
+          bulkDelete={bulkDelete}
+          saveInlineEdit={saveInlineEdit}
+          editExpense={editExpense}
+          confirmDeleteExpense={confirmDeleteExpense}
+          confirmDeleteRecurring={confirmDeleteRecurring}
+          deleteSettlement={deleteSettlement}
+          addCategory={addCategory}
+          editCategory={editCategory}
+          confirmDeleteCategory={confirmDeleteCategory}
+          updateTransactionCategory={updateTransactionCategory}
+          persistExpenses={persistExpenses}
+          persistSettlements={persistSettlements}
+          t={t}
+        />
 
-
-
-        {/* Transactions view */}
-        {currentView === 'transactions' && (
-          <TransactionsView
-            filteredExpenses={filteredExpenses}
-            expenses={expenses}
-            categories={categories}
-            partnerNames={partnerNames}
-            householdSettings={householdSettings}
-            theme={theme}
-            searchQuery={searchQuery}
-            selectedCategory={selectedCategory}
-            bulkMode={bulkMode}
-            selectedIds={selectedIds}
-            inlineEditId={inlineEditId}
-            inlineEditData={inlineEditData}
-            transactionPage={transactionPage}
-            filterPresets={filterPresets}
-            totalExpense={totalExpense}
-            totalIncome={totalIncome}
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            ITEMS_PER_PAGE={ITEMS_PER_PAGE}
-            savingTransaction={savingTransaction}
-            deletingItem={deletingItem}
-            setShowAddModal={setShowAddModal}
-            setBulkMode={setBulkMode}
-            setSelectedIds={setSelectedIds}
-            setSelectedCategory={setSelectedCategory}
-            setSearchQuery={setSearchQuery}
-            setTransactionPage={setTransactionPage}
-            setInlineEditId={setInlineEditId}
-            setInlineEditData={setInlineEditData}
-            setSelectedMonth={setSelectedMonth}
-            setSelectedYear={setSelectedYear}
-            formatCurrency={formatCurrency}
-            formatDateLocalized={formatDateLocalized}
-            formatSigned={formatSigned}
-            withLtr={withLtr}
-            getCategoryLabel={getCategoryLabel}
-            showToast={showToast}
-            toggleSelection={toggleSelection}
-            bulkCategorize={bulkCategorize}
-            bulkDelete={bulkDelete}
-            saveInlineEdit={saveInlineEdit}
-            editExpense={editExpense}
-            confirmDeleteExpense={confirmDeleteExpense}
-          />
-        )}
-
-
-        {/* Categories view */}
-        {currentView === 'categories' && (
-          <CategoriesView
-            expenses={filteredExpenses}
-            householdSettings={householdSettings}
-            theme={theme}
-            formatCurrency={formatCurrency}
-            withLtr={withLtr}
-            getCategoryLabel={getCategoryLabel}
-            savingSettings={savingSettings}
-            onAddCategory={async (categoryData) => {
-              await addCategory(categoryData);
-            }}
-            onEditCategory={async (oldName, categoryData) => {
-              await editCategory(oldName, categoryData);
-            }}
-            onDeleteCategory={confirmDeleteCategory}
-            onUpdateTransactionCategory={updateTransactionCategory}
-            onOpenQuickAdd={openQuickAdd}
-            onFilterByCategory={(category) => {
-              setSelectedCategory(category);
-              setCurrentView('transactions');
-            }}
-            showToast={showToast}
-          />
-        )}
-
-        {/* Balance view */}
-        {currentView === 'balance' && (
-          <BalanceView
-            expenses={filteredExpenses}
-            settlements={settlements}
-            partnerNames={partnerNames}
-            householdSettings={householdSettings}
-            theme={theme}
-            formatCurrency={formatCurrency}
-            formatDateLocalized={formatDateLocalized}
-            withLtr={withLtr}
-            getFocusClasses={getFocusClasses}
-            onRecordSettlement={async (settlement) => {
-              const newSettlements = [...settlements, settlement];
-              await persistSettlements(newSettlements);
-              setSettlements(newSettlements);
-              setDirty(true);
-            }}
-            onDeleteSettlement={deleteSettlement}
-          />
-        )}
 
 
         <SettingsCenterModal
