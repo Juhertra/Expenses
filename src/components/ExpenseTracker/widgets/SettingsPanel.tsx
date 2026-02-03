@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
-import { X, FolderOpen, Check, Sparkles, CheckCircle } from "lucide-react";
+import { X, FolderOpen, Check, Sparkles, CheckCircle, Info, ExternalLink } from "lucide-react";
 import { Button } from "../../ui/Button";
 import type { PartnerNames, HouseholdSettings } from "../../../lib/types";
 import type { ThemeMode } from "../../../lib/theme";
@@ -7,7 +7,15 @@ import type { TFunction, i18n as I18nType } from "i18next";
 import type { MouseEvent } from "react";
 import { themes } from "../../../lib/theme";
 
-type SectionId = "general" | "household" | "appearance" | "data";
+type SectionId = "general" | "household" | "appearance" | "data" | "about";
+
+interface AppInfo {
+  appVersion: string;
+  schemaVersion: number;
+  dataFilePath: string | null;
+  dataFileLastModified: string | null;
+  userDataPath: string;
+}
 
 type Props = {
   title?: string;
@@ -82,12 +90,29 @@ export function SettingsPanel({
   const [importStatus, setImportStatus] = useState<null | "success" | "error">(null);
   const [namesSaveStatus, setNamesSaveStatus] = useState<null | "saving" | "saved">(null);
   const [settingsSaveStatus, setSettingsSaveStatus] = useState<null | "saving" | "saved">(null);
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const namesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settingsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedIndicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const themeDef = themes[currentTheme] || { colors: { cardBorder: "border-slate-700", cardBg: "bg-slate-900/60" } };
   const dir = i18n.dir(i18n.language);
+  const isElectron = !!(window as any).electronAPI;
+
+  // Load app info on mount (Electron only)
+  useEffect(() => {
+    const loadAppInfo = async () => {
+      if ((window as any).electronAPI?.getAppInfo) {
+        try {
+          const info = await (window as any).electronAPI.getAppInfo();
+          setAppInfo(info);
+        } catch (err) {
+          console.error('Failed to load app info:', err);
+        }
+      }
+    };
+    loadAppInfo();
+  }, []);
 
   // Get theme-aware focus ring classes for inputs/selects
   const getFocusClasses = () => {
@@ -108,6 +133,7 @@ export function SettingsPanel({
     household: ["currency", "split", "ratio", "proportional"],
     data: ["export", "import", "backup", "folder", "directory", "auto", "save"],
     appearance: ["appearance", "theme", "dark", "ocean", "minimal", "color"],
+    about: ["about", "version", "info", "path", "file"],
   };
 
   const namesDirty =
@@ -565,6 +591,59 @@ export function SettingsPanel({
             </div>
           </>,
           "data"
+        )}
+
+        {sectionContainer(
+          <>
+            <h4 id="settings-heading-about" className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+              <Info className="w-4 h-4" />
+              {highlightText(t("settings.about.title", "About"))}
+            </h4>
+
+            {isElectron && appInfo ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-400">{t("settings.about.appVersion", "App Version")}</label>
+                    <p className="text-sm font-mono text-white">{appInfo.appVersion}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-400">{t("settings.about.schemaVersion", "Data Schema")}</label>
+                    <p className="text-sm font-mono text-white">v{appInfo.schemaVersion}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs text-slate-400">{t("settings.about.dataFilePath", "Data File")}</label>
+                  {appInfo.dataFilePath ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-mono text-white break-all bg-slate-800 p-2 rounded-lg">
+                        {appInfo.dataFilePath}
+                      </p>
+                      {appInfo.dataFileLastModified && (
+                        <p className="text-xs text-slate-400">
+                          {t("settings.about.lastModified", "Last Modified")}: {new Date(appInfo.dataFileLastModified).toLocaleString(i18n.language)}
+                        </p>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => (window as any).electronAPI?.revealDataFile?.()}
+                        iconStart={<ExternalLink className="w-4 h-4" />}
+                      >
+                        {t("buttons.revealInFolder", "Reveal in folder")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400">{t("settings.about.noDataFile", "No data file configured")}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">{t("settings.about.electronOnly", "Available in desktop app")}</p>
+            )}
+          </>,
+          "about"
         )}
       </div>
     </div>

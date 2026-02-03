@@ -25,14 +25,31 @@ export function SaveStatusIndicator({
 
   // Analyze folder to detect cloud provider
   useEffect(() => {
-    if (saveDirectory) {
-      // Try to get the folder name/path
-      const folderName = saveDirectory.name || '';
-      const info = analyzeFolder(folderName);
-      setCloudInfo(info);
-    } else {
-      setCloudInfo(null);
-    }
+    const detectCloud = async () => {
+      if (saveDirectory) {
+        // Try to get full path from Electron for accurate cloud detection
+        let folderPath = saveDirectory.name || '';
+
+        if ((window as any).electronAPI?.getDataFilePath) {
+          try {
+            const fullPath = await (window as any).electronAPI.getDataFilePath();
+            if (fullPath) {
+              // Use the directory portion of the full file path
+              folderPath = fullPath.replace(/[/\\][^/\\]*$/, '');
+            }
+          } catch {
+            // Fall back to directory name
+          }
+        }
+
+        const info = analyzeFolder(folderPath);
+        setCloudInfo(info);
+      } else {
+        setCloudInfo(null);
+      }
+    };
+
+    detectCloud();
   }, [saveDirectory]);
 
   // Format last save time

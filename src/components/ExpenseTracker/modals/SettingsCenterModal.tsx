@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createScope, createTimeline, stagger } from "animejs";
-import { X, Search, Sliders, Keyboard, Users, Database, Palette } from "lucide-react";
+import { X, Search, Sliders, Keyboard, Users, Database, Palette, Info } from "lucide-react";
 import type { TFunction, i18n as I18nType } from "i18next";
 import type { PartnerNames, HouseholdSettings } from "../../../lib/types";
 import type { ThemeMode } from "../../../lib/theme";
@@ -9,7 +9,7 @@ import { SettingsPanel } from "../widgets/SettingsPanel";
 import { Button } from "../../ui/Button";
 import { useFocusTrap } from "../../../hooks/useFocusTrap";
 
-type SectionId = "general" | "household" | "data" | "appearance";
+type SectionId = "general" | "household" | "data" | "appearance" | "about";
 type TabId = "settings" | "shortcuts";
 
 type Props = {
@@ -54,6 +54,7 @@ const SECTIONS: Array<{ id: SectionId; icon: React.ElementType; labelKey: string
   { id: "household", icon: Users, labelKey: "settings.sections.household" },
   { id: "data", icon: Database, labelKey: "settings.sections.dataBackup" },
   { id: "appearance", icon: Palette, labelKey: "settings.sections.appearance" },
+  { id: "about", icon: Info, labelKey: "settings.sections.about" },
 ];
 
 const KEYWORDS: Record<SectionId, string[]> = {
@@ -61,6 +62,7 @@ const KEYWORDS: Record<SectionId, string[]> = {
   household: ["household", "currency", "ils", "usd", "eur", "split", "ratio", "proportional"],
   data: ["data", "export", "import", "backup", "folder", "directory", "auto", "save"],
   appearance: ["appearance", "theme", "dark", "ocean", "minimal", "color"],
+  about: ["about", "version", "info", "path", "file", "schema"],
 };
 
 export default function SettingsCenterModal(props: Props) {

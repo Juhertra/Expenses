@@ -64,13 +64,18 @@ export function calculateTotals(expenses: Expense[]): TotalsResult {
 
 /**
  * Calculate balance between partners considering split mode and settlements
+ * @param expenses - List of expenses
+ * @param settings - Household settings
+ * @param settlements - List of settlements
+ * @param precomputedTotals - Optional pre-computed totals to avoid duplicate calculation
  */
 export function calculateBalance(
   expenses: Expense[],
   settings: HouseholdSettings,
-  settlements: Settlement[]
+  settlements: Settlement[],
+  precomputedTotals?: TotalsResult
 ): BalanceResult {
-  const totals = calculateTotals(expenses);
+  const totals = precomputedTotals ?? calculateTotals(expenses);
 
   // Determine split ratio based on mode
   const splitRatio =
@@ -112,20 +117,21 @@ export function calculateBalance(
 
 /**
  * Calculate category totals for expenses only
+ * Optimized to use a single pass instead of filter + reduce
  */
 export function calculateCategoryTotals(expenses: Expense[]): Record<string, number> {
-  return expenses
-    .filter(exp => exp.type === 'expense')
-    .reduce((acc, exp) => {
-      if (exp.splits && exp.splits.length > 0) {
-        exp.splits.forEach(split => {
-          acc[split.category] = (acc[split.category] || 0) + split.amount;
-        });
-      } else {
-        acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+  const totals: Record<string, number> = {};
+  for (const exp of expenses) {
+    if (exp.type !== 'expense') continue;
+    if (exp.splits && exp.splits.length > 0) {
+      for (const split of exp.splits) {
+        totals[split.category] = (totals[split.category] || 0) + split.amount;
       }
-      return acc;
-    }, {} as Record<string, number>);
+    } else {
+      totals[exp.category] = (totals[exp.category] || 0) + exp.amount;
+    }
+  }
+  return totals;
 }
 
 /**
@@ -192,31 +198,40 @@ export function getCategoryDeltas(
 
 /**
  * Generate chart data for daily expenses and income
+ * Optimized from O(62n) to O(n) using a single pass with a Map
  */
 export function getChartData(
   expenses: Expense[],
   year: number,
   month: number
 ): ChartDataPoint[] {
-  const data: ChartDataPoint[] = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+  // Initialize day totals with a Map for O(1) access
+  const dayTotals = new Map<number, { expense: number; income: number }>();
   for (let day = 1; day <= daysInMonth; day++) {
-    const dayExpenses = expenses
-      .filter(exp => {
-        const expDate = new Date(exp.date);
-        return expDate.getDate() === day && exp.type === 'expense';
-      })
-      .reduce((sum, exp) => sum + exp.amount, 0);
+    dayTotals.set(day, { expense: 0, income: 0 });
+  }
 
-    const dayIncome = expenses
-      .filter(exp => {
-        const expDate = new Date(exp.date);
-        return expDate.getDate() === day && exp.type === 'income';
-      })
-      .reduce((sum, exp) => sum + exp.amount, 0);
+  // Single pass through expenses - O(n)
+  for (const exp of expenses) {
+    const expDate = new Date(exp.date);
+    const day = expDate.getDate();
+    const totals = dayTotals.get(day);
+    if (totals) {
+      if (exp.type === 'expense') {
+        totals.expense += exp.amount;
+      } else {
+        totals.income += exp.amount;
+      }
+    }
+  }
 
-    data.push({ day, expense: dayExpenses, income: dayIncome });
+  // Convert Map to array - O(daysInMonth)
+  const data: ChartDataPoint[] = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const totals = dayTotals.get(day)!;
+    data.push({ day, expense: totals.expense, income: totals.income });
   }
 
   return data;

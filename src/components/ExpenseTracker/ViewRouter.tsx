@@ -393,11 +393,16 @@ export function ViewRouter({
         />
       );
 
-    case 'balance':
+    case 'balance': {
+      // Filter settlements to match the selected month/year scope
+      const filteredSettlements = settlements.filter(s => {
+        const d = new Date(s.date);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
       return (
         <BalanceView
           expenses={filteredExpenses}
-          settlements={settlements}
+          settlements={filteredSettlements}
           partnerNames={partnerNames}
           householdSettings={householdSettings}
           theme={theme}
@@ -414,6 +419,7 @@ export function ViewRouter({
           onDeleteSettlement={deleteSettlement}
         />
       );
+    }
 
     default:
       return null;

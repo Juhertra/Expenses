@@ -6,6 +6,7 @@ import {
   getChartData,
   getAvailableYears,
   getCategoryDeltas,
+  type TotalsResult,
 } from '../lib/calculations';
 import type { Expense, HouseholdSettings, Settlement, PartnerNames } from '../lib/types';
 
@@ -60,8 +61,9 @@ export const selectCategoryTotals = (filtered: Expense[]) => calculateCategoryTo
 export const selectBalance = (
   filtered: Expense[],
   settings: HouseholdSettings,
-  settlements: Settlement[]
-) => calculateBalance(filtered, settings, settlements);
+  settlements: Settlement[],
+  precomputedTotals?: TotalsResult
+) => calculateBalance(filtered, settings, settlements, precomputedTotals);
 
 export const selectInsights = (
   filtered: Expense[],

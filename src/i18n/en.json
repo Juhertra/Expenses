@@ -14,6 +14,8 @@
   "buttons": {
     "save": "Save",
     "saving": "Saving...",
+    "deleting": "Deleting...",
+    "selectFolder": "Select Folder",
     "cancel": "Cancel",
     "add": "Add",
     "addExpense": "Add Expense",
@@ -48,7 +50,10 @@
     "recordPaymentAction": "Record payment",
     "previous": "Previous",
     "next": "Next",
-    "close": "Close"
+    "close": "Close",
+    "reload": "Reload",
+    "dismiss": "Dismiss",
+    "revealInFolder": "Reveal in folder"
   },
   "labels": {
     "balance": "Balance",
@@ -205,7 +210,8 @@
     "importFailed": "Import failed",
     "addTransactionFailed": "Failed to add transaction",
     "categoryDeleteFailed": "Failed to delete category",
-    "descriptionRequiredShort": "Description required"
+    "descriptionRequiredShort": "Description required",
+    "storageFailed": "Failed to save to storage. Your data may not be persisted."
   },
   "toasts": {
     "deletedTransactions": "Deleted {{count}} transactions",
@@ -226,7 +232,12 @@
     "filteringByCategory": "Filtering by category",
     "showingTransactionsForDay": "Showing transactions for day",
     "viewingRange": "Viewing range",
-    "movedToCategory": "Moved to {{category}}"
+    "movedToCategory": "Moved to {{category}}",
+    "showingThisMonth": "Showing this month",
+    "showingLastMonth": "Showing last month",
+    "appliedFilter": "Applied filter: {{name}}",
+    "foundLargeExpenses": "Found {{count}} large expenses",
+    "noLargeExpensesThisMonth": "No large expenses this month"
   },
   "status": {
     "unsavedChangesWillSaveTo": "Unsaved changes will save to {{path}}",
@@ -241,7 +252,9 @@
     "loading": "Loading...",
     "processing": "Processing...",
     "autoSaving": "Auto-saving...",
-    "settingsSaved": "Saved"
+    "settingsSaved": "Saved",
+    "fileChangedExternally": "Data file changed externally",
+    "changedAt": "Changed at {{time}}"
   },
   "tooltips": {
     "saveTo": "Save to folder",
@@ -327,7 +340,8 @@
       "general": "General",
       "household": "Household",
       "dataBackup": "Data & Backup",
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "about": "About"
     },
     "hint": "Changes are saved locally.",
     "shortcutsTitle": "Keyboard Shortcuts",
@@ -355,7 +369,16 @@
     "darkPurple": "Dark Purple",
     "oceanBlue": "Ocean Blue",
     "minimal": "Minimal",
-    "themeLabel": "Theme"
+    "themeLabel": "Theme",
+    "about": {
+      "title": "About",
+      "appVersion": "App Version",
+      "schemaVersion": "Data Schema",
+      "dataFilePath": "Data File",
+      "lastModified": "Last Modified",
+      "noDataFile": "No data file configured",
+      "electronOnly": "Available in desktop app"
+    }
   },
   "emojiThemes": {
     "home": "Home",

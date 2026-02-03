@@ -103,7 +103,7 @@ export function BalanceView({
       return;
     }
     if (settlementForm.from === settlementForm.to) {
-      alert(t('errors.settlementSamePerson'));
+      alert(t('errors.settlementSamePartner'));
       return;
     }
 

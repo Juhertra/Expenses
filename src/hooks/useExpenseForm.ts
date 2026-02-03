@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Expense, FormData, RecurringTransaction } from '../lib/types';
 import { useDataContext } from '../contexts/ExpenseContext';
@@ -48,8 +48,26 @@ export function useExpenseForm() {
   }, []);
 
   /**
+   * Memoized expense index by date for O(1) lookup during duplicate detection
+   * Instead of scanning all expenses (O(n)), we only scan expenses on the same date
+   */
+  const expensesByDate = useMemo(() => {
+    const index = new Map<string, Expense[]>();
+    for (const exp of expenses) {
+      const list = index.get(exp.date);
+      if (list) {
+        list.push(exp);
+      } else {
+        index.set(exp.date, [exp]);
+      }
+    }
+    return index;
+  }, [expenses]);
+
+  /**
    * Check for duplicate transactions (same date, amount, canonical description)
    * Uses canonical form for stable comparison that won't change with normalization rules
+   * Optimized to use date-indexed lookup for O(1) instead of O(n)
    * @param excludeId - ID to exclude when checking (for updates)
    */
   const checkDuplicate = useCallback((
@@ -60,16 +78,20 @@ export function useExpenseForm() {
   ): Expense | null => {
     // Allow repeat incomes (partners can record the same income name/amount/date)
     if (formData.type === 'income') return null;
+
+    // Get only expenses on this date (O(1) lookup)
+    const dateExpenses = expensesByDate.get(date);
+    if (!dateExpenses) return null;
+
     const canonicalDesc = canonicalForm(normalizedDesc);
-    return expenses.find(e =>
-      e.date === date &&
+    return dateExpenses.find(e =>
       Math.abs(e.amount - amount) < 0.01 &&
       e.type === formData.type &&
       e.paidBy === formData.paidBy &&
       canonicalForm(e.description) === canonicalDesc &&
       e.id !== excludeId
     ) || null;
-  }, [expenses, formData.type, formData.paidBy, canonicalForm]);
+  }, [expensesByDate, formData.type, formData.paidBy, canonicalForm]);
 
   /**
    * Validate form data before adding/updating

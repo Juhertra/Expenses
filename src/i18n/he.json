@@ -14,6 +14,8 @@
   "buttons": {
     "save": "שמירה",
     "saving": "שומר...",
+    "deleting": "מוחק...",
+    "selectFolder": "בחר תיקייה",
     "cancel": "ביטול",
     "add": "הוספה",
     "addExpense": "הוסף הוצאה",
@@ -48,7 +50,10 @@
     "recordPaymentAction": "רשום תשלום",
     "previous": "הקודם",
     "next": "הבא",
-    "close": "סגור"
+    "close": "סגור",
+    "reload": "טען מחדש",
+    "dismiss": "התעלם",
+    "revealInFolder": "הצג בתיקייה"
   },
   "labels": {
     "balance": "יתרה",
@@ -205,7 +210,8 @@
     "importFailed": "ייבוא נכשל",
     "addTransactionFailed": "הוספת תנועה נכשלה",
     "categoryDeleteFailed": "מחיקת קטגוריה נכשלה",
-    "descriptionRequiredShort": "נדרש תיאור"
+    "descriptionRequiredShort": "נדרש תיאור",
+    "storageFailed": "השמירה לאחסון נכשלה. הנתונים עלולים לא להישמר."
   },
   "toasts": {
     "deletedTransactions": "נמחקו {{count}} תנועות",
@@ -226,7 +232,12 @@
     "filteringByCategory": "מסנן קטגוריה",
     "showingTransactionsForDay": "מציג תנועות ליום",
     "viewingRange": "מציג טווח",
-    "movedToCategory": "הועבר ל-{{category}}"
+    "movedToCategory": "הועבר ל-{{category}}",
+    "showingThisMonth": "מציג חודש נוכחי",
+    "showingLastMonth": "מציג חודש קודם",
+    "appliedFilter": "סינון פעיל: {{name}}",
+    "foundLargeExpenses": "נמצאו {{count}} הוצאות גדולות",
+    "noLargeExpensesThisMonth": "אין הוצאות גדולות החודש"
   },
   "status": {
     "unsavedChangesWillSaveTo": "שינויים יישמרו ל-{{path}}",
@@ -241,7 +252,9 @@
     "loading": "טוען...",
     "processing": "מעבד...",
     "autoSaving": "שומר אוטומטית...",
-    "settingsSaved": "נשמר"
+    "settingsSaved": "נשמר",
+    "fileChangedExternally": "קובץ הנתונים השתנה מבחוץ",
+    "changedAt": "שונה ב-{{time}}"
   },
   "tooltips": {
     "saveTo": "שמור לתיקייה",
@@ -327,7 +340,8 @@
       "general": "כללי",
       "household": "משק בית",
       "dataBackup": "נתונים וגיבוי",
-      "appearance": "מראה"
+      "appearance": "מראה",
+      "about": "אודות"
     },
     "hint": "השינויים נשמרים מקומית.",
     "shortcutsTitle": "קיצורי מקלדת",
@@ -355,7 +369,16 @@
     "darkPurple": "סגול כהה",
     "oceanBlue": "כחול ים",
     "minimal": "מינימלי",
-    "themeLabel": "ערכת נושא"
+    "themeLabel": "ערכת נושא",
+    "about": {
+      "title": "אודות",
+      "appVersion": "גרסת אפליקציה",
+      "schemaVersion": "גרסת נתונים",
+      "dataFilePath": "קובץ נתונים",
+      "lastModified": "שינוי אחרון",
+      "noDataFile": "לא הוגדר קובץ נתונים",
+      "electronOnly": "זמין באפליקציה"
+    }
   },
   "emojiThemes": {
     "home": "בית",

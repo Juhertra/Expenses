@@ -35,8 +35,10 @@ import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
 import { WelcomeModal, FolderSelectionModal, AddCategoryModal } from '../modals';
 import { SaveStatusIndicator } from '../shared/SaveStatusIndicator';
+import { ExternalChangeBanner } from '../shared/ExternalChangeBanner';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
 import { useDataPersistence } from '../../hooks/useDataPersistence';
+import { useExternalFileChange } from '../../hooks/useExternalFileChange';
 import { useUIContext } from '../../contexts/UIContext';
 import { useDataContext } from '../../contexts/ExpenseContext';
 import { useModalContext } from '../../contexts/ModalContext';
@@ -132,6 +134,14 @@ const ExpenseTracker: React.FC = () => {
     chooseSaveDirectory,
     checkFileSystemSupport,
   } = useDataPersistence();
+
+  // External file change detection (for cloud sync)
+  const {
+    hasExternalChange,
+    changedAt: externalChangeTime,
+    dismiss: dismissExternalChange,
+    reload: reloadFromExternalChange,
+  } = useExternalFileChange();
 
   // Local UI state (component-specific, not shared)
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -1383,7 +1393,16 @@ const ExpenseTracker: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${theme.colors.bgPrimary} ${theme.colors.textPrimary} p-4`}>
+    <>
+      {/* External file change banner (cloud sync notification) */}
+      <ExternalChangeBanner
+        show={hasExternalChange}
+        changedAt={externalChangeTime}
+        onReload={reloadFromExternalChange}
+        onDismiss={dismissExternalChange}
+      />
+
+      <div className={`min-h-screen bg-gradient-to-br ${theme.colors.bgPrimary} ${theme.colors.textPrimary} p-4 ${hasExternalChange ? 'pt-16' : ''}`}>
       <div className="max-w-7xl mx-auto">
         {/* Toast Notification (Phase 1 Feature #2D) */}
         {toast && (
@@ -1697,8 +1716,14 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Add/edit transaction modal */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
+            onClick={resetForm}
+          >
+            <div
+              className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold">
                   {editingId ? t('labels.editTransaction') : t('labels.addTransactionTitle')}
@@ -1892,8 +1917,14 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Delete confirmation modal */}
         {deleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-red-500 my-8">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
+            onClick={() => setDeleteConfirm(null)}
+          >
+            <div
+              className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-red-500 my-8"
+              onClick={e => e.stopPropagation()}
+            >
               <h3 className="text-xl font-bold mb-4">
                 {t('messages.deleteConfirmTitle', {
                   type: deleteConfirm.type === 'expense' ? t('labels.transaction') : t('labels.recurringItem')
@@ -1959,8 +1990,14 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Command Palette (Phase 2 Feature #1) */}
         {showCommandPalette && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-32 p-4 z-50">
-            <div className="bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-700 shadow-2xl">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-32 p-4 z-50"
+            onClick={() => setShowCommandPalette(false)}
+          >
+            <div
+              className="bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-700 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
               {/* Search Input */}
               <div className="p-4 border-b border-slate-700">
                 <input
@@ -2018,8 +2055,14 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Category Edit Modal (Legacy) */}
         {showCategoryModal && editingCategory && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full border border-slate-700/50 shadow-2xl max-h-[90vh] overflow-y-auto my-auto">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
+            onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }}
+          >
+            <div
+              className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full border border-slate-700/50 shadow-2xl max-h-[90vh] overflow-y-auto my-auto"
+              onClick={e => e.stopPropagation()}
+            >
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h3 className={`text-2xl font-bold bg-gradient-to-r ${theme.colors.accentGradient} bg-clip-text text-transparent`}>
@@ -2170,8 +2213,14 @@ const ExpenseTracker: React.FC = () => {
 
         {/* Category Delete Confirmation with Reassignment */}
         {showDeleteCategoryConfirm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-red-500">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowDeleteCategoryConfirm(null)}
+          >
+            <div
+              className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-red-500"
+              onClick={e => e.stopPropagation()}
+            >
               <h3 className="text-xl font-bold mb-4">{t('messages.deleteCategoryTitle')}</h3>
               <p className="text-slate-300 mb-4">
                 {t('messages.categoryHasTransactions', {
@@ -2251,6 +2300,7 @@ const ExpenseTracker: React.FC = () => {
 
       </div>
     </div>
+    </>
   );
 };
 
