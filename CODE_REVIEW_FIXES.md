@@ -137,15 +137,16 @@ Created: 2026-02-02
 
 ## Cleanup Candidates
 
-### 11. [ ] Remove Large/Unnecessary Files
-- [ ] `Expenses_backup_20260123_193648.tar.gz`
-- [ ] `Expenses/node-v22.12.0-win-x64/**` (bundled Node runtime)
+### 11. [x] Remove Large/Unnecessary Files
+- [x] `Expenses_backup_20260123_193648.tar.gz` - not found (already removed)
+- [x] `Expenses/node-v22.12.0-win-x64/**` (bundled Node runtime) - removed
 
-### 12. [ ] Remove Scratch/Duplicate Files
-- [ ] Root `patch_tmp.py`
-- [ ] `tmp_inspect.py`, `tmp_fix*.py`, `temp_he_fix.py`, `tmp_he.txt`
-- [ ] `Expenses/garbage/*`
-- [ ] Root `animeHelpers.ts` (duplicate of src version)
+### 12. [x] Remove Scratch/Duplicate Files
+- [x] Root `patch_tmp.py` - not found (already removed)
+- [x] `tmp_inspect.py`, `tmp_fix*.py`, `temp_he_fix.py`, `tmp_he.txt` - removed
+- [x] `Expenses/garbage/*` - removed entire folder
+- [x] Root `animeHelpers.ts` - not found (only exists in correct src/lib/animations location)
+- [x] Root `SettingsCenter.tsx` - removed (scratch file)
 
 ---
 
@@ -164,6 +165,7 @@ Created: 2026-02-02
 | 2026-02-02 | Optimization #8 | Done | Duplicate detection uses memoized expensesByDate Map for O(1) date lookup |
 | 2026-02-03 | Enhancement #9 | Done | External file change detection: useExternalFileChange hook + ExternalChangeBanner component |
 | 2026-02-03 | Enhancement #10 | Done | About section in Settings: app version, schema version, data file path, reveal in folder |
+| 2026-02-03 | Cleanup #11-12 | Done | Removed: node-v22.12.0-win-x64/, garbage/, tmp_*.py, temp_he_fix.py, tmp_he.txt, SettingsCenter.tsx |
 | | | | |
 
 ---
