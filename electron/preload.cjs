@@ -34,9 +34,23 @@ const suggestedFolders = (() => {
 const STORAGE_SCHEMA_VERSION = 1;
 const MAX_PAYLOAD_SIZE = 10 * 1024 * 1024; // 10MB limit
 
+// Write queue to prevent race conditions
+// Multiple concurrent writes would cause data loss without serialization
+let writeQueue = Promise.resolve();
+let cachedRaw = null;
+let cacheValid = false;
+
 const readRaw = async () => {
+  // Use cache if valid (within same serialized write operation)
+  if (cacheValid && cachedRaw !== null) {
+    return cachedRaw;
+  }
+
   const contents = await ipcRenderer.invoke('data:read');
-  if (!contents) return {};
+  if (!contents) {
+    cachedRaw = {};
+    return {};
+  }
   try {
     const parsed = JSON.parse(contents);
 
@@ -45,10 +59,12 @@ const readRaw = async () => {
       console.warn(`Data file schema version ${parsed.schemaVersion} is newer than supported version ${STORAGE_SCHEMA_VERSION}`);
     }
 
-    if (parsed.raw && typeof parsed.raw === 'object') return parsed.raw;
-    return {};
+    const raw = (parsed.raw && typeof parsed.raw === 'object') ? parsed.raw : {};
+    cachedRaw = raw;
+    return raw;
   } catch (err) {
     console.error('Failed to parse data file:', err);
+    cachedRaw = {};
     return {};
   }
 };
@@ -74,6 +90,25 @@ const writeRaw = async (raw) => {
   }
 
   await ipcRenderer.invoke('data:write', jsonString);
+  // Update cache after successful write
+  cachedRaw = { ...raw };
+};
+
+// Serialize all write operations to prevent race conditions
+const serializedWrite = (operation) => {
+  writeQueue = writeQueue.then(async () => {
+    cacheValid = true;
+    try {
+      return await operation();
+    } finally {
+      cacheValid = false;
+    }
+  }).catch((err) => {
+    cacheValid = false;
+    console.error('Serialized write error:', err);
+    throw err;
+  });
+  return writeQueue;
 };
 
 contextBridge.exposeInMainWorld('storage', {
@@ -82,19 +117,23 @@ contextBridge.exposeInMainWorld('storage', {
     if (!(key in raw)) return null;
     return { value: raw[key] };
   },
-  set: async (key, value) => {
-    const raw = await readRaw();
-    raw[key] = value;
-    await writeRaw(raw);
-    return { key, value };
-  },
-  delete: async (key) => {
-    const raw = await readRaw();
-    if (key in raw) {
-      delete raw[key];
+  set: (key, value) => {
+    return serializedWrite(async () => {
+      const raw = await readRaw();
+      raw[key] = value;
       await writeRaw(raw);
-    }
-    return { key, deleted: true };
+      return { key, value };
+    });
+  },
+  delete: (key) => {
+    return serializedWrite(async () => {
+      const raw = await readRaw();
+      if (key in raw) {
+        delete raw[key];
+        await writeRaw(raw);
+      }
+      return { key, deleted: true };
+    });
   },
   list: async (prefix) => {
     const raw = await readRaw();
