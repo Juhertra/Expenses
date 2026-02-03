@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
+# AI assistant files
+.claude/
+.cursor/
+.codex/
+
