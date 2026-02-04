@@ -1,7 +1,32 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, session } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const fsSync = require('fs');
+
+// Content Security Policy
+const CSP_PRODUCTION = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'", // Tailwind needs inline styles
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+].join('; ');
+
+const CSP_DEVELOPMENT = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' http://localhost:*", // Vite HMR
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: http://localhost:*",
+  "font-src 'self' http://localhost:*",
+  "connect-src 'self' http://localhost:* ws://localhost:*", // Vite WebSocket
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+].join('; ');
 
 const CONFIG_FILE = 'config.json';
 const DEFAULT_DATA_FILE = 'expense-tracker.json';
@@ -279,6 +304,17 @@ const buildMenu = () => {
 };
 
 app.whenReady().then(() => {
+  // Apply Content Security Policy
+  const csp = app.isPackaged ? CSP_PRODUCTION : CSP_DEVELOPMENT;
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
+    });
+  });
+
   createWindow();
   buildMenu();
 
