@@ -79,6 +79,7 @@ export default function SettingsCenterModal(props: Props) {
   const [section, setSection] = useState<SectionId>("general");
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
 
   const dir = useMemo(() => i18n.dir(i18n.language), [i18n, i18n.language]);
   const themeDef = themes[currentTheme] || { colors: { cardBg: "bg-slate-900/60", cardBorder: "border-slate-700" } };
@@ -127,15 +128,48 @@ export default function SettingsCenterModal(props: Props) {
     }
   };
 
+  // Handle close with exit animation
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+
+    const overlay = overlayRef.current;
+    const panel = panelRef.current;
+
+    if (overlay && panel) {
+      const tl = createTimeline({ autoplay: true });
+      tl.add(panel, {
+        opacity: [1, 0],
+        translateY: [0, 8],
+        scale: [1, 0.98],
+        duration: 180,
+        easing: "easeInCubic",
+      })
+        .add(overlay, {
+          opacity: [1, 0],
+          duration: 120,
+          easing: "linear",
+        }, "-=100");
+
+      tl.then(() => {
+        setIsClosing(false);
+        onClose();
+      });
+    } else {
+      setIsClosing(false);
+      onClose();
+    }
+  };
+
   // Close on ESC
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, isClosing]);
 
   // Keyboard support
   useEffect(() => {
@@ -258,26 +292,10 @@ export default function SettingsCenterModal(props: Props) {
     };
   }, [isOpen, initialTab]);
 
-  // Active sidebar animation
-  useEffect(() => {
-    if (!isOpen) return;
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-    const activeButton = sidebar.querySelector<HTMLElement>(`[data-animate="sidebar-item"][data-id="${section}"]`);
-    if (!activeButton) return;
-    const scope = createScope();
-    const tl = createTimeline({ autoplay: true });
-    tl.add(activeButton, {
-      translateX: [-2, 0],
-      opacity: [0.8, 1],
-      duration: 160,
-      easing: "easeOutCubic",
-    });
-    scope.register(tl);
-    return () => scope.revert();
-  }, [section, isOpen]);
+  // Active sidebar animation - removed to prevent jitter on scroll
+  // The visual feedback is handled by CSS classes instead
 
-  // Scroll spy
+  // Scroll spy with debounce to prevent jitter
   useEffect(() => {
     if (!isOpen || tab !== "settings" || noMatches) return;
     const container = contentRef.current;
@@ -291,6 +309,9 @@ export default function SettingsCenterModal(props: Props) {
         return id && currentSections.includes(id as SectionId);
       });
 
+    let pendingSection: SectionId | null = null;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
@@ -298,17 +319,30 @@ export default function SettingsCenterModal(props: Props) {
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
         if (visible[0]) {
           const id = visible[0].target.getAttribute("data-settings-section") as SectionId | null;
-          if (id && id !== section) setSection(id);
+          if (id && id !== section && id !== pendingSection) {
+            pendingSection = id;
+            // Debounce section updates to reduce jitter
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              if (pendingSection) {
+                setSection(pendingSection);
+                pendingSection = null;
+              }
+            }, 100);
+          }
         }
       },
       {
         root: container,
-        threshold: 0.1,
-        rootMargin: "-50px 0px -50px 0px",
+        threshold: 0.15,
+        rootMargin: "-60px 0px -60px 0px",
       }
     );
     sections.forEach((sec) => observer.observe(sec));
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   }, [isOpen, tab, noMatches, section, visibleSections, allSections]);
 
   // Search routing
@@ -336,7 +370,7 @@ export default function SettingsCenterModal(props: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div ref={overlayRef} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onMouseDown={onClose} />
+      <div ref={overlayRef} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onMouseDown={handleClose} />
       <div
         ref={panelRef}
         dir={dir}
@@ -407,7 +441,7 @@ export default function SettingsCenterModal(props: Props) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={onClose}
+            onClick={handleClose}
             iconStart={<X className="w-5 h-5" />}
             className={`!px-2 ${dir === "rtl" ? "mr-2" : "ml-2"}`}
             aria-label={tt("buttons.close", "Close")}
@@ -423,27 +457,33 @@ export default function SettingsCenterModal(props: Props) {
               className={`w-1/4 flex-shrink-0 ${dir === "rtl" ? "border-l" : "border-r"} ${themeDef.colors.cardBorder} ${themeDef.colors.cardBg} p-4 overflow-y-auto h-full`}
             >
               <div className="space-y-2">
-                {SECTIONS.filter((s) => currentSections.includes(s.id)).map(({ id, icon: Icon, labelKey }) => (
-                  <Button
-                    key={id}
-                    data-animate="sidebar-item"
-                    data-id={id}
-                    variant={section === id ? "accent" : "ghost"}
-                    size="sm"
-                    onClick={() => {
-                      setSection(id);
-                      scrollToSection(id);
-                    }}
-                    iconStart={<Icon className="w-4 h-4" />}
-                    className={`w-full !justify-start !rounded-2xl !py-3 ${
-                      section === id
-                        ? `!${themeDef.colors.accentPrimary}/20 border !${themeDef.colors.focus}/40`
-                        : "!bg-transparent border border-transparent text-slate-300 hover:!bg-slate-800/50"
-                    }`}
-                  >
-                    {tt(labelKey, id)}
-                  </Button>
-                ))}
+                {/* Always show all sections, dim non-matching ones to prevent disappear/reappear jitter */}
+                {SECTIONS.map(({ id, icon: Icon, labelKey }) => {
+                  const isMatch = currentSections.includes(id);
+                  const isActive = section === id;
+                  return (
+                    <Button
+                      key={id}
+                      data-animate="sidebar-item"
+                      data-id={id}
+                      variant={isActive ? "accent" : "ghost"}
+                      size="sm"
+                      onClick={() => {
+                        setSection(id);
+                        scrollToSection(id);
+                      }}
+                      iconStart={<Icon className="w-4 h-4" />}
+                      className={`w-full !justify-start !rounded-2xl !py-3 transition-opacity duration-150 ${
+                        isActive
+                          ? `!${themeDef.colors.accentPrimary}/20 border !${themeDef.colors.focus}/40`
+                          : "!bg-transparent border border-transparent text-slate-300 hover:!bg-slate-800/50"
+                      } ${!isMatch && debouncedQuery ? "opacity-40 pointer-events-none" : ""}`}
+                      tabIndex={!isMatch && debouncedQuery ? -1 : 0}
+                    >
+                      {tt(labelKey, id)}
+                    </Button>
+                  );
+                })}
               </div>
 
               <div className="mt-4 text-xs text-slate-500">{tt("settings.hint", "Changes are saved locally.")}</div>
