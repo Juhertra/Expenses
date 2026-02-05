@@ -375,6 +375,78 @@ const ExpenseTracker: React.FC = () => {
     setCurrentView,
   ]);
 
+  /**
+   * Electron menu action listener — maps native menu items / accelerators
+   * to the same handlers used by keyboard shortcuts and the UI.
+   */
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onMenuAction) return;
+
+    api.onMenuAction(async ({ action }) => {
+      switch (action) {
+        case 'open-settings':
+          openSettingsModal();
+          break;
+        case 'show-shortcuts':
+          openSettingsModal('shortcuts');
+          break;
+        case 'new-file': {
+          // eslint-disable-next-line no-restricted-globals
+          if (confirm(t('confirmations.newFile', 'Start a new file? All unsaved data will be lost.'))) {
+            setExpenses([]);
+            setRecurring([]);
+            setSettlements([]);
+            setPartnerNames(defaultPartnerNames);
+            setHouseholdSettings(defaultSettings);
+            setDirty(true);
+          }
+          break;
+        }
+        case 'open-file':
+          await chooseSaveDirectory();
+          break;
+        case 'save':
+          if (dirty) saveData();
+          break;
+        case 'save-as':
+          await api.saveAsDataFile?.();
+          break;
+        case 'export':
+          exportData();
+          break;
+        case 'import': {
+          const result = await api.importDataFile?.();
+          if (result?.contents) {
+            const file = new File(
+              [result.contents],
+              (result.filePath || 'import').split(/[\\/]/).pop() || 'import.json'
+            );
+            await importData(file);
+          }
+          break;
+        }
+        case 'reveal':
+          await api.revealDataFile?.();
+          break;
+      }
+    });
+  }, [
+    openSettingsModal,
+    chooseSaveDirectory,
+    dirty,
+    saveData,
+    exportData,
+    importData,
+    setExpenses,
+    setRecurring,
+    setSettlements,
+    setPartnerNames,
+    setHouseholdSettings,
+    setDirty,
+    t,
+  ]);
+
   useEffect(() => {
     if (!dirty || exportingData) {
       return;

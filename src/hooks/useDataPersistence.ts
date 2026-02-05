@@ -317,8 +317,9 @@ export function useDataPersistence() {
    * Import data from JSON file (validates, shows summary, and overwrites)
    * Vault mode: This restores the source of truth
    */
-  const importData = useCallback(async () => {
-    if (!importFile) {
+  const importData = useCallback(async (fileOverride?: File) => {
+    const file = fileOverride || importFile;
+    if (!file) {
       alert(t('errors.selectImportFile'));
       return;
     }
@@ -326,7 +327,7 @@ export function useDataPersistence() {
     setImportingData(true);
     try {
       // Read and validate file using service layer
-      const text = await importFile.text();
+      const text = await file.text();
       const importObject = parseImport(text);
 
       const { data, raw } = importObject;
