@@ -63,6 +63,7 @@
   "build": {
     "appId": "com.juhertra.expenses",
     "productName": "Expenses",
+    "icon": "resources/icon.png",
     "files": [
       "dist/**",
       "electron/**",
