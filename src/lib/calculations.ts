@@ -1,5 +1,19 @@
 import type { Expense, HouseholdSettings, Settlement, ChartDataPoint } from './types';
 
+/**
+ * Parse a "YYYY-MM-DD" date string into parts without timezone shift.
+ * new Date("YYYY-MM-DD") interprets as UTC midnight, so getMonth()/getDate()
+ * return the wrong values in negative-UTC timezones. This avoids that entirely.
+ */
+export function parseDateParts(dateStr: string): { year: number; month: number; day: number } {
+  const parts = dateStr.split('-');
+  return {
+    year: Number(parts[0]),
+    month: Number(parts[1]) - 1, // JS months are 0-indexed
+    day: Number(parts[2]),
+  };
+}
+
 export interface TotalsResult {
   totalIncome: number;
   totalExpense: number;
@@ -152,7 +166,7 @@ export function calculateInsights(
 
   // Days with spending (unique days)
   const daysWithSpending = new Set(
-    monthExpenses.map(e => new Date(e.date).getDate())
+    monthExpenses.map(e => parseDateParts(e.date).day)
   ).size;
 
   // Average daily spend (only count days with spending)
@@ -215,8 +229,7 @@ export function getChartData(
 
   // Single pass through expenses - O(n)
   for (const exp of expenses) {
-    const expDate = new Date(exp.date);
-    const day = expDate.getDate();
+    const day = parseDateParts(exp.date).day;
     const totals = dayTotals.get(day);
     if (totals) {
       if (exp.type === 'expense') {
@@ -248,7 +261,7 @@ export function getAvailableYears(expenses: Expense[]): number[] {
   }
 
   // Get unique years from actual transactions
-  const years = [...new Set(expenses.map(exp => new Date(exp.date).getFullYear()))];
+  const years = [...new Set(expenses.map(exp => parseDateParts(exp.date).year))];
   years.sort((a, b) => a - b);
 
   // Always include current year and next year for planning
@@ -271,8 +284,7 @@ export function getFrequentExpenses(
 
   expenses.forEach(exp => {
     if (exp.type === 'expense') {
-      // Only track expenses, not income
-      const key = `${exp.description}|${exp.category}|${exp.amount}`;
+      const key = JSON.stringify([exp.description, exp.category, exp.amount]);
       counts[key] = (counts[key] || 0) + 1;
     }
   });
@@ -281,8 +293,8 @@ export function getFrequentExpenses(
     .sort(([, a], [, b]) => b - a)
     .slice(0, limit)
     .map(([key, count]) => {
-      const [description, category, amount] = key.split('|');
-      return { description, category, amount: parseFloat(amount), count };
+      const [description, category, amount] = JSON.parse(key) as [string, string, number];
+      return { description, category, amount, count };
     });
 }
 

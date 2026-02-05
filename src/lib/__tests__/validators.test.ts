@@ -8,8 +8,8 @@ import type { FormData } from '../types.ts';
 
 describe('sanitizeInput', () => {
   it('should remove HTML tags', () => {
-    // Simple regex removes tags but keeps content
-    expect(sanitizeInput('<script>alert("xss")</script>Food')).toBe('alert("xss")Food');
+    // DOMPurify strips script elements entirely (content + tags)
+    expect(sanitizeInput('<script>alert("xss")</script>Food')).toBe('Food');
     expect(sanitizeInput('<b>Bold</b> text')).toBe('Bold text');
     expect(sanitizeInput('<div><p>Nested</p></div>')).toBe('Nested');
   });
@@ -60,7 +60,7 @@ describe('validateExpenseForm', () => {
       amount: '-50',
     });
     expect(result1.isValid).toBe(false);
-    expect(result1.errors).toContain('Amount must be greater than 0');
+    expect(result1.errors).toContain('Amount must be a valid number greater than 0');
 
     const result2 = validateExpenseForm({
       ...validForm,
@@ -111,7 +111,7 @@ describe('validateSettlement', () => {
   it('should reject invalid amounts', () => {
     const result1 = validateSettlement(0, 'partner1', 'partner2');
     expect(result1.isValid).toBe(false);
-    expect(result1.errors).toContain('Amount must be greater than 0');
+    expect(result1.errors).toContain('Amount must be a valid number greater than 0');
 
     const result2 = validateSettlement(-50, 'partner1', 'partner2');
     expect(result2.isValid).toBe(false);

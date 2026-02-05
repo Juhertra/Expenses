@@ -5,7 +5,7 @@
 
 export const isElectron = () =>
   typeof window !== 'undefined' &&
-  !!((window as any).process && (window as any).process.type === 'renderer');
+  !!(window.process && window.process.type === 'renderer');
 
 export const isMac = () => typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC');
 export const isWindows = () => typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('WIN');
@@ -16,8 +16,8 @@ export const getPathSeparator = () => (isWindows() ? '\\' : '/');
 export const storage = {
   async get(key: string, shared?: boolean) {
     try {
-      if ((window as any).storage) {
-        return await (window as any).storage.get(key, shared);
+      if (window.storage) {
+        return await window.storage.get(key, shared);
       }
       // Dev-only fallback (web). Avoid in production/Electron to ensure file-backed persistence.
       if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
@@ -31,8 +31,8 @@ export const storage = {
   },
   async set(key: string, value: string, shared?: boolean) {
     try {
-      if ((window as any).storage) {
-        return await (window as any).storage.set(key, value, shared);
+      if (window.storage) {
+        return await window.storage.set(key, value, shared);
       }
       if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
         localStorage.setItem(key, value);
@@ -45,8 +45,8 @@ export const storage = {
   },
   async delete(key: string, shared?: boolean) {
     try {
-      if ((window as any).storage) {
-        return await (window as any).storage.delete(key, shared);
+      if (window.storage) {
+        return await window.storage.delete?.(key, shared);
       }
       if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
         localStorage.removeItem(key);
@@ -59,8 +59,8 @@ export const storage = {
   },
   async list(prefix?: string, shared?: boolean) {
     try {
-      if ((window as any).storage) {
-        return await (window as any).storage.list(prefix, shared);
+      if (window.storage) {
+        return await window.storage.list?.(prefix, shared);
       }
       if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
         const keys = Object.keys(localStorage).filter(k => !prefix || k.startsWith(prefix));
@@ -78,30 +78,30 @@ export const fileSystem = {
   supportsDirectoryPicker: () => {
     // Electron doesn't use directory picker API, but has file-based storage
     if (isElectron()) {
-      return !!((window as any).electronAPI?.selectDataFile);
+      return !!(window.electronAPI?.selectDataFile);
     }
     // Web uses File System Access API
-    return typeof (window as any).showDirectoryPicker !== 'undefined';
+    return typeof window.showDirectoryPicker !== 'undefined';
   },
   async showDirectoryPicker() {
     if (isElectron()) {
       // In Electron, trigger file selection dialog
-      const electronAPI = (window as any).electronAPI;
+      const electronAPI = window.electronAPI;
       if (electronAPI?.selectDataFile) {
         // Get suggested cloud folder path or use documents
         const homeDir = electronAPI.homeDir || '';
         const result = await electronAPI.selectDataFile(homeDir);
 
-        // Electron returns file path string, but web expects directory handle
-        // Return a mock handle that signals success
+        // Electron returns file path string, but web expects directory handle.
+        // Return a sentinel object cast to the expected type — consumers check .kind === 'electron-file'.
         if (result) {
-          return { name: 'Electron Storage', kind: 'electron-file' };
+          return { name: 'Electron Storage', kind: 'electron-file' } as unknown as FileSystemDirectoryHandle;
         }
       }
       return null;
     }
-    if ('showDirectoryPicker' in window) {
-      return await (window as any).showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
+    if (window.showDirectoryPicker) {
+      return await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
     }
     return null;
   }

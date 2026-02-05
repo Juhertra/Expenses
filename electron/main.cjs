@@ -114,22 +114,26 @@ const atomicWrite = async (filePath, contents) => {
   const tmpPath = `${filePath}.tmp`;
   const bakPath = `${filePath}.bak`;
 
+  // Write new contents to tmp file first
   await fs.writeFile(tmpPath, contents, 'utf-8');
 
-  if (fsSync.existsSync(filePath)) {
-    try {
-      await fs.copyFile(filePath, bakPath);
-    } catch (error) {
-      // Ignore backup errors to avoid blocking save.
-    }
-    try {
-      await fs.unlink(filePath);
-    } catch (error) {
-      // Ignore if file already moved/removed.
-    }
+  const originalExists = fsSync.existsSync(filePath);
+
+  if (originalExists) {
+    // Atomically move original → .bak (no data loss window)
+    await fs.rename(filePath, bakPath);
   }
 
-  await fs.rename(tmpPath, filePath);
+  try {
+    // Move tmp → target
+    await fs.rename(tmpPath, filePath);
+  } catch (error) {
+    // Rollback: restore from backup if rename failed
+    if (originalExists) {
+      await fs.rename(bakPath, filePath);
+    }
+    throw error;
+  }
 };
 
 const writeDataFile = async (contents, targetPath) => {

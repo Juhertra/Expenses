@@ -14,7 +14,7 @@ interface AppInfo {
   schemaVersion: number;
   dataFilePath: string | null;
   dataFileLastModified: string | null;
-  userDataPath: string;
+  userDataPath: string | null;
 }
 
 type Props = {
@@ -97,14 +97,14 @@ export function SettingsPanel({
 
   const themeDef = themes[currentTheme] || { colors: { cardBorder: "border-slate-700", cardBg: "bg-slate-900/60" } };
   const dir = i18n.dir(i18n.language);
-  const isElectron = !!(window as any).electronAPI;
+  const isElectron = !!window.electronAPI;
 
   // Load app info on mount (Electron only)
   useEffect(() => {
     const loadAppInfo = async () => {
-      if ((window as any).electronAPI?.getAppInfo) {
+      if (window.electronAPI?.getAppInfo) {
         try {
-          const info = await (window as any).electronAPI.getAppInfo();
+          const info = await window.electronAPI.getAppInfo();
           setAppInfo(info);
         } catch (err) {
           console.error('Failed to load app info:', err);
@@ -628,7 +628,7 @@ export function SettingsPanel({
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => (window as any).electronAPI?.revealDataFile?.()}
+                        onClick={() => window.electronAPI?.revealDataFile?.()}
                         iconStart={<ExternalLink className="w-4 h-4" />}
                       >
                         {t("buttons.revealInFolder", "Reveal in folder")}

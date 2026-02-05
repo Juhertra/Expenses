@@ -8,6 +8,7 @@ import type {
 } from '../../../lib/types';
 import type { Theme } from '../../../lib/theme';
 import { Button, IconButton } from '../../ui';
+import { parseDateParts } from '../../../lib/calculations';
 
 interface FilterPreset {
   name: string;
@@ -171,6 +172,7 @@ export function TransactionsView({
         <input
           type="text"
           placeholder={t('messages.searchPlaceholder')}
+          aria-label={t('messages.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
@@ -241,12 +243,13 @@ export function TransactionsView({
         <button
           onClick={() => {
             setSearchQuery('');
-            const largeExpenses = expenses.filter(e =>
-              e.type === 'expense' &&
-              e.amount >= 1000 &&
-              new Date(e.date).getMonth() === selectedMonth &&
-              new Date(e.date).getFullYear() === selectedYear
-            );
+            const largeExpenses = expenses.filter(e => {
+              const { month, year } = parseDateParts(e.date);
+              return e.type === 'expense' &&
+                e.amount >= 1000 &&
+                month === selectedMonth &&
+                year === selectedYear;
+            });
             if (largeExpenses.length > 0) {
               showToast(t('toasts.foundLargeExpenses', { count: largeExpenses.length }), 'success');
             } else {

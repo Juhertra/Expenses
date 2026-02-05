@@ -15,15 +15,21 @@ interface ElectronAPI {
     userDataPath: string | null;
   }>;
   importDataFile: () => Promise<{ filePath: string; contents: string } | null>;
-  exportCsvFile: (payload: { defaultPath?: string; contents: string }) => Promise<string | null>;
+  exportCsvFile: (payload: { defaultPath?: string; contents?: string }) => Promise<string | null>;
+  showSaveDialog: (options?: Record<string, unknown>) => Promise<{ canceled: boolean; filePath?: string }>;
+  showOpenDialog: (options?: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths?: string[] }>;
   onDataChanged: (callback: (payload: { path: string; mtimeMs: number }) => void) => void;
   onMenuAction: (callback: (payload: { action: string }) => void) => void;
   platform: string;
   homeDir: string;
-  suggestedFolders: Record<string, string>;
+  suggestedFolders: Array<{ name: string; path: string }>;
 }
 
 interface Window {
   electronAPI?: ElectronAPI;
+  electronTheme?: {
+    getTheme: () => string;
+    setTheme: (theme: string) => void;
+  };
 }
 

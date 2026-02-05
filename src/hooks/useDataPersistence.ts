@@ -118,8 +118,8 @@ export function useDataPersistence() {
       await processRecurring(loadedRecurring, loadedExpenses);
 
       // Check if Electron has a data file configured
-      if ((window as any).electronAPI?.getDataFilePath) {
-        const filePath = await (window as any).electronAPI.getDataFilePath();
+      if (window.electronAPI?.getDataFilePath) {
+        const filePath = await window.electronAPI.getDataFilePath();
         if (filePath) {
           // Create a mock directory handle for Electron to indicate storage is configured
           const mockHandle = {
@@ -423,15 +423,15 @@ export function useDataPersistence() {
       // Clear dirty flag (data is now in sync with "vault")
       setDirty(false);
 
-      alert(t('dialogs.importSuccess'));
-      window.location.reload();
+      showToast(t('dialogs.importSuccess'), 'success');
+      await loadData();
     } catch (error) {
       console.error('Import error:', error);
       showToast(t('errors.importFailed'), 'error');
     } finally {
       setImportingData(false);
     }
-  }, [importFile, householdSettings, setDirty, showToast, t]);
+  }, [importFile, householdSettings, setDirty, showToast, loadData, t]);
 
   return {
     // State

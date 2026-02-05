@@ -21,7 +21,7 @@ export function useExternalFileChange() {
   const [lastKnownMtime, setLastKnownMtime] = useState<number | null>(null);
 
   useEffect(() => {
-    const electronAPI = (window as any).electronAPI;
+    const electronAPI = window.electronAPI;
     if (!electronAPI?.onDataChanged) return;
 
     electronAPI.onDataChanged((payload: { path: string; mtimeMs: number }) => {

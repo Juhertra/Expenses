@@ -131,8 +131,8 @@ export function analyzeFolder(path: string): CloudDriveInfo {
  */
 export function getSuggestedCloudPaths(): CloudDriveInfo[] {
   // Check if running in Electron with suggested folders
-  if (typeof window !== 'undefined' && (window as any).electronAPI?.suggestedFolders) {
-    const folders = (window as any).electronAPI.suggestedFolders;
+  if (typeof window !== 'undefined' && window.electronAPI?.suggestedFolders) {
+    const folders = window.electronAPI.suggestedFolders;
 
     // Ensure folders is actually an array
     if (Array.isArray(folders)) {

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, useRef, ReactNode } from 'react';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
 
@@ -114,11 +114,16 @@ export function UIProvider({ children }: { children: ReactNode }) {
   // Suggestions
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
-  // Helper function to show toast
-  const showToast = (message: string, type: 'success' | 'error') => {
+  // Ref to track active toast timer — prevents race when toasts arrive in quick succession
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // Memoize context value to prevent unnecessary re-renders
   const value: UIContextValue = useMemo(() => ({

@@ -208,8 +208,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setTheme = (newTheme: ThemeMode) => {
     setCurrentTheme(newTheme);
     localStorage.setItem('app-theme', newTheme);
-    if ((window as any).electronTheme?.setTheme) {
-      (window as any).electronTheme.setTheme(newTheme);
+    if (window.electronTheme?.setTheme) {
+      window.electronTheme.setTheme(newTheme);
     }
   };
 
@@ -253,11 +253,3 @@ export const getAllThemesCSS = (): string => {
     .join('\n');
 };
 
-declare global {
-  interface Window {
-    electronTheme?: {
-      getTheme: () => ThemeMode;
-      setTheme: (theme: ThemeMode) => void;
-    };
-  }
-}

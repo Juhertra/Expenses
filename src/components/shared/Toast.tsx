@@ -52,6 +52,7 @@ export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
   return (
     <div
       ref={toastRef}
+      role="alert"
       className={`fixed top-4 ${isRTL ? 'left-4' : 'right-4'} ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50`}
     >
       <Icon className="w-5 h-5" />

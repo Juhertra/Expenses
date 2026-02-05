@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, ReactNode } from 'react';
 
 // Modal context state - Modal visibility and editing state
 export interface ModalContextState {
@@ -89,13 +89,13 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState<ModalContextState['showDeleteCategoryConfirm']>(null);
 
   // Helper to open settings modal with specific tab
-  const openSettingsModal = (tab: 'settings' | 'shortcuts' = 'settings') => {
+  const openSettingsModal = useCallback((tab: 'settings' | 'shortcuts' = 'settings') => {
     setSettingsInitialTab(tab);
     setShowSettingsModal(true);
-  };
+  }, []);
 
   // Helper to close all modals
-  const closeAllModals = () => {
+  const closeAllModals = useCallback(() => {
     setShowAddModal(false);
     setShowSettingsModal(false);
     setShowCommandPalette(false);
@@ -108,7 +108,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     setInlineEditId(null);
     setDeleteConfirm(null);
     setShowDeleteCategoryConfirm(null);
-  };
+  }, []);
 
   // Memoize context value to prevent unnecessary re-renders
   const value: ModalContextValue = useMemo(() => ({

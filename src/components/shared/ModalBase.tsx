@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { fadeIn, fadeOut, fadeScaleIn, fadeScaleOut, withOnFinish } from '../../lib/animations/animeHelpers';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ModalBaseProps {
   isOpen: boolean;
@@ -99,6 +100,9 @@ export function ModalBase({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [visible, requestClose]);
 
+  // Trap focus inside the modal panel while visible
+  useFocusTrap(panelRef as React.RefObject<HTMLElement>, visible);
+
   if (!visible) return null;
 
   return (
@@ -108,7 +112,7 @@ export function ModalBase({
       onClick={requestClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
+      aria-label={title}
     >
       <div
         ref={panelRef}
@@ -117,7 +121,7 @@ export function ModalBase({
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 id="modal-title" className="text-2xl font-bold">
+          <h2 className="text-2xl font-bold">
             {title}
           </h2>
           <button

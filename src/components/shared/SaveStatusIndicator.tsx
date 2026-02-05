@@ -30,9 +30,9 @@ export function SaveStatusIndicator({
         // Try to get full path from Electron for accurate cloud detection
         let folderPath = saveDirectory.name || '';
 
-        if ((window as any).electronAPI?.getDataFilePath) {
+        if (window.electronAPI?.getDataFilePath) {
           try {
-            const fullPath = await (window as any).electronAPI.getDataFilePath();
+            const fullPath = await window.electronAPI.getDataFilePath();
             if (fullPath) {
               // Use the directory portion of the full file path
               folderPath = fullPath.replace(/[/\\][^/\\]*$/, '');

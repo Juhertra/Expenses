@@ -6,6 +6,7 @@ import {
   getChartData,
   getAvailableYears,
   getCategoryDeltas,
+  parseDateParts,
   type TotalsResult,
 } from '../lib/calculations';
 import type { Expense, HouseholdSettings, Settlement, PartnerNames } from '../lib/types';
@@ -25,10 +26,10 @@ export function selectFilteredExpenses(state: FilterState): Expense[] {
   const { expenses, partnerNames, ui } = state;
 
   return expenses.filter(exp => {
-    const expDate = new Date(exp.date);
+    const { year, month } = parseDateParts(exp.date);
     const matchesDate =
-      expDate.getMonth() === ui.selectedMonth &&
-      expDate.getFullYear() === ui.selectedYear;
+      month === ui.selectedMonth &&
+      year === ui.selectedYear;
 
     if (!matchesDate) return false;
 
