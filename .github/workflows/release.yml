@@ -22,8 +22,17 @@ jobs:
       # --- Code signing (optional) ---
       # Store a base64-encoded .pfx certificate in the CSC_FILE_BASE64 secret.
       # If the secret is not set the build publishes unsigned.
+      # Note: secrets context is not available in if: expressions — use an
+      # env-based check step to gate the signing steps instead.
+      - id: check-win-cert
+        shell: pwsh
+        run: |
+          if ($env:CSC_FILE_BASE64) { echo "has_cert=true" >> $env:GITHUB_OUTPUT }
+        env:
+          CSC_FILE_BASE64: ${{ secrets.CSC_FILE_BASE64 }}
+
       - name: Decode signing certificate
-        if: ${{ secrets.CSC_FILE_BASE64 != '' }}
+        if: steps.check-win-cert.outputs.has_cert == 'true'
         shell: pwsh
         run: |
           [System.IO.File]::WriteAllBytes(
@@ -42,7 +51,7 @@ jobs:
           # so publishing works regardless of electron-builder version.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Empty string when secret is absent → electron-builder skips signing.
-          CSC_FILE: ${{ secrets.CSC_FILE_BASE64 != '' && format('{0}/cert.pfx', runner.temp) || '' }}
+          CSC_FILE: ${{ steps.check-win-cert.outputs.has_cert == 'true' && format('{0}/cert.pfx', runner.temp) || '' }}
           CSC_PASSWORD: ${{ secrets.CSC_PASSWORD }}
 
   # Produces: Expenses-<version>-macOS.dmg  +  latest-mac.yml (update manifest)
@@ -62,8 +71,15 @@ jobs:
       # Store a base64-encoded Developer ID .p12 in MACOS_CERT_BASE64.
       # If not set the .dmg is unsigned — macOS Gatekeeper will block it on
       # install.  Sign before shipping to end users.
+      # Same secrets-in-if workaround as the Windows job.
+      - id: check-mac-cert
+        run: |
+          if [ -n "$MACOS_CERT_BASE64" ]; then echo "has_cert=true" >> $GITHUB_OUTPUT; fi
+        env:
+          MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+
       - name: Import signing certificate
-        if: ${{ secrets.MACOS_CERT_BASE64 != '' }}
+        if: steps.check-mac-cert.outputs.has_cert == 'true'
         run: |
           echo "$MACOS_CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p actions actions.keychain
