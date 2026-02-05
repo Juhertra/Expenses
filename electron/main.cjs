@@ -326,6 +326,7 @@ app.whenReady().then(() => {
     try {
       // eslint-disable-next-line global-require
       const { autoUpdater } = require('electron-updater');
+      autoUpdater.logger = console;
       autoUpdater.checkForUpdatesAndNotify().catch(() => {});
     } catch (error) {
       // Ignore auto-update errors in environments without updater support.
