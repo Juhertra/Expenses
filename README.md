@@ -67,6 +67,31 @@ A modern, bilingual (English/Hebrew) expense tracking application for managing h
 - Ocean Blue
 - Minimal
 
+## Screenshots
+
+### Dashboard View
+
+![Dashboard Overview](screenshots/dashboard.png)
+*Main dashboard showing balance overview, expense trends chart, top categories, and recent transactions*
+
+### Transactions View
+
+![Transaction List](screenshots/transactions.png)
+*Transaction list with filtering, search, and month/year navigation*
+
+![Add Transaction Form](screenshots/add-transaction.png)
+*Add/edit transaction form with category selection, amount input, and partner assignment*
+
+### Settings Panel
+
+![Settings Modal](screenshots/settings.png)
+*Settings modal with data management, theme selection, and localization options*
+
+### Theme Options
+
+![Theme Comparison](screenshots/themes.png)
+*Side-by-side comparison of Dark Purple, Ocean Blue, and Minimal themes*
+
 ## Releases & Updates
 
 ### Desktop App Downloads
