@@ -283,7 +283,11 @@ The desktop app auto-updates when new versions are released.
 
 ## License
 
-ISC
+GPL-3.0
+
+This project is licensed under the GNU General Public License v3.0. You are free to use, modify, and distribute this software, but any modifications or derivative works must also be released under the GPL-3.0 license.
+
+See [LICENSE](LICENSE) for the full license text.
 
 ## Author
 

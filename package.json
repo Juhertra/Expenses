@@ -85,7 +85,7 @@
     "url": "git+https://github.com/Juhertra/Expenses.git"
   },
   "author": "Hernan Trajtemberg",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/Juhertra/Expenses/issues"
   },
