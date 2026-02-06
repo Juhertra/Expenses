@@ -10,9 +10,26 @@ permissions:
   contents: write
 
 jobs:
+  # Run tests before any builds. If tests fail, builds never start.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run tests
+        run: npm run test
+
   # Produces: Expenses-setup-<version>.exe  +  latest.yml (update manifest)
   build-windows:
     runs-on: windows-latest
+    needs: test
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +78,7 @@ jobs:
   # Produces: Expenses-<version>-macOS.dmg  +  latest-mac.yml (update manifest)
   build-mac:
     runs-on: macos-latest
+    needs: test
     steps:
       - uses: actions/checkout@v4
 
