@@ -2,7 +2,7 @@
 import { createScope, createTimeline, stagger } from "animejs";
 import { X, Search, Sliders, Keyboard, Users, Database, Palette, Info } from "lucide-react";
 import type { TFunction, i18n as I18nType } from "i18next";
-import type { PartnerNames, HouseholdSettings } from "../../../lib/types";
+import type { PartnerNames, HouseholdSettings } from "@expenses/shared/types";
 import type { ThemeMode } from "../../../lib/theme";
 import { themes } from "../../../lib/theme";
 import { SettingsPanel } from "../widgets/SettingsPanel";

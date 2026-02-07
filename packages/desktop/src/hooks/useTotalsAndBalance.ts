@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useExpenseContext } from '../contexts/ExpenseContext';
-import { type TotalsResult, type BalanceResult } from '../lib/calculations';
+import { type TotalsResult, type BalanceResult } from '@expenses/shared/calculations';
 import { selectTotals, selectBalance } from '../state/selectors';
 import { useFilteredExpenses } from './useFilteredExpenses';
 

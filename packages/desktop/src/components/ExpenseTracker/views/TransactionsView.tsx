@@ -5,10 +5,10 @@ import type {
   Expense,
   PartnerNames,
   HouseholdSettings,
-} from '../../../lib/types';
+} from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 import { Button, IconButton } from '../../ui';
-import { parseDateParts } from '../../../lib/calculations';
+import { parseDateParts } from '@expenses/shared/calculations';
 
 interface FilterPreset {
   name: string;

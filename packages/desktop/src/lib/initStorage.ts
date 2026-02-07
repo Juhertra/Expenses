@@ -4,7 +4,7 @@
 
 import { localStorageAdapter } from './localStorageAdapter';
 import { ElectronStorageAdapter } from './electronStorageAdapter';
-import { getDefaultSeedData } from './defaults';
+import { getDefaultSeedData } from '@expenses/shared/defaults';
 
 const STORAGE_KEYS = {
   EXPENSES: 'household-expenses',

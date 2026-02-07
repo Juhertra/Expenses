@@ -3,7 +3,7 @@ import { PlusCircle, Trash2, TrendingDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, IconButton } from '../../ui';
 import { AddCategoryModal } from '../../modals/AddCategoryModal';
-import type { Expense, HouseholdSettings } from '../../../lib/types';
+import type { Expense, HouseholdSettings } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 
 interface CategoriesViewProps {

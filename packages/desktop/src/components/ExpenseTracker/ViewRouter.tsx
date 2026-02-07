@@ -6,7 +6,7 @@ import type {
   HouseholdSettings,
   Settlement,
   ChartDataPoint,
-} from '../../lib/types';
+} from '@expenses/shared/types';
 import type { Theme } from '../../lib/theme';
 import { BalanceView, CategoriesView, DashboardView, TransactionsView } from './views';
 

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Expense, RecurringTransaction } from '../lib/types';
+import type { Expense, RecurringTransaction } from '@expenses/shared/types';
 import { useDataContext } from '../contexts/ExpenseContext';
 import { useUIContext } from '../contexts/UIContext';
 import {
@@ -16,15 +16,15 @@ import {
   setSettlements as persistSettlements,
 } from '../services/storage';
 import { pickDirectory, supportsDirectoryPicker, isElectron } from '../services/platform';
-import { processRecurringTransactions } from '../services/recurring';
+import { processRecurringTransactions } from '@expenses/shared/recurring';
 import {
   buildExportObject,
   serializeExport,
   parseImport,
   writeJsonToDirectory,
   downloadJson,
-} from '../services/importExport';
-import { DEFAULT_CATEGORIES, defaultSettings } from '../lib/defaults';
+} from '@expenses/shared/importExport';
+import { DEFAULT_CATEGORIES, defaultSettings } from '@expenses/shared/defaults';
 
 /**
  * Hook for managing data persistence (load, save, export, import)

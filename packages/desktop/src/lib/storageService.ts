@@ -4,7 +4,7 @@ import type {
   PartnerNames,
   HouseholdSettings,
   Settlement,
-} from './types';
+} from '@expenses/shared/types';
 
 const STORAGE_KEYS = {
   EXPENSES: 'household-expenses',

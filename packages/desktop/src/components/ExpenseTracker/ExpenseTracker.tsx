@@ -22,8 +22,8 @@ import type {
   ChartDataPoint,
   HouseholdSettings,
   Settlement
-} from '../../lib/types';
-import { DEFAULT_CATEGORIES, defaultPartnerNames, defaultSettings } from '../../lib/defaults';
+} from '@expenses/shared/types';
+import { DEFAULT_CATEGORIES, defaultPartnerNames, defaultSettings } from '@expenses/shared/defaults';
 import {
   setExpenses as persistExpenses,
   setRecurring as persistRecurring,

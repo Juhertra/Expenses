@@ -6,7 +6,7 @@ import type {
   PartnerNames,
   HouseholdSettings,
   Settlement,
-} from '../lib/types';
+} from '@expenses/shared/types';
 import {
   getExpenses,
   getRecurring,
@@ -14,8 +14,8 @@ import {
   getSettings,
   getSettlements,
 } from '../services/storage/index.ts';
-import { DEFAULT_CATEGORIES, defaultSettings, defaultPartnerNames } from '../lib/defaults';
-import { processRecurringTransactions } from '../services/recurring/index.ts';
+import { DEFAULT_CATEGORIES, defaultSettings, defaultPartnerNames } from '@expenses/shared/defaults';
+import { processRecurringTransactions } from '@expenses/shared/recurring';
 
 // Data context state - Core application data
 export interface DataContextState {

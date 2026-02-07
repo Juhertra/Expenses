@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { X, FolderOpen, Check, Sparkles, CheckCircle, Info, ExternalLink } from "lucide-react";
 import { Button } from "../../ui/Button";
-import type { PartnerNames, HouseholdSettings } from "../../../lib/types";
+import type { PartnerNames, HouseholdSettings } from "@expenses/shared/types";
 import type { ThemeMode } from "../../../lib/theme";
 import type { TFunction, i18n as I18nType } from "i18next";
 import type { MouseEvent } from "react";

@@ -4,7 +4,7 @@ import type {
   PartnerNames,
   HouseholdSettings,
   Settlement,
-} from '../../lib/types';
+} from '@expenses/shared/types';
 import {
   loadAllData,
   loadExpenses,

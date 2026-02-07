@@ -3,8 +3,8 @@ import {
   validateExpenseForm,
   validateImportData,
   validateSettlement,
-} from '../validators.ts';
-import type { FormData } from '../types.ts';
+} from '@expenses/shared/validators';
+import type { FormData } from '@expenses/shared/types';
 
 describe('sanitizeInput', () => {
   it('should remove HTML tags', () => {

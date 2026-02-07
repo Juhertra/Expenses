@@ -4,8 +4,8 @@ import {
   calculateCategoryTotals,
   calculateInsights,
   getFrequentExpenses,
-} from '../calculations.ts';
-import type { Expense, HouseholdSettings, Settlement } from '../types.ts';
+} from '@expenses/shared/calculations';
+import type { Expense, HouseholdSettings, Settlement } from '@expenses/shared/types';
 
 describe('calculateTotals', () => {
   it('should calculate totals correctly for mixed transactions', () => {

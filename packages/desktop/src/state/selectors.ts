@@ -8,8 +8,8 @@ import {
   getCategoryDeltas,
   parseDateParts,
   type TotalsResult,
-} from '../lib/calculations';
-import type { Expense, HouseholdSettings, Settlement, PartnerNames } from '../lib/types';
+} from '@expenses/shared/calculations';
+import type { Expense, HouseholdSettings, Settlement, PartnerNames } from '@expenses/shared/types';
 
 export interface FilterState {
   expenses: Expense[];

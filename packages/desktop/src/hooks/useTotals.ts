@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { type TotalsResult } from '../lib/calculations';
+import { type TotalsResult } from '@expenses/shared/calculations';
 import { selectTotals } from '../state/selectors';
 import { useFilteredExpenses } from './useFilteredExpenses';
 

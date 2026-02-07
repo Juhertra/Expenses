@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, IconButton } from '../../ui';
-import type { Expense, RecurringTransaction, PartnerNames } from '../../../lib/types';
+import type { Expense, RecurringTransaction, PartnerNames } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 
 interface ChartDataPoint {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useExpenseContext } from '../contexts/ExpenseContext';
-import type { Expense } from '../lib/types';
+import type { Expense } from '@expenses/shared/types';
 import { selectFilteredExpenses } from '../state/selectors';
 
 /**

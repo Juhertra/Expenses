@@ -1,5 +1,5 @@
-import { canonicalForm, normalizeDescription, checkDuplicate } from '../normalization.ts';
-import type { Expense } from '../types.ts';
+import { canonicalForm, normalizeDescription, checkDuplicate } from '@expenses/shared/normalization';
+import type { Expense } from '@expenses/shared/types';
 
 describe('canonicalForm', () => {
   it('should create canonical form correctly', () => {

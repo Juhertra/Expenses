@@ -1,4 +1,4 @@
-import type { HouseholdSettings } from './types';
+import type { HouseholdSettings } from '@expenses/shared/types';
 
 /**
  * Format a number as currency based on household settings

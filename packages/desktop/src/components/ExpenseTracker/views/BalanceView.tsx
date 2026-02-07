@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusCircle, Trash2, X } from 'lucide-react';
-import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '../../../lib/types';
+import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 import { Button, IconButton } from '../../ui';
 

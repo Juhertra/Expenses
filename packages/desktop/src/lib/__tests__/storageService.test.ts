@@ -6,7 +6,7 @@ import {
   loadSettings,
   saveSettings,
 } from '../storageService.ts';
-import type { Expense, PartnerNames, HouseholdSettings } from '../types.ts';
+import type { Expense, PartnerNames, HouseholdSettings } from '@expenses/shared/types';
 
 describe('storageService', () => {
   beforeEach(() => {

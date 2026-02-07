@@ -1,5 +1,5 @@
-import { processRecurringTransactions } from '../index.ts';
-import type { RecurringTransaction, Expense } from '../../../lib/types.ts';
+import { processRecurringTransactions } from '@expenses/shared/recurring';
+import type { RecurringTransaction, Expense } from '@expenses/shared/types';
 
 describe('processRecurringTransactions', () => {
   it('should create expense for unprocessed recurring transaction', () => {

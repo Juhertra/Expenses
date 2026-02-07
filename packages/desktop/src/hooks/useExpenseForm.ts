@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Expense, FormData, RecurringTransaction } from '../lib/types';
+import type { Expense, FormData, RecurringTransaction } from '@expenses/shared/types';
 import { useDataContext } from '../contexts/ExpenseContext';
 import { useUIContext } from '../contexts/UIContext';
 import { useModalContext } from '../contexts/ModalContext';
