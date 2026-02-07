@@ -4,9 +4,17 @@
     "strict": true,
     "moduleResolution": "bundler",
     "paths": {
-      "@expenses/shared/*": ["../shared/dist/*"]
+      "@expenses/shared/*": [
+        "../shared/dist/*"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/__tests__"
+  ]
 }
