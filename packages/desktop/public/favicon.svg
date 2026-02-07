@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="140" ry="140" fill="url(#bg)"/>
+  <!-- Back coin -->
+  <circle cx="660" cy="580" r="188" fill="white"/>
+  <circle cx="660" cy="580" r="144" fill="#047857"/>
+  <circle cx="660" cy="580" r="76"  fill="white"/>
+  <!-- Front coin -->
+  <circle cx="380" cy="500" r="218" fill="white"/>
+  <circle cx="380" cy="500" r="168" fill="#047857"/>
+  <circle cx="380" cy="500" r="90"  fill="white"/>
+</svg>
