@@ -66,20 +66,18 @@ export default function QuickAddScreen() {
       // Save to storage
       await setExpenses([...expenses, newExpense]);
 
-      // Success feedback
-      Alert.alert('Success', 'Expense added!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Clear form
-            setDescription('');
-            setAmount('');
-            setCategory('Housing');
-          },
-        },
-      ]);
+      console.log('✅ Expense saved successfully:', newExpense);
+      console.log('📊 Total expenses in storage:', expenses.length + 1);
+
+      // Clear form on success
+      setDescription('');
+      setAmount('');
+      setCategory('Housing');
+
+      // Success feedback (mobile only, silent on web)
+      Alert.alert('Success', 'Expense added!');
     } catch (error) {
-      console.error('Error saving expense:', error);
+      console.error('❌ Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense');
     } finally {
       setSaving(false);
