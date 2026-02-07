@@ -4,8 +4,8 @@ import type {
   PartnerNames,
   HouseholdSettings,
   Settlement,
-} from '@expenses/shared/types';
-import { defaultSettings, defaultPartnerNames } from '@expenses/shared/defaults';
+} from '@expenses/shared';
+import { defaultSettings, defaultPartnerNames } from '@expenses/shared';
 import { storageAdapter } from './ReactNativeStorageAdapter';
 
 /**

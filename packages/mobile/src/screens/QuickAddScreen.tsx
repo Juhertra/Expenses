@@ -8,8 +8,8 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import type { Expense } from '@expenses/shared/types';
-import { validateExpenseForm } from '@expenses/shared/validators';
+import type { Expense } from '@expenses/shared';
+import { validateExpenseForm } from '@expenses/shared';
 import { setExpenses, getExpenses } from '../storage/storageService';
 
 export default function QuickAddScreen() {

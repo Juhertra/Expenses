@@ -6,7 +6,7 @@
  */
 
 import { getExpenses, setExpenses, getPartnerNames, setPartnerNames } from '../storageService';
-import type { Expense, PartnerNames } from '@expenses/shared/types';
+import type { Expense, PartnerNames } from '@expenses/shared';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
