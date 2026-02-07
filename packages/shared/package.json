@@ -1,0 +1,29 @@
+{
+  "name": "@expenses/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./calculations": "./dist/lib/calculations.js",
+    "./types": "./dist/lib/types.js",
+    "./validators": "./dist/lib/validators.js",
+    "./normalization": "./dist/lib/normalization.js",
+    "./defaults": "./dist/lib/defaults.js",
+    "./recurring": "./dist/services/recurring/index.js",
+    "./importExport": "./dist/services/importExport.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "dompurify": "^3.3.1"
+  }
+}
