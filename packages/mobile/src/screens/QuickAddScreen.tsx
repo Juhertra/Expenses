@@ -43,7 +43,9 @@ export default function QuickAddScreen() {
     });
 
     if (!validation.isValid) {
-      Alert.alert('Validation Error', validation.errors[0] || 'Invalid input');
+      const errorMsg = validation.errors[0] || 'Invalid input';
+      console.error('❌ Validation Error:', errorMsg);
+      Alert.alert('Validation Error', errorMsg);
       return;
     }
 
