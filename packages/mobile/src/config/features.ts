@@ -21,10 +21,12 @@ interface SyncConfig {
  * cloud sync is available and properly configured.
  */
 export function getSyncConfig(): SyncConfig {
-  // Check for Dropbox client ID (required for OAuth)
+  // SYNC_ENABLED: Keep OFF by default until device testing is complete
+  // Set EXPO_PUBLIC_ENABLE_SYNC=true in .env to enable after testing
+  const syncEnabled = process.env.EXPO_PUBLIC_ENABLE_SYNC === 'true';
   const dropboxClientId = process.env.EXPO_PUBLIC_DROPBOX_CLIENT_ID;
 
-  if (!dropboxClientId) {
+  if (!syncEnabled || !dropboxClientId) {
     return {
       enabled: false,
       encryptionEnabled: true,
