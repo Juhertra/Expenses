@@ -16,7 +16,7 @@
     "expo": "~54.0.0",
     "pretty-format": "^30.2.0",
     "react": "19.1.0",
-    "react-native": "0.81.5",
+    "react-native": "0.76.9",
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
