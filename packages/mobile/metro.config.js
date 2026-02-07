@@ -20,8 +20,9 @@ config.resolver = {
   ],
 
   // Map @expenses/shared to the shared package
+  // Point to package root so Metro can resolve package.json exports
   extraNodeModules: {
-    '@expenses/shared': path.resolve(monorepoRoot, 'packages/shared/dist'),
+    '@expenses/shared': path.resolve(monorepoRoot, 'packages/shared'),
   },
 
   // Prevent picking up wrong node_modules (e.g., from desktop)
