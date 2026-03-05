@@ -1,7 +1,7 @@
 {
   "name": "expense-tracker",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -92,4 +92,5 @@
   },
   "homepage": "https://github.com/Juhertra/Expenses#readme"
 }
+
 
