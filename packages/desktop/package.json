@@ -1,7 +1,7 @@
 {
   "name": "expense-tracker",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "electron:dev": "scripts\\\\electron-dev.cmd",
+    "electron:dev": "scripts\\electron-dev.cmd",
     "electron:build": "vite build; if ($LASTEXITCODE -ne 0) { exit 1 }; electron-builder",
     "electron:pack": "electron-builder --dir"
   },
@@ -41,7 +41,7 @@
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
-    "electron": "^35.7.5",
+    "electron": "35.7.5",
     "electron-builder": "^24.13.3",
     "esbuild": "^0.27.2",
     "eslint": "^8.55.0",
@@ -63,6 +63,7 @@
   "main": "electron/main.cjs",
   "build": {
     "appId": "com.juhertra.expenses",
+    "electronVersion": "35.7.5",
     "productName": "Expenses",
     "icon": "resources/icon.png",
     "files": [
@@ -92,6 +93,3 @@
   },
   "homepage": "https://github.com/Juhertra/Expenses#readme"
 }
-
-
-
