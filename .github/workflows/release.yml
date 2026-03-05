@@ -22,6 +22,7 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+      - run: npm run build --workspace=packages/shared
 
       - name: Run tests
         run: npm run test
@@ -39,11 +40,12 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+      - run: npm run build --workspace=packages/shared
 
       # --- Code signing (optional) ---
       # Store a base64-encoded .pfx certificate in the CSC_FILE_BASE64 secret.
       # If the secret is not set the build publishes unsigned.
-      # Note: secrets context is not available in if: expressions — use an
+      # Note: secrets context is not available in if: expressions - use an
       # env-based check step to gate the signing steps instead.
       - id: check-win-cert
         shell: pwsh
@@ -71,7 +73,7 @@ jobs:
           # electron-builder checks GH_TOKEN before GITHUB_TOKEN; map explicitly
           # so publishing works regardless of electron-builder version.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Empty string when secret is absent → electron-builder skips signing.
+          # Empty string when secret is absent -> electron-builder skips signing.
           CSC_FILE: ${{ steps.check-win-cert.outputs.has_cert == 'true' && format('{0}/cert.pfx', runner.temp) || '' }}
           CSC_PASSWORD: ${{ secrets.CSC_PASSWORD }}
 
@@ -88,11 +90,12 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+      - run: npm run build --workspace=packages/shared
 
       # --- Code signing & notarization (optional) ---
       # Store a base64-encoded Developer ID .p12 in MACOS_CERT_BASE64.
-      # If not set the .dmg is unsigned — macOS Gatekeeper will block it on
-      # install.  Sign before shipping to end users.
+      # If not set the .dmg is unsigned - macOS Gatekeeper will block it on
+      # install. Sign before shipping to end users.
       # Same secrets-in-if workaround as the Windows job.
       - id: check-mac-cert
         run: |
@@ -120,11 +123,10 @@ jobs:
       - name: Build and publish
         run: npx electron-builder --publish=always
         env:
-          # Same GH_TOKEN mapping as the Windows job — see comment there.
+          # Same GH_TOKEN mapping as the Windows job - see comment there.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Signing: electron-builder auto-discovers the Developer ID from the
-          # keychain (imported above).  CSC_LINK is a Windows-only concept and
-          # does not apply here.  Notarization uses APPLE_ID + APPLE_PASSWORD.
+          # keychain (imported above). Notarization uses APPLE_ID + APPLE_PASSWORD.
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           TEAM_ID: ${{ secrets.TEAM_ID }}

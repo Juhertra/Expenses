@@ -6,6 +6,17 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "types": ["vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@expenses/shared": ["../shared/src/index.ts"],
+      "@expenses/shared/calculations": ["../shared/src/lib/calculations.ts"],
+      "@expenses/shared/defaults": ["../shared/src/lib/defaults.ts"],
+      "@expenses/shared/importExport": ["../shared/src/services/importExport.ts"],
+      "@expenses/shared/normalization": ["../shared/src/lib/normalization.ts"],
+      "@expenses/shared/recurring": ["../shared/src/services/recurring/index.ts"],
+      "@expenses/shared/types": ["../shared/src/lib/types.ts"],
+      "@expenses/shared/validators": ["../shared/src/lib/validators.ts"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -24,4 +35,3 @@
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-
