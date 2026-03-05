@@ -5,12 +5,10 @@ on:
     tags:
       - 'v*'
 
-# electron-builder needs write access to create Releases and upload assets.
 permissions:
   contents: write
 
 jobs:
-  # Run tests before any builds. If tests fail, builds never start.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +25,6 @@ jobs:
       - name: Run tests
         run: npm run test
 
-  # Produces: Expenses-setup-<version>.exe  +  latest.yml (update manifest)
   build-windows:
     runs-on: windows-latest
     needs: test
@@ -42,11 +39,6 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
-      # --- Code signing (optional) ---
-      # Store a base64-encoded .pfx certificate in the CSC_FILE_BASE64 secret.
-      # If the secret is not set the build publishes unsigned.
-      # Note: secrets context is not available in if: expressions - use an
-      # env-based check step to gate the signing steps instead.
       - id: check-win-cert
         shell: pwsh
         run: |
@@ -65,19 +57,18 @@ jobs:
         env:
           CSC_FILE_BASE64: ${{ secrets.CSC_FILE_BASE64 }}
 
-      - run: npx vite build
+      - name: Build desktop app
+        working-directory: packages/desktop
+        run: npx vite build
 
       - name: Build and publish
+        working-directory: packages/desktop
         run: npx electron-builder --publish=always
         env:
-          # electron-builder checks GH_TOKEN before GITHUB_TOKEN; map explicitly
-          # so publishing works regardless of electron-builder version.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Empty string when secret is absent -> electron-builder skips signing.
           CSC_FILE: ${{ steps.check-win-cert.outputs.has_cert == 'true' && format('{0}/cert.pfx', runner.temp) || '' }}
           CSC_PASSWORD: ${{ secrets.CSC_PASSWORD }}
 
-  # Produces: Expenses-<version>-macOS.dmg  +  latest-mac.yml (update manifest)
   build-mac:
     runs-on: macos-latest
     needs: test
@@ -92,11 +83,6 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
-      # --- Code signing & notarization (optional) ---
-      # Store a base64-encoded Developer ID .p12 in MACOS_CERT_BASE64.
-      # If not set the .dmg is unsigned - macOS Gatekeeper will block it on
-      # install. Sign before shipping to end users.
-      # Same secrets-in-if workaround as the Windows job.
       - id: check-mac-cert
         run: |
           if [ -n "$MACOS_CERT_BASE64" ]; then echo "has_cert=true" >> $GITHUB_OUTPUT; fi
@@ -118,15 +104,15 @@ jobs:
           MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
           MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
 
-      - run: npx vite build
+      - name: Build desktop app
+        working-directory: packages/desktop
+        run: npx vite build
 
       - name: Build and publish
+        working-directory: packages/desktop
         run: npx electron-builder --publish=always
         env:
-          # Same GH_TOKEN mapping as the Windows job - see comment there.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signing: electron-builder auto-discovers the Developer ID from the
-          # keychain (imported above). Notarization uses APPLE_ID + APPLE_PASSWORD.
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
