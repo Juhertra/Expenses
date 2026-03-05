@@ -7,6 +7,7 @@ import type {
   Settlement,
   ChartDataPoint,
 } from '@expenses/shared/types';
+import { getExpensesThroughMonth, getSettlementsThroughMonth } from '@expenses/shared/calculations';
 import type { Theme } from '../../lib/theme';
 import { BalanceView, CategoriesView, DashboardView, TransactionsView } from './views';
 
@@ -394,15 +395,12 @@ export function ViewRouter({
       );
 
     case 'balance': {
-      // Filter settlements to match the selected month/year scope
-      const filteredSettlements = settlements.filter(s => {
-        const d = new Date(s.date);
-        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-      });
+      const balanceExpenses = getExpensesThroughMonth(expenses, selectedYear, selectedMonth);
+      const balanceSettlements = getSettlementsThroughMonth(settlements, selectedYear, selectedMonth);
       return (
         <BalanceView
-          expenses={filteredExpenses}
-          settlements={filteredSettlements}
+          expenses={balanceExpenses}
+          settlements={balanceSettlements}
           partnerNames={partnerNames}
           householdSettings={householdSettings}
           theme={theme}

@@ -14,6 +14,23 @@ export function parseDateParts(dateStr: string): { year: number; month: number; 
   };
 }
 
+export function isOnOrBeforeMonth(dateStr: string, year: number, month: number): boolean {
+  const parts = parseDateParts(dateStr);
+  return parts.year < year || (parts.year === year && parts.month <= month);
+}
+
+export function getExpensesThroughMonth(expenses: Expense[], year: number, month: number): Expense[] {
+  return expenses.filter(expense => isOnOrBeforeMonth(expense.date, year, month));
+}
+
+export function getSettlementsThroughMonth(
+  settlements: Settlement[],
+  year: number,
+  month: number
+): Settlement[] {
+  return settlements.filter(settlement => isOnOrBeforeMonth(settlement.date, year, month));
+}
+
 export interface TotalsResult {
   totalIncome: number;
   totalExpense: number;

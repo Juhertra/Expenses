@@ -4,6 +4,8 @@ import {
   calculateCategoryTotals,
   calculateInsights,
   getFrequentExpenses,
+  getExpensesThroughMonth,
+  getSettlementsThroughMonth,
 } from '@expenses/shared/calculations';
 import type { Expense, HouseholdSettings, Settlement } from '@expenses/shared/types';
 
@@ -212,6 +214,56 @@ describe('calculateBalance', () => {
     // After settlement, partner1 should owe partner2 500.
     expect(result.partner1Balance).toBe(-500);
     expect(result.partner2Balance).toBe(500);
+  });
+
+  it('should carry an unpaid balance into the next month until settled', () => {
+    const expenses: Expense[] = [
+      {
+        id: 1,
+        description: 'January rent',
+        amount: 100,
+        category: 'Housing',
+        type: 'expense',
+        date: '2026-01-10',
+        paidBy: 'partner1',
+      },
+      {
+        id: 2,
+        description: 'February groceries',
+        amount: 40,
+        category: 'Food',
+        type: 'expense',
+        date: '2026-02-03',
+        paidBy: 'partner2',
+      },
+    ];
+
+    const settings: HouseholdSettings = {
+      currencyCode: 'USD',
+      currencySymbol: '$',
+      splitMode: 'equal',
+      partner1Ratio: 0.5,
+      budgets: {},
+      normalizationRules: {},
+      categories: {},
+    };
+
+    const januaryBalance = calculateBalance(
+      getExpensesThroughMonth(expenses, 2026, 0),
+      settings,
+      getSettlementsThroughMonth([], 2026, 0)
+    );
+
+    const februaryBalance = calculateBalance(
+      getExpensesThroughMonth(expenses, 2026, 1),
+      settings,
+      getSettlementsThroughMonth([], 2026, 1)
+    );
+
+    expect(januaryBalance.partner1Balance).toBe(50);
+    expect(januaryBalance.partner2Balance).toBe(-50);
+    expect(februaryBalance.partner1Balance).toBe(30);
+    expect(februaryBalance.partner2Balance).toBe(-30);
   });
 });
 
