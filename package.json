@@ -18,7 +18,8 @@
     "electron:build": "npm run electron:build --workspace=packages/desktop"
   },
   "dependencies": {
-    "7zip-bin": "5.2.0"
+    "7zip-bin": "5.2.0",
+    "app-builder-bin": "4.0.0"
   },
   "devDependencies": {},
   "engines": {
