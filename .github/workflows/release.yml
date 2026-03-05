@@ -39,50 +39,17 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
-      - name: Stabilize 7zip helper path
+      - name: Ensure 7za is present
         shell: pwsh
         run: |
-          $source = Join-Path $env:GITHUB_WORKSPACE 'node_modules\7zip-bin\win\x64\7za.exe'
-          if (!(Test-Path $source)) {
-            throw "Bundled 7za.exe is missing before packaging: $source"
+          $sevenZip = Join-Path $env:GITHUB_WORKSPACE 'node_modules\7zip-bin\win\x64\7za.exe'
+          if (!(Test-Path $sevenZip)) {
+            Write-Host '7za.exe missing after npm ci; reinstalling 7zip-bin'
+            & npm install 7zip-bin@5.2.0 --no-save
           }
-
-          $stableDir = Join-Path $env:RUNNER_TEMP '7zip-bin\win\x64'
-          New-Item -ItemType Directory -Force -Path $stableDir | Out-Null
-          $stablePath = Join-Path $stableDir '7za.exe'
-          Copy-Item $source $stablePath -Force
-
-          $indexPath = Join-Path $env:GITHUB_WORKSPACE 'node_modules\7zip-bin\index.js'
-          @"
-"use strict"
-
-const path = require("path")
-
-function getPath() {
-  if (process.env.EXPENSES_7ZA_PATH) {
-    return process.env.EXPENSES_7ZA_PATH
-  }
-
-  if (process.env.USE_SYSTEM_7ZA === "true") {
-    return "7za"
-  }
-
-  if (process.platform === "darwin") {
-    return path.join(__dirname, "mac", process.arch, "7za")
-  }
-  else if (process.platform === "win32") {
-    return path.join(__dirname, "win", process.arch, "7za.exe")
-  }
-  else {
-    return path.join(__dirname, "linux", process.arch, "7za")
-  }
-}
-
-exports.path7za = getPath()
-exports.path7x = path.join(__dirname, "7x.sh")
-"@ | Set-Content -Path $indexPath -Encoding UTF8
-
-          "EXPENSES_7ZA_PATH=$stablePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          if (!(Test-Path $sevenZip)) {
+            throw "7za.exe is still missing: $sevenZip"
+          }
 
       - id: check-win-cert
         shell: pwsh
@@ -111,7 +78,6 @@ exports.path7x = path.join(__dirname, "7x.sh")
         run: npx electron-builder --publish=always --config.electronVersion=35.7.5
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EXPENSES_7ZA_PATH: ${{ env.EXPENSES_7ZA_PATH }}
           CSC_FILE: ${{ steps.check-win-cert.outputs.has_cert == 'true' && format('{0}/cert.pfx', runner.temp) || '' }}
           CSC_PASSWORD: ${{ secrets.CSC_PASSWORD }}
 
