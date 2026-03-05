@@ -39,38 +39,66 @@ const MAX_PAYLOAD_SIZE = 10 * 1024 * 1024; // 10MB limit
 let writeQueue = Promise.resolve();
 let cachedRaw = null;
 let cacheValid = false;
+let cachedFileMtimeMs = null;
+let lastWriteMtimeMs = null;
+const buildRawFromData = (payload) => {
+  if (!payload || typeof payload.data !== 'object' || !payload.data) {
+    return null;
+  }
+
+  return {
+    'household-expenses': JSON.stringify(payload.data.expenses ?? []),
+    'household-recurring': JSON.stringify(payload.data.recurring ?? []),
+    'household-partner-names': JSON.stringify(
+      payload.data.partnerNames ?? { partner1: 'Partner 1', partner2: 'Partner 2' }
+    ),
+    'household-settings': JSON.stringify(payload.data.householdSettings ?? {}),
+    'household-settlements': JSON.stringify(payload.data.settlements ?? []),
+  };
+};
 
 const readRaw = async () => {
-  // Use cache if valid (within same serialized write operation)
   if (cacheValid && cachedRaw !== null) {
     return cachedRaw;
   }
 
-  const contents = await ipcRenderer.invoke('data:read');
-  if (!contents) {
+  const state = await ipcRenderer.invoke('data:readState');
+  cachedFileMtimeMs = state?.mtimeMs ?? null;
+
+  if (state?.readError) {
+    throw new Error('Failed to read shared data file: ' + state.readError);
+  }
+
+  if (!state?.contents) {
     cachedRaw = {};
     return {};
   }
-  try {
-    const parsed = JSON.parse(contents);
 
-    // Validate schema version
+  try {
+    const parsed = JSON.parse(state.contents);
+
     if (parsed.schemaVersion && parsed.schemaVersion > STORAGE_SCHEMA_VERSION) {
-      console.warn(`Data file schema version ${parsed.schemaVersion} is newer than supported version ${STORAGE_SCHEMA_VERSION}`);
+      console.warn('Data file schema version ' + parsed.schemaVersion + ' is newer than supported version ' + STORAGE_SCHEMA_VERSION);
     }
 
-    const raw = (parsed.raw && typeof parsed.raw === 'object') ? parsed.raw : {};
+    const raw = (parsed.raw && typeof parsed.raw === 'object')
+      ? parsed.raw
+      : buildRawFromData(parsed);
+
+    if (!raw) {
+      throw new Error('Data file is missing the expected storage payload.');
+    }
+
     cachedRaw = raw;
     return raw;
   } catch (err) {
-    console.error('Failed to parse data file:', err);
-    cachedRaw = {};
-    return {};
+    cachedRaw = null;
+    const message = err instanceof Error ? err.message : 'Data file is unreadable';
+    throw new Error('Shared data file is unreadable or partially synced. ' + message);
   }
 };
 
 const writeRaw = async (raw) => {
-  // Validate raw data structure
   if (!raw || typeof raw !== 'object') {
     throw new Error('Invalid raw data: must be an object');
   }
@@ -82,16 +110,19 @@ const writeRaw = async (raw) => {
   };
 
   const jsonString = JSON.stringify(payload, null, 2);
-
-  // Validate payload size
-  const payloadSize = new Blob([jsonString]).size;
+  const payloadSize = Buffer.byteLength(jsonString, 'utf8');
   if (payloadSize > MAX_PAYLOAD_SIZE) {
-    throw new Error(`Payload too large: ${payloadSize} bytes (max ${MAX_PAYLOAD_SIZE})`);
+    throw new Error('Payload too large: ' + payloadSize + ' bytes (max ' + MAX_PAYLOAD_SIZE + ')');
   }
 
-  await ipcRenderer.invoke('data:write', jsonString);
-  // Update cache after successful write
+  const writeResult = await ipcRenderer.invoke('data:write', {
+    contents: jsonString,
+    expectedMtimeMs: cachedFileMtimeMs,
+  });
+
   cachedRaw = { ...raw };
+  cachedFileMtimeMs = writeResult?.mtimeMs ?? cachedFileMtimeMs;
+  lastWriteMtimeMs = writeResult?.mtimeMs ?? Date.now();
 };
 
 // Serialize all write operations to prevent race conditions
@@ -144,8 +175,11 @@ contextBridge.exposeInMainWorld('storage', {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   selectDataFile: (startDir) => ipcRenderer.invoke('data:select', startDir),
+  createDataFile: (payload) => ipcRenderer.invoke('data:create', payload),
+  openDataFile: (startDir) => ipcRenderer.invoke('data:open', startDir),
   getDataFilePath: () => ipcRenderer.invoke('data:path'),
   readDataFile: () => ipcRenderer.invoke('data:read'),
+  readDataFileState: () => ipcRenderer.invoke('data:readState'),
   writeDataFile: (contents) => ipcRenderer.invoke('data:write', contents),
   saveAsDataFile: () => ipcRenderer.invoke('data:saveAs'),
   revealDataFile: () => ipcRenderer.invoke('data:reveal'),
@@ -154,13 +188,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportCsvFile: (payload) => ipcRenderer.invoke('data:exportCsv', payload),
   showSaveDialog: (options) => ipcRenderer.invoke('dialog:showSaveDialog', options),
   showOpenDialog: (options) => ipcRenderer.invoke('dialog:showOpenDialog', options),
+  checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates'),
   onDataChanged: (callback) => {
     ipcRenderer.removeAllListeners('data:changed');
-    ipcRenderer.on('data:changed', (_event, payload) => callback(payload));
+    ipcRenderer.on('data:changed', (_event, payload) => {
+      if (lastWriteMtimeMs && Math.abs(payload.mtimeMs - lastWriteMtimeMs) < 2000) {
+        return;
+      }
+      callback(payload);
+    });
   },
   onMenuAction: (callback) => {
     ipcRenderer.removeAllListeners('menu:action');
     ipcRenderer.on('menu:action', (_event, payload) => callback(payload));
+  },
+  onUpdateStatus: (callback) => {
+    ipcRenderer.removeAllListeners('update:status');
+    ipcRenderer.on('update:status', (_event, payload) => callback(payload));
   },
   platform,
   homeDir,

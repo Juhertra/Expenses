@@ -55,6 +55,42 @@ export function useDataPersistence() {
   const [importingData, setImportingData] = useState(false);
   const [supportsFileSystem, setSupportsFileSystem] = useState(false);
 
+  const formatPersistenceError = useCallback(
+    (error: unknown) => {
+      const message = error instanceof Error ? error.message : '';
+
+      if (message.includes('DATA_FILE_CONFLICT') || message.includes('Reload before saving')) {
+        return t('errors.sharedFileConflict', {
+          defaultValue: 'The shared file changed on the other device. Reload it and try again.',
+        });
+      }
+
+      if (message.includes('unreadable or partially synced')) {
+        return t('errors.sharedFileUnreadable', {
+          defaultValue: 'The shared file is unreadable or still syncing. Wait for sync to finish and try again.',
+        });
+      }
+
+      if (message.includes('Failed to read shared data file')) {
+        return t('errors.sharedFileReadFailed', {
+          defaultValue: 'The shared file could not be read.',
+        });
+      }
+
+      return message || t('errors.saveFailed');
+    },
+    [t]
+  );
+
+  const toElectronHandle = useCallback(
+    (filePath: string) =>
+      ({
+        name: filePath.split(/[\\/]/).pop() || 'expense-tracker.json',
+        kind: 'electron-file' as const,
+      }) as unknown as FileSystemDirectoryHandle,
+    []
+  );
+
   /**
    * Check if File System Access API is supported
    */
@@ -121,16 +157,12 @@ export function useDataPersistence() {
       if (window.electronAPI?.getDataFilePath) {
         const filePath = await window.electronAPI.getDataFilePath();
         if (filePath) {
-          // Create a mock directory handle for Electron to indicate storage is configured
-          const mockHandle = {
-            name: 'Electron Storage',
-            kind: 'electron-file' as const,
-          } as unknown as FileSystemDirectoryHandle;
-          setSaveDirectory(mockHandle);
+          setSaveDirectory(toElectronHandle(filePath));
         }
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      showToast(formatPersistenceError(error), 'error');
     } finally {
       setLoading(false);
     }
@@ -143,6 +175,9 @@ export function useDataPersistence() {
     setRecurring,
     processRecurring,
     setSaveDirectory,
+    showToast,
+    formatPersistenceError,
+    toElectronHandle,
   ]);
 
   /**
@@ -156,17 +191,20 @@ export function useDataPersistence() {
           return null;
         }
         setSaveDirectory(dirHandle);
+        if (isElectron()) {
+          await loadData();
+        }
         showToast(t('toasts.saveFolderSet', { name: dirHandle.name }), 'success');
         return dirHandle;
       } catch (error: unknown) {
         if (error instanceof Error && error.name !== 'AbortError') {
           console.error('Error choosing directory:', error);
-          showToast(t('errors.selectFolderFailed'), 'error');
+          showToast(formatPersistenceError(error), 'error');
         }
         return null;
       }
     },
-    [setSaveDirectory, showToast, t]
+    [formatPersistenceError, loadData, setSaveDirectory, showToast, t]
   );
 
   /**
@@ -181,6 +219,87 @@ export function useDataPersistence() {
       settlements,
     }),
     [expenses, recurring, partnerNames, householdSettings, settlements]
+  );
+
+  const openSharedDataFile = useCallback(
+    async (startDir?: string): Promise<FileSystemDirectoryHandle | null> => {
+      if (!window.electronAPI?.openDataFile) {
+        return null;
+      }
+
+      try {
+        const filePath = await window.electronAPI.openDataFile(startDir);
+        if (!filePath) {
+          return null;
+        }
+
+        const handle = toElectronHandle(filePath);
+        setSaveDirectory(handle);
+        await loadData();
+        showToast(
+          t('toasts.sharedFileOpened', {
+            defaultValue: 'Opened shared file {{name}}',
+            name: handle.name,
+          }),
+          'success'
+        );
+        return handle;
+      } catch (error) {
+        console.error('Error opening shared data file:', error);
+        showToast(formatPersistenceError(error), 'error');
+        return null;
+      }
+    },
+    [formatPersistenceError, loadData, setSaveDirectory, showToast, t, toElectronHandle]
+  );
+
+  const createSharedDataFile = useCallback(
+    async (startDir?: string): Promise<FileSystemDirectoryHandle | null> => {
+      if (!window.electronAPI?.createDataFile) {
+        return null;
+      }
+
+      try {
+        const jsonString = serializeExport(getExportPayload());
+        const filePath = await window.electronAPI.createDataFile({
+          startDir,
+          initialContents: jsonString,
+        });
+
+        if (!filePath) {
+          return null;
+        }
+
+        const handle = toElectronHandle(filePath);
+        setSaveDirectory(handle);
+        setDirty(false);
+        setLastExportDate(new Date().toISOString());
+        await loadData();
+        showToast(
+          t('toasts.sharedFileCreated', {
+            defaultValue: 'Created shared file {{name}}',
+            name: handle.name,
+          }),
+          'success'
+        );
+        return handle;
+      } catch (error) {
+        console.error('Error creating shared data file:', error);
+        showToast(formatPersistenceError(error), 'error');
+        return null;
+      }
+    },
+    [
+      formatPersistenceError,
+      getExportPayload,
+      loadData,
+      setDirty,
+      setLastExportDate,
+      setSaveDirectory,
+      showToast,
+      t,
+      toElectronHandle,
+    ]
   );
 
   /**
@@ -242,7 +361,7 @@ export function useDataPersistence() {
       } catch (error) {
         console.error('Save error:', error);
         if (options?.showToast !== false) {
-          showToast(t('errors.saveFailed'), 'error');
+          showToast(formatPersistenceError(error), 'error');
         }
       } finally {
         setExportingData(false);
@@ -257,6 +376,7 @@ export function useDataPersistence() {
       setLastExportDate,
       showToast,
       t,
+      formatPersistenceError,
     ]
   );
 
@@ -401,18 +521,28 @@ export function useDataPersistence() {
           ? JSON.parse(raw['household-settlements'])
           : [];
 
-        await persistExpenses(rawExpenses);
-        await persistRecurring(rawRecurring);
-        await persistPartnerNames(rawNames);
-        await persistSettings(rawSettings);
-        await persistSettlements(rawSettlements);
+        const writeResults = [
+          await persistExpenses(rawExpenses),
+          await persistRecurring(rawRecurring),
+          await persistPartnerNames(rawNames),
+          await persistSettings(rawSettings),
+          await persistSettlements(rawSettlements),
+        ];
+        if (writeResults.some((ok) => !ok)) {
+          throw new Error('Failed to persist one or more imported slices');
+        }
       } else {
         // Fallback to parsed data
-        await persistExpenses(data.expenses);
-        await persistRecurring(data.recurring);
-        await persistPartnerNames(data.partnerNames);
-        await persistSettings(data.householdSettings || defaultSettings);
-        await persistSettlements(data.settlements || []);
+        const writeResults = [
+          await persistExpenses(data.expenses),
+          await persistRecurring(data.recurring),
+          await persistPartnerNames(data.partnerNames),
+          await persistSettings(data.householdSettings || defaultSettings),
+          await persistSettlements(data.settlements || []),
+        ];
+        if (writeResults.some((ok) => !ok)) {
+          throw new Error('Failed to persist one or more imported slices');
+        }
       }
 
       // Clear file input for clean UI reset
@@ -449,6 +579,11 @@ export function useDataPersistence() {
     importData,
     handleImportFile,
     chooseSaveDirectory,
+    openSharedDataFile,
+    createSharedDataFile,
     checkFileSystemSupport,
   };
 }
+
+
+

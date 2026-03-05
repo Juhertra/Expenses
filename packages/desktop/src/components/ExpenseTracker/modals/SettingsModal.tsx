@@ -25,6 +25,8 @@ interface SettingsModalProps {
   onSaveNames: () => Promise<void>;
   onSaveHouseholdSettings: () => Promise<void>;
   onChooseSaveDirectory: () => Promise<FileSystemDirectoryHandle | null>;
+  onOpenSharedDataFile: () => Promise<FileSystemDirectoryHandle | null>;
+  onCreateSharedDataFile: () => Promise<FileSystemDirectoryHandle | null>;
   onExportData: () => Promise<void>;
   onImportFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportData: () => Promise<void>;
@@ -53,6 +55,8 @@ export function SettingsModal({
   onSaveNames,
   onSaveHouseholdSettings,
   onChooseSaveDirectory,
+  onOpenSharedDataFile,
+  onCreateSharedDataFile,
   onExportData,
   onImportFileChange,
   onImportData,
@@ -92,6 +96,8 @@ export function SettingsModal({
           onSaveNames={onSaveNames}
           onSaveHouseholdSettings={onSaveHouseholdSettings}
           onChooseSaveDirectory={onChooseSaveDirectory}
+          onOpenSharedDataFile={onOpenSharedDataFile}
+          onCreateSharedDataFile={onCreateSharedDataFile}
           onExportData={onExportData}
           onImportFileChange={onImportFileChange}
           onImportData={onImportData}
@@ -102,3 +108,5 @@ export function SettingsModal({
     </div>
   );
 }
+
+

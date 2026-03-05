@@ -26,6 +26,7 @@ export const storage = {
       }
     } catch (err) {
       console.error('Storage get error', err);
+      throw err;
     }
     return null;
   },
@@ -40,6 +41,7 @@ export const storage = {
       }
     } catch (err) {
       console.error('Storage set error', err);
+      throw err;
     }
     return null;
   },
@@ -54,6 +56,7 @@ export const storage = {
       }
     } catch (err) {
       console.error('Storage delete error', err);
+      throw err;
     }
     return null;
   },
@@ -68,6 +71,7 @@ export const storage = {
       }
     } catch (err) {
       console.error('Storage list error', err);
+      throw err;
     }
     return { keys: [], prefix, shared: false };
   }
@@ -109,3 +113,4 @@ export const fileSystem = {
 
 export const getModifierKey = () => (isMac() ? '⌘' : 'Ctrl');
 export const getModifierKeyName = () => (isMac() ? 'Cmd' : 'Ctrl');
+

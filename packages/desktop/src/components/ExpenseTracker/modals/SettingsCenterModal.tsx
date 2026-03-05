@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createScope, createTimeline, stagger } from "animejs";
 import { X, Search, Sliders, Keyboard, Users, Database, Palette, Info } from "lucide-react";
 import type { TFunction, i18n as I18nType } from "i18next";
@@ -41,6 +41,8 @@ type Props = {
   onSaveNames: () => Promise<void>;
   onSaveHouseholdSettings: () => Promise<void>;
   onChooseSaveDirectory: () => Promise<FileSystemDirectoryHandle | null>;
+  onOpenSharedDataFile: () => Promise<FileSystemDirectoryHandle | null>;
+  onCreateSharedDataFile: () => Promise<FileSystemDirectoryHandle | null>;
   onExportData: () => Promise<void>;
   onImportFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportData: () => Promise<void>;
@@ -433,7 +435,7 @@ export default function SettingsCenterModal(props: Props) {
                 className="!p-0 !px-1 text-slate-400 hover:text-white"
                 aria-label={tt("buttons.clearSearch", "Clear search")}
               >
-                ×
+                x
               </Button>
             )}
           </div>
@@ -495,7 +497,7 @@ export default function SettingsCenterModal(props: Props) {
             {tab === "shortcuts" ? (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-2xl font-bold mb-1">⌨️ {tt("labels.keyboardShortcuts", "Keyboard Shortcuts")}</h3>
+                  <h3 className="text-2xl font-bold mb-1">{tt("labels.keyboardShortcuts", "Keyboard Shortcuts")}</h3>
                   <p className="text-slate-400 text-sm">{tt("messages.boostProductivity", "Boost productivity with shortcuts")}</p>
                 </div>
 
@@ -522,11 +524,11 @@ export default function SettingsCenterModal(props: Props) {
                   <h4 className="text-sm font-semibold text-slate-400 uppercase mb-3">{tt("labels.actions", "Actions")}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { keys: [isMac ? '⌘' : 'Ctrl', 'N'], desc: tt('shortcuts.newTransaction', 'New transaction') },
+                      { keys: [isMac ? 'Cmd' : 'Ctrl', 'N'], desc: tt('shortcuts.newTransaction', 'New transaction') },
                       { keys: ['E'], desc: tt('shortcuts.quickExpense', 'Quick expense') },
                       { keys: ['I'], desc: tt('shortcuts.quickIncome', 'Quick income') },
-                      { keys: [isMac ? '⌘' : 'Ctrl', 'S'], desc: tt('shortcuts.saveExport', 'Save / export') },
-                      { keys: [isMac ? '⌘' : 'Ctrl', 'K'], desc: tt('shortcuts.commandPalette', 'Command palette') },
+                      { keys: [isMac ? 'Cmd' : 'Ctrl', 'S'], desc: tt('shortcuts.saveExport', 'Save / export') },
+                      { keys: [isMac ? 'Cmd' : 'Ctrl', 'K'], desc: tt('shortcuts.commandPalette', 'Command palette') },
                       { keys: ['Esc'], desc: tt('shortcuts.closeModal', 'Close modal') }
                     ].map((s, i) => (
                       <div key={i} className={`flex justify-between p-3 bg-slate-700/30 rounded-lg ${dir === "rtl" ? "flex-row-reverse" : ""}`}>
@@ -547,7 +549,7 @@ export default function SettingsCenterModal(props: Props) {
                   <div className="flex justify-between p-3 bg-slate-700/30 rounded-lg">
                     <span className="text-sm text-slate-300">{tt('shortcuts.showPanel', 'Show shortcuts panel')}</span>
                     <kbd className="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono">
-                      {isMac ? '⌘ /' : 'Ctrl /'}
+                      {isMac ? 'Cmd /' : 'Ctrl /'}
                     </kbd>
                   </div>
                 </div>
@@ -556,14 +558,14 @@ export default function SettingsCenterModal(props: Props) {
                   <p className="text-xs text-slate-500">
                     <span>
                       <kbd className="px-2 py-1 bg-slate-700 rounded">
-                        {isMac ? '⌘' : 'Ctrl'}
+                        {isMac ? 'Cmd' : 'Ctrl'}
                       </kbd> {tt('shortcuts.cmdHint', 'Cmd/Ctrl key')}
                     </span>
                     <br />
                     <span className="mt-2 inline-block">
                       {tt('shortcuts.pressAnytime', 'Press anytime')}
                       <kbd className="px-2 py-1 bg-slate-700 rounded mx-1">
-                        {isMac ? '⌘ /' : 'Ctrl /'}
+                        {isMac ? 'Cmd /' : 'Ctrl /'}
                       </kbd> {tt('shortcuts.toShowHelp', 'to show help')}
                     </span>
                   </p>
@@ -605,3 +607,4 @@ export default function SettingsCenterModal(props: Props) {
     </div>
   );
 }
+

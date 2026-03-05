@@ -35,6 +35,7 @@ const SCHEMA_VERSION = 1;
 let mainWindow;
 let watchedPath = null;
 let watchHandler = null;
+let autoUpdaterInstance = null;
 
 const sendMenuAction = (action) => {
   const windows = BrowserWindow.getAllWindows();
@@ -44,6 +45,17 @@ const sendMenuAction = (action) => {
   }
   windows.forEach((win) => {
     win.webContents.send('menu:action', { action });
+  });
+};
+
+const broadcastToWindows = (channel, payload) => {
+  const windows = BrowserWindow.getAllWindows();
+  if (windows.length === 0 && mainWindow) {
+    mainWindow.webContents.send(channel, payload);
+    return;
+  }
+  windows.forEach((win) => {
+    win.webContents.send(channel, payload);
   });
 };
 
@@ -80,6 +92,14 @@ const resolveDataFilePath = async (createDefault = true) => {
   return defaultPath;
 };
 
+const configureDataFilePath = async (filePath) => {
+  const config = await readConfig();
+  config.dataFilePath = filePath;
+  await writeConfig(config);
+  watchDataFile(filePath);
+  return filePath;
+};
+
 const selectDataFile = async (startDir) => {
   const baseDir = startDir || app.getPath('documents');
   const defaultPath = path.join(baseDir, DEFAULT_DATA_FILE);
@@ -93,11 +113,23 @@ const selectDataFile = async (startDir) => {
     return null;
   }
 
-  const config = await readConfig();
-  config.dataFilePath = result.filePath;
-  await writeConfig(config);
-  watchDataFile(result.filePath);
-  return result.filePath;
+  return configureDataFilePath(result.filePath);
+};
+
+const openDataFile = async (startDir) => {
+  const baseDir = startDir || app.getPath('documents');
+  const result = await dialog.showOpenDialog({
+    title: 'Open data file',
+    defaultPath: baseDir,
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+    properties: ['openFile'],
+  });
+
+  if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return configureDataFilePath(result.filePaths[0]);
 };
 
 const readDataFile = async () => {
@@ -106,6 +138,52 @@ const readDataFile = async () => {
     return null;
   }
   return fs.readFile(filePath, 'utf-8');
+};
+
+const readDataFileState = async () => {
+  const filePath = await resolveDataFilePath(false);
+  if (!filePath) {
+    return {
+      filePath: null,
+      contents: null,
+      exists: false,
+      mtimeMs: null,
+      readError: null,
+    };
+  }
+
+  const exists = fsSync.existsSync(filePath);
+  if (!exists) {
+    return {
+      filePath,
+      contents: null,
+      exists: false,
+      mtimeMs: null,
+      readError: null,
+    };
+  }
+
+  try {
+    const [contents, stats] = await Promise.all([
+      fs.readFile(filePath, 'utf-8'),
+      fs.stat(filePath),
+    ]);
+    return {
+      filePath,
+      contents,
+      exists: true,
+      mtimeMs: stats.mtimeMs,
+      readError: null,
+    };
+  } catch (error) {
+    return {
+      filePath,
+      contents: null,
+      exists: true,
+      mtimeMs: null,
+      readError: error instanceof Error ? error.message : 'Failed to read data file',
+    };
+  }
 };
 
 const atomicWrite = async (filePath, contents) => {
@@ -118,25 +196,46 @@ const atomicWrite = async (filePath, contents) => {
   await fs.writeFile(tmpPath, contents, 'utf-8');
 
   const originalExists = fsSync.existsSync(filePath);
-
-  if (originalExists) {
-    // Atomically move original → .bak (no data loss window)
-    await fs.rename(filePath, bakPath);
-  }
+  let movedOriginalToBackup = false;
 
   try {
-    // Move tmp → target
-    await fs.rename(tmpPath, filePath);
-  } catch (error) {
-    // Rollback: restore from backup if rename failed
     if (originalExists) {
-      await fs.rename(bakPath, filePath);
+      if (fsSync.existsSync(bakPath)) {
+        await fs.unlink(bakPath);
+      }
+      // Move original to backup first, preserving recoverability.
+      await fs.rename(filePath, bakPath);
+      movedOriginalToBackup = true;
     }
+
+    try {
+      await fs.rename(tmpPath, filePath);
+    } catch (renameErr) {
+      if (fsSync.existsSync(filePath)) {
+        await fs.unlink(filePath);
+        await fs.rename(tmpPath, filePath);
+      } else {
+        throw renameErr;
+      }
+    }
+
+    if (movedOriginalToBackup && fsSync.existsSync(bakPath)) {
+      await fs.unlink(bakPath);
+    }
+  } catch (error) {
+    if (fsSync.existsSync(tmpPath)) {
+      await fs.unlink(tmpPath).catch(() => {});
+    }
+
+    // Rollback: restore from backup if write failed after moving the original.
+    if (movedOriginalToBackup && fsSync.existsSync(bakPath) && !fsSync.existsSync(filePath)) {
+      await fs.rename(bakPath, filePath).catch(() => {});
+    }
+
     throw error;
   }
 };
-
-const writeDataFile = async (contents, targetPath) => {
+const writeDataFile = async (contents, targetPath, expectedMtimeMs = null) => {
   const filePath = targetPath || (await resolveDataFilePath(false));
   if (!filePath) {
     throw new Error('No data file path configured. Please select a location first.');
@@ -163,9 +262,31 @@ const writeDataFile = async (contents, targetPath) => {
     throw err;
   }
 
+  const fileExists = fsSync.existsSync(filePath);
+  if (fileExists) {
+    const currentStats = await fs.stat(filePath);
+    if (expectedMtimeMs === null || expectedMtimeMs === undefined) {
+      const conflictError = new Error('Shared data file changed and must be reloaded before saving.');
+      conflictError.code = 'DATA_FILE_CONFLICT';
+      throw conflictError;
+    }
+    if (Math.abs(currentStats.mtimeMs - Number(expectedMtimeMs)) > 1) {
+      const conflictError = new Error('Shared data file changed on another device. Reload before saving.');
+      conflictError.code = 'DATA_FILE_CONFLICT';
+      conflictError.currentMtimeMs = currentStats.mtimeMs;
+      conflictError.expectedMtimeMs = Number(expectedMtimeMs);
+      throw conflictError;
+    }
+  } else if (expectedMtimeMs !== null && expectedMtimeMs !== undefined) {
+    const conflictError = new Error('Shared data file was removed or moved. Reload before saving.');
+    conflictError.code = 'DATA_FILE_CONFLICT';
+    throw conflictError;
+  }
+
   await atomicWrite(filePath, contents);
+  const writtenStats = await fs.stat(filePath);
   watchDataFile(filePath);
-  return filePath;
+  return { filePath, mtimeMs: writtenStats.mtimeMs };
 };
 
 const watchDataFile = (filePath) => {
@@ -199,11 +320,103 @@ const saveAsDataFile = async () => {
     return null;
   }
 
-  const config = await readConfig();
-  config.dataFilePath = result.filePath;
-  await writeConfig(config);
-  watchDataFile(result.filePath);
+  return configureDataFilePath(result.filePath);
+};
+
+const createDataFile = async (startDir, initialContents) => {
+  const baseDir = startDir || app.getPath('documents');
+  const defaultPath = path.join(baseDir, DEFAULT_DATA_FILE);
+  const result = await dialog.showSaveDialog({
+    title: 'Create shared data file',
+    defaultPath,
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  await configureDataFilePath(result.filePath);
+  if (initialContents) {
+    await writeDataFile(initialContents, result.filePath, null);
+  }
   return result.filePath;
+};
+
+const setupAutoUpdater = () => {
+  if (!app.isPackaged || autoUpdaterInstance) {
+    return autoUpdaterInstance;
+  }
+
+  try {
+    const { autoUpdater } = require('electron-updater');
+    autoUpdater.logger = console;
+
+    autoUpdater.on('checking-for-update', () => {
+      broadcastToWindows('update:status', { status: 'checking' });
+    });
+
+    autoUpdater.on('update-available', (info) => {
+      broadcastToWindows('update:status', {
+        status: 'available',
+        version: info?.version || null,
+      });
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+      broadcastToWindows('update:status', {
+        status: 'not-available',
+        version: info?.version || null,
+      });
+    });
+
+    autoUpdater.on('update-downloaded', async (info) => {
+      broadcastToWindows('update:status', {
+        status: 'downloaded',
+        version: info?.version || null,
+      });
+
+      const response = await dialog.showMessageBox({
+        type: 'info',
+        buttons: ['Restart now', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
+        title: 'Update ready',
+        message: `Version ${info?.version || 'the latest release'} is ready to install.`,
+        detail: 'Restart the app to finish installing the update.',
+      });
+
+      if (response.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+
+    autoUpdater.on('error', (error) => {
+      broadcastToWindows('update:status', {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Update check failed',
+      });
+    });
+
+    autoUpdaterInstance = autoUpdater;
+    return autoUpdaterInstance;
+  } catch (error) {
+    broadcastToWindows('update:status', {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Updater unavailable',
+    });
+    return null;
+  }
+};
+
+const checkForUpdates = async () => {
+  const autoUpdater = setupAutoUpdater();
+  if (!autoUpdater) {
+    return { started: false };
+  }
+
+  await autoUpdater.checkForUpdates();
+  return { started: true };
 };
 
 const createWindow = () => {
@@ -298,6 +511,7 @@ const buildMenu = () => {
     {
       label: 'Help',
       submenu: [
+        { label: 'Check for Updates', click: () => sendMenuAction('check-for-updates') },
         { label: 'Keyboard Shortcuts', accelerator: 'CmdOrCtrl+/', click: () => sendMenuAction('show-shortcuts') },
       ],
     },
@@ -323,14 +537,12 @@ app.whenReady().then(() => {
   buildMenu();
 
   if (app.isPackaged) {
-    try {
-      // eslint-disable-next-line global-require
-      const { autoUpdater } = require('electron-updater');
-      autoUpdater.logger = console;
-      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
-    } catch (error) {
-      // Ignore auto-update errors in environments without updater support.
-    }
+    checkForUpdates().catch((error) => {
+      broadcastToWindows('update:status', {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Update check failed',
+      });
+    });
   }
 
   app.on('activate', () => {
@@ -347,9 +559,20 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.handle('data:select', async (_event, startDir) => selectDataFile(startDir));
+ipcMain.handle('data:open', async (_event, startDir) => openDataFile(startDir));
+ipcMain.handle('data:create', async (_event, payload) =>
+  createDataFile(payload?.startDir, payload?.initialContents || null)
+);
 ipcMain.handle('data:path', async () => resolveDataFilePath(false));
 ipcMain.handle('data:read', async () => readDataFile());
-ipcMain.handle('data:write', async (_event, contents) => writeDataFile(contents));
+ipcMain.handle('data:readState', async () => readDataFileState());
+ipcMain.handle('data:write', async (_event, payloadOrContents) => {
+  if (typeof payloadOrContents === 'string') {
+    return writeDataFile(payloadOrContents);
+  }
+  const payload = payloadOrContents || {};
+  return writeDataFile(payload.contents, payload.targetPath, payload.expectedMtimeMs ?? null);
+});
 ipcMain.handle('data:saveAs', async () => saveAsDataFile());
 ipcMain.handle('data:reveal', async () => {
   const filePath = await resolveDataFilePath(false);
@@ -414,3 +637,6 @@ ipcMain.handle('app:info', async () => {
     userDataPath: app.getPath('userData'),
   };
 });
+ipcMain.handle('app:checkForUpdates', async () => checkForUpdates());
+
+

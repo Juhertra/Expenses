@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, FolderOpen, Check, Sparkles, CheckCircle, Info, ExternalLink } from "lucide-react";
 import { Button } from "../../ui/Button";
 import type { PartnerNames, HouseholdSettings } from "@expenses/shared/types";
@@ -44,6 +44,8 @@ type Props = {
   onSaveNames: () => Promise<void>;
   onSaveHouseholdSettings: () => Promise<void>;
   onChooseSaveDirectory: () => Promise<FileSystemDirectoryHandle | null>;
+  onOpenSharedDataFile: () => Promise<FileSystemDirectoryHandle | null>;
+  onCreateSharedDataFile: () => Promise<FileSystemDirectoryHandle | null>;
   onExportData: () => Promise<void>;
   onImportFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportData: () => Promise<void>;
@@ -78,6 +80,8 @@ export function SettingsPanel({
   onSaveNames,
   onSaveHouseholdSettings,
   onChooseSaveDirectory,
+  onOpenSharedDataFile,
+  onCreateSharedDataFile,
   onExportData,
   onImportFileChange,
   onImportData,
@@ -99,7 +103,7 @@ export function SettingsPanel({
   const dir = i18n.dir(i18n.language);
   const isElectron = !!window.electronAPI;
 
-  // Load app info on mount (Electron only)
+  // Load app info when the configured file changes (Electron only)
   useEffect(() => {
     const loadAppInfo = async () => {
       if (window.electronAPI?.getAppInfo) {
@@ -112,7 +116,7 @@ export function SettingsPanel({
       }
     };
     loadAppInfo();
-  }, []);
+  }, [saveDirectory]);
 
   // Get theme-aware focus ring classes for inputs/selects
   const getFocusClasses = () => {
@@ -131,7 +135,7 @@ export function SettingsPanel({
   const sectionKeywords: Record<SectionId, string[]> = {
     general: ["language", "partner", "name", "names"],
     household: ["currency", "split", "ratio", "proportional"],
-    data: ["export", "import", "backup", "folder", "directory", "auto", "save"],
+    data: ["export", "import", "backup", "folder", "directory", "file", "shared", "open", "create", "auto", "save"],
     appearance: ["appearance", "theme", "dark", "ocean", "minimal", "color"],
     about: ["about", "version", "info", "path", "file"],
   };
@@ -393,7 +397,7 @@ export function SettingsPanel({
                 value={tempHouseholdSettings.currencyCode}
                 onChange={(e) => {
                   const code = e.target.value;
-                  const symbol = code === "ILS" ? "₪" : code === "USD" ? "$" : "€";
+                  const symbol = code === "ILS" ? "?" : code === "USD" ? "$" : "�";
                   setTempHouseholdSettings({
                     ...tempHouseholdSettings,
                     currencyCode: code,
@@ -528,16 +532,48 @@ export function SettingsPanel({
 
             {supportsFileSystem && (
               <div className="space-y-3">
-                <h5 className="text-sm font-semibold text-slate-300">{t("labels.autoSaveFolder")}</h5>
-                <p className="text-xs text-slate-400">{t("messages.autoSaveHelp")}</p>
+                <h5 className="text-sm font-semibold text-slate-300">
+                  {isElectron
+                    ? t("settings.sharedFileTitle", "Shared data file")
+                    : t("labels.autoSaveFolder")}
+                </h5>
+                <p className="text-xs text-slate-400">
+                  {isElectron
+                    ? t(
+                        "settings.sharedFileHelp",
+                        "Create one shared JSON file in Google Drive/Dropbox, then have the other partner open that exact file."
+                      )
+                    : t("messages.autoSaveHelp")}
+                </p>
 
-                <button
-                  onClick={onChooseSaveDirectory}
-                  className="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  {saveDirectory ? t("buttons.changeFolder", { name: saveDirectory.name }) : t("buttons.chooseSaveFolder")}
-                </button>
+                {isElectron ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <Button
+                      onClick={onCreateSharedDataFile}
+                      variant="secondary"
+                      className="w-full"
+                      iconStart={<FolderOpen className="w-4 h-4" />}
+                    >
+                      {t("buttons.createSharedFile", "Create shared file")}
+                    </Button>
+                    <Button
+                      onClick={onOpenSharedDataFile}
+                      variant="secondary"
+                      className="w-full"
+                      iconStart={<FolderOpen className="w-4 h-4" />}
+                    >
+                      {t("buttons.openSharedFile", "Open existing shared file")}
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={onChooseSaveDirectory}
+                    className="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    {saveDirectory ? t("buttons.changeFolder", { name: saveDirectory.name }) : t("buttons.chooseSaveFolder")}
+                  </button>
+                )}
 
                 {saveDirectory && <p className="text-xs text-green-400">{t("status.savingTo", { name: saveDirectory.name })}</p>}
               </div>
@@ -625,14 +661,23 @@ export function SettingsPanel({
                           {t("settings.about.lastModified", "Last Modified")}: {new Date(appInfo.dataFileLastModified).toLocaleString(i18n.language)}
                         </p>
                       )}
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => window.electronAPI?.revealDataFile?.()}
-                        iconStart={<ExternalLink className="w-4 h-4" />}
-                      >
-                        {t("buttons.revealInFolder", "Reveal in folder")}
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => window.electronAPI?.revealDataFile?.()}
+                          iconStart={<ExternalLink className="w-4 h-4" />}
+                        >
+                          {t("buttons.revealInFolder", "Reveal in folder")}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => window.electronAPI?.checkForUpdates?.()}
+                        >
+                          {t("buttons.checkForUpdates", "Check for updates")}
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-slate-400">{t("settings.about.noDataFile", "No data file configured")}</p>
@@ -649,3 +694,9 @@ export function SettingsPanel({
     </div>
   );
 }
+
+
+
+
+
+

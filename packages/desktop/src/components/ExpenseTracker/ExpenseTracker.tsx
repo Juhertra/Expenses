@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PlusCircle,
@@ -89,7 +89,7 @@ const ExpenseTracker: React.FC = () => {
     selectedIds, setSelectedIds,
     bulkMode, setBulkMode,
     transactionPage, setTransactionPage,
-    toast, setToast,
+    toast, showToast,
   } = useUIContext();
 
   // Modal state from context
@@ -132,6 +132,8 @@ const ExpenseTracker: React.FC = () => {
     importData,
     handleImportFile,
     chooseSaveDirectory,
+    openSharedDataFile,
+    createSharedDataFile,
     checkFileSystemSupport,
   } = useDataPersistence();
 
@@ -403,14 +405,15 @@ const ExpenseTracker: React.FC = () => {
           }
           break;
         }
-        case 'open-file':
-          await chooseSaveDirectory();
+        case 'open-file': {
+          await openSharedDataFile();
           break;
+        }
         case 'save':
           if (dirty) saveData();
           break;
         case 'save-as':
-          await api.saveAsDataFile?.();
+          await createSharedDataFile();
           break;
         case 'export':
           exportData();
@@ -429,11 +432,15 @@ const ExpenseTracker: React.FC = () => {
         case 'reveal':
           await api.revealDataFile?.();
           break;
+        case 'check-for-updates':
+          await api.checkForUpdates?.();
+          break;
       }
     });
   }, [
     openSettingsModal,
     chooseSaveDirectory,
+    loadData,
     dirty,
     saveData,
     exportData,
@@ -447,6 +454,54 @@ const ExpenseTracker: React.FC = () => {
     t,
   ]);
 
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onUpdateStatus) {
+      return;
+    }
+
+    api.onUpdateStatus((payload) => {
+      switch (payload.status) {
+        case 'available':
+          showToast(
+            t('toasts.updateAvailable', {
+              defaultValue: 'Update {{version}} is downloading.',
+              version: payload.version || 'available',
+            }),
+            'success'
+          );
+          break;
+        case 'not-available':
+          showToast(
+            t('toasts.updateNotAvailable', {
+              defaultValue: 'You already have the latest version.',
+            }),
+            'success'
+          );
+          break;
+        case 'downloaded':
+          showToast(
+            t('toasts.updateReady', {
+              defaultValue: 'Update {{version}} is ready to install.',
+              version: payload.version || 'ready',
+            }),
+            'success'
+          );
+          break;
+        case 'error':
+          showToast(
+            payload.message ||
+              t('errors.updateFailed', {
+                defaultValue: 'The app could not check for updates.',
+              }),
+            'error'
+          );
+          break;
+        default:
+          break;
+      }
+    });
+  }, [showToast, t]);
   useEffect(() => {
     if (!dirty || exportingData) {
       return;
@@ -485,14 +540,6 @@ const ExpenseTracker: React.FC = () => {
     householdSettings,
     settlements,
   ]);
-
-  /**
-   * Show toast notification (Phase 1 Feature #2D)
-   */
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   /**
    * Phase 2 Feature #10: Bulk operations helpers
@@ -1410,16 +1457,16 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Handle cloud folder selection from welcome/folder selection modals
    */
-  const handleCloudFolderSelection = async (_cloud: CloudDriveInfo) => {
+  const handleCloudFolderSelection = async (cloud: CloudDriveInfo) => {
     setShowWelcomeModal(false);
     setShowFolderSelectionModal(false);
-
-    // Mark welcome as seen
     markWelcomeSeen();
 
-    // Trigger folder picker with the cloud path as context
-    // In Electron, this will use the suggested path
-    // In browser, we'll just open the picker
+    if (window.electronAPI?.createDataFile) {
+      await createSharedDataFile(cloud.path || undefined);
+      return;
+    }
+
     await chooseSaveDirectory();
   };
 
@@ -1429,11 +1476,26 @@ const ExpenseTracker: React.FC = () => {
   const handleCustomFolderSelection = async () => {
     setShowWelcomeModal(false);
     setShowFolderSelectionModal(false);
-
-    // Mark welcome as seen
     markWelcomeSeen();
 
-    // Open the folder picker
+    if (window.electronAPI?.createDataFile) {
+      await createSharedDataFile();
+      return;
+    }
+
+    await chooseSaveDirectory();
+  };
+
+  const handleOpenExistingSharedFile = async () => {
+    setShowWelcomeModal(false);
+    setShowFolderSelectionModal(false);
+    markWelcomeSeen();
+
+    if (window.electronAPI?.openDataFile) {
+      await openSharedDataFile();
+      return;
+    }
+
     await chooseSaveDirectory();
   };
 
@@ -1779,6 +1841,8 @@ const ExpenseTracker: React.FC = () => {
           onSaveNames={saveNames}
           onSaveHouseholdSettings={saveHouseholdSettings}
           onChooseSaveDirectory={chooseSaveDirectory}
+          onOpenSharedDataFile={openSharedDataFile}
+          onCreateSharedDataFile={createSharedDataFile}
           onExportData={exportData}
           onImportFileChange={handleImportFile}
           onImportData={importData}
@@ -2172,7 +2236,7 @@ const ExpenseTracker: React.FC = () => {
                   {/* Selected Emoji Display */}
                   <div className="flex items-center justify-center mb-4">
                     <div className="text-6xl bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl p-4 border-2 border-slate-600 shadow-lg">
-                      {categoryForm.icon || '🏷️'}
+                      {categoryForm.icon || '???'}
                     </div>
                   </div>
 
@@ -2249,7 +2313,7 @@ const ExpenseTracker: React.FC = () => {
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{t('labels.preview')}</p>
                   <div className="flex items-center gap-4">
                     <div className={`w-14 h-14 ${categoryForm.color} rounded-xl flex items-center justify-center text-3xl shadow-lg`}>
-                      {categoryForm.icon || '🏷️'}
+                      {categoryForm.icon || '???'}
                     </div>
                     <span className="font-semibold text-lg">
                       {categoryForm.name ? getCategoryLabel(categoryForm.name) : t('labels.categoryNamePlaceholder')}
@@ -2358,6 +2422,7 @@ const ExpenseTracker: React.FC = () => {
           suggestedClouds={suggestedClouds}
           onSelectCloud={handleCloudFolderSelection}
           onChooseCustomFolder={handleCustomFolderSelection}
+          onOpenExistingFile={handleOpenExistingSharedFile}
           onSkip={handleSkipWelcome}
         />
 
@@ -2368,6 +2433,7 @@ const ExpenseTracker: React.FC = () => {
           suggestedClouds={suggestedClouds}
           onSelectCloud={handleCloudFolderSelection}
           onChooseCustomFolder={handleCustomFolderSelection}
+          onOpenExistingFile={handleOpenExistingSharedFile}
         />
 
       </div>
@@ -2377,3 +2443,12 @@ const ExpenseTracker: React.FC = () => {
 };
 
 export default ExpenseTracker;
+
+
+
+
+
+
+
+
+
