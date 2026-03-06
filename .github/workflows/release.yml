@@ -57,6 +57,10 @@ jobs:
         env:
           CSC_FILE_BASE64: ${{ secrets.CSC_FILE_BASE64 }}
 
+      - name: Rebuild 7zip-bin
+        working-directory: packages/desktop
+        run: npm rebuild 7zip-bin
+
       - name: Build desktop app
         working-directory: packages/desktop
         run: npx vite build
@@ -103,6 +107,10 @@ jobs:
         env:
           MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
           MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+
+      - name: Rebuild 7zip-bin
+        working-directory: packages/desktop
+        run: npm rebuild 7zip-bin
 
       - name: Build desktop app
         working-directory: packages/desktop
