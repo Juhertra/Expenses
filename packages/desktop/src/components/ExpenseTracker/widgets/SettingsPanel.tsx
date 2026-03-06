@@ -146,7 +146,8 @@ export function SettingsPanel({
     tempHouseholdSettings.currencyCode !== householdSettings.currencyCode ||
     tempHouseholdSettings.currencySymbol !== householdSettings.currencySymbol ||
     tempHouseholdSettings.splitMode !== householdSettings.splitMode ||
-    tempHouseholdSettings.partner1Ratio !== householdSettings.partner1Ratio;
+    tempHouseholdSettings.partner1Ratio !== householdSettings.partner1Ratio ||
+    (tempHouseholdSettings.autoUpdate ?? true) !== (householdSettings.autoUpdate ?? true);
 
   // Auto-save partner names after 1.5s of no changes
   useEffect(() => {
@@ -397,7 +398,7 @@ export function SettingsPanel({
                 value={tempHouseholdSettings.currencyCode}
                 onChange={(e) => {
                   const code = e.target.value;
-                  const symbol = code === "ILS" ? "?" : code === "USD" ? "$" : "€";
+                  const symbol = code === "ILS" ? "?" : code === "USD" ? "$" : "ï¿½";
                   setTempHouseholdSettings({
                     ...tempHouseholdSettings,
                     currencyCode: code,
@@ -677,6 +678,39 @@ export function SettingsPanel({
                         >
                           {t("buttons.checkForUpdates", "Check for updates")}
                         </Button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <div>
+                          <label className="text-sm text-slate-300 font-medium">
+                            {t("settings.about.autoUpdate", "Auto-update")}
+                          </label>
+                          <p className="text-xs text-slate-400">
+                            {t("settings.about.autoUpdateDesc", "Automatically install updates when the app closes")}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={tempHouseholdSettings.autoUpdate ?? true}
+                          onClick={() =>
+                            setTempHouseholdSettings(prev => ({
+                              ...prev,
+                              autoUpdate: !(prev.autoUpdate ?? true),
+                            }))
+                          }
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                            (tempHouseholdSettings.autoUpdate ?? true)
+                              ? 'bg-purple-600'
+                              : 'bg-slate-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              (tempHouseholdSettings.autoUpdate ?? true) ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </div>
                     </div>
                   ) : (

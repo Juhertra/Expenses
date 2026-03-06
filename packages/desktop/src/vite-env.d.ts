@@ -28,6 +28,8 @@ interface ElectronAPI {
   showSaveDialog: (options?: Record<string, unknown>) => Promise<{ canceled: boolean; filePath?: string }>;
   showOpenDialog: (options?: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths?: string[] }>;
   checkForUpdates: () => Promise<{ started: boolean }>;
+  installUpdate: () => Promise<void>;
+  deferUpdate: (shouldAutoInstall: boolean) => Promise<void>;
   onDataChanged: (callback: (payload: { path: string; mtimeMs: number }) => void) => void;
   onMenuAction: (callback: (payload: { action: string }) => void) => void;
   onUpdateStatus: (callback: (payload: { status: string; version?: string | null; message?: string }) => void) => void;

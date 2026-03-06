@@ -189,6 +189,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showSaveDialog: (options) => ipcRenderer.invoke('dialog:showSaveDialog', options),
   showOpenDialog: (options) => ipcRenderer.invoke('dialog:showOpenDialog', options),
   checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates'),
+  installUpdate: () => ipcRenderer.invoke('app:installUpdate'),
+  deferUpdate: (shouldAutoInstall) => ipcRenderer.invoke('app:deferUpdate', shouldAutoInstall),
   onDataChanged: (callback) => {
     ipcRenderer.removeAllListeners('data:changed');
     ipcRenderer.on('data:changed', (_event, payload) => {

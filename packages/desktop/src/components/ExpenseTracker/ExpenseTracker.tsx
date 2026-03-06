@@ -171,6 +171,8 @@ const ExpenseTracker: React.FC = () => {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Filter presets (placeholder functionality - empty array renders nothing)
+  const [pendingUpdateVersion, setPendingUpdateVersion] = useState<string | null>(null);
+
   const [filterPresets] = useState<Array<{
     name: string;
     filters: {
@@ -480,13 +482,7 @@ const ExpenseTracker: React.FC = () => {
           );
           break;
         case 'downloaded':
-          showToast(
-            t('toasts.updateReady', {
-              defaultValue: 'Update {{version}} is ready to install.',
-              version: payload.version || 'ready',
-            }),
-            'success'
-          );
+          setPendingUpdateVersion(payload.version || 'latest');
           break;
         case 'error':
           showToast(
@@ -2435,6 +2431,53 @@ const ExpenseTracker: React.FC = () => {
           onChooseCustomFolder={handleCustomFolderSelection}
           onOpenExistingFile={handleOpenExistingSharedFile}
         />
+
+        {/* Update ready modal */}
+        {pendingUpdateVersion && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              const api = window.electronAPI;
+              api?.deferUpdate?.(householdSettings.autoUpdate ?? true);
+              setPendingUpdateVersion(null);
+            }}
+          >
+            <div
+              className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold mb-2">
+                {t('labels.updateReady', { defaultValue: 'Update ready' })}
+              </h3>
+              <p className="text-slate-300 text-sm mb-6">
+                {t('messages.updateReadyDetail', {
+                  defaultValue: 'Version {{version}} has been downloaded and is ready to install. Restart now to apply the update.',
+                  version: pendingUpdateVersion,
+                })}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    const api = window.electronAPI;
+                    api?.deferUpdate?.(householdSettings.autoUpdate ?? true);
+                    setPendingUpdateVersion(null);
+                  }}
+                >
+                  {t('buttons.notNow', { defaultValue: 'Not now' })}
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    window.electronAPI?.installUpdate?.();
+                  }}
+                >
+                  {t('buttons.restartAndInstall', { defaultValue: 'Restart & Install' })}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

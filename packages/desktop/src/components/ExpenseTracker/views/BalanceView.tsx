@@ -55,14 +55,6 @@ export function BalanceView({
     .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
     .reduce((sum, exp) => sum + exp.amount, 0);
 
-  const partner1Income = expenses
-    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'income')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const partner2Income = expenses
-    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'income')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
   const jointPaid = expenses
     .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
     .reduce((sum, exp) => sum + exp.amount, 0);
@@ -154,12 +146,6 @@ export function BalanceView({
                     {withLtr(formatCurrency(partner1FairShare))}
                   </span>
                 </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.income')}</span>
-                  <span className="font-medium text-green-400 break-words text-right">
-                    {withLtr(`+${formatCurrency(partner1Income)}`)}
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -181,12 +167,6 @@ export function BalanceView({
                   <span className="text-slate-400">{t('labels.fairShare')}</span>
                   <span className="font-medium break-words text-right">
                     {withLtr(formatCurrency(partner2FairShare))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.income')}</span>
-                  <span className="font-medium text-green-400 break-words text-right">
-                    {withLtr(`+${formatCurrency(partner2Income)}`)}
                   </span>
                 </div>
               </div>

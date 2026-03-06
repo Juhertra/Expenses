@@ -70,6 +70,7 @@ export interface HouseholdSettings {
   normalizationRules: { [key: string]: string };
   categories: { [categoryName: string]: Category };
   activePartner?: 'partner1' | 'partner2';
+  autoUpdate?: boolean;
 }
 
 export interface Settlement {

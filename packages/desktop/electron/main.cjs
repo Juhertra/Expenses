@@ -370,25 +370,12 @@ const setupAutoUpdater = () => {
       });
     });
 
-    autoUpdater.on('update-downloaded', async (info) => {
+    autoUpdater.on('update-downloaded', (info) => {
       broadcastToWindows('update:status', {
         status: 'downloaded',
         version: info?.version || null,
       });
-
-      const response = await dialog.showMessageBox({
-        type: 'info',
-        buttons: ['Restart now', 'Later'],
-        defaultId: 0,
-        cancelId: 1,
-        title: 'Update ready',
-        message: `Version ${info?.version || 'the latest release'} is ready to install.`,
-        detail: 'Restart the app to finish installing the update.',
-      });
-
-      if (response.response === 0) {
-        autoUpdater.quitAndInstall();
-      }
+      // The in-app modal in the renderer handles the "Restart now / Not now" prompt.
     });
 
     autoUpdater.on('error', (error) => {
@@ -638,5 +625,13 @@ ipcMain.handle('app:info', async () => {
   };
 });
 ipcMain.handle('app:checkForUpdates', async () => checkForUpdates());
+ipcMain.handle('app:installUpdate', () => {
+  const updater = autoUpdaterInstance;
+  if (updater) updater.quitAndInstall();
+});
+ipcMain.handle('app:deferUpdate', (_event, shouldAutoInstall) => {
+  const updater = autoUpdaterInstance;
+  if (updater) updater.autoInstallOnAppQuit = shouldAutoInstall;
+});
 
 
