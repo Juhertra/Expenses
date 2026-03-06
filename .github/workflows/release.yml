@@ -82,6 +82,8 @@ jobs:
         run: npx electron-builder --publish=always --config.electronVersion=35.7.5
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_WORKSPACES: false
+          NPM_CONFIG_INCLUDE_WORKSPACE_ROOT: false
           CSC_FILE: ${{ steps.check-win-cert.outputs.has_cert == 'true' && format('{0}/cert.pfx', runner.temp) || '' }}
           CSC_PASSWORD: ${{ secrets.CSC_PASSWORD }}
 
@@ -145,6 +147,9 @@ jobs:
         run: npx electron-builder --publish=always --config.electronVersion=35.7.5
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_WORKSPACES: false
+          NPM_CONFIG_INCLUDE_WORKSPACE_ROOT: false
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
+
