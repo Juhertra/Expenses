@@ -135,7 +135,10 @@ export function BalanceView({
     <>
       <div className="space-y-4 sm:space-y-6">
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
-          <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">{t('labels.balanceSettlement')}</h3>
+          <h3 className="text-lg sm:text-xl font-bold mb-1">{t('labels.balanceSettlement')}</h3>
+          <p className="text-xs text-slate-400 mb-4 sm:mb-6">
+            {t('labels.monthlyContributions', 'This month\'s contributions')}
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div className="bg-slate-800/60 rounded-xl p-4 sm:p-6 shadow-lg shadow-purple-900/20">
@@ -191,11 +194,17 @@ export function BalanceView({
               <div className="text-5xl mb-3">✅</div>
               <h4 className="text-xl font-bold text-green-400 mb-2">{t('messages.perfectBalance')}</h4>
               <p className="text-slate-300">{t('messages.allSettled')}</p>
+              <p className="text-xs text-slate-500 mt-2">
+                {t('labels.cumulativeBalance', 'Running total across all months')}
+              </p>
             </div>
           ) : (
             <div className="bg-purple-900/30 border border-purple-700 rounded-xl p-6">
               <div className="text-center">
-                <div className="text-lg font-bold mb-2">{t('messages.settlementRequired')}</div>
+                <div className="text-lg font-bold mb-1">{t('messages.settlementRequired')}</div>
+                <div className="text-xs text-slate-400 mb-2">
+                  {t('labels.cumulativeBalance', 'Running total across all months')}
+                </div>
                 {householdSettings.splitMode === 'proportional' && (
                   <div className="text-xs text-slate-400 mb-2">
                     {t('labels.splitRatio')}: {withLtr(`${(splitRatio * 100).toFixed(0)}% / ${((1-splitRatio) * 100).toFixed(0)}%`)}
