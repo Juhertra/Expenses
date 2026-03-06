@@ -321,6 +321,50 @@ describe('calculateBalance', () => {
     expect(cumulativeBalance.partner2Balance).toBe(-300);
   });
 
+  it('a settlement recorded in a later month should clear a prior month outstanding balance', () => {
+    // Regression: when viewing January after settling the remaining debt in February,
+    // January showed an outstanding balance because settlements were time-filtered to
+    // the selected month. The fix is to pass ALL settlements (not time-filtered) to the
+    // balance calculation so that later settlements correctly show on earlier months.
+    const expenses: Expense[] = [
+      {
+        id: 1, description: 'Jan housing', amount: 2000, category: 'Housing',
+        type: 'expense', date: '2026-01-10', paidBy: 'partner2',
+      },
+    ];
+    const settings: HouseholdSettings = {
+      currencyCode: 'USD', currencySymbol: '$', splitMode: 'equal',
+      partner1Ratio: 0.5, budgets: {}, normalizationRules: {}, categories: {},
+    };
+    const settlements: Settlement[] = [
+      { id: 1, date: '2026-01-31', amount: 500, from: 'partner1', to: 'partner2', note: '' },
+      { id: 2, date: '2026-02-28', amount: 500, from: 'partner1', to: 'partner2', note: '' },
+    ];
+
+    // NEW behaviour: January view with ALL settlements (not time-filtered)
+    const withAllSettlements = calculateBalance(
+      getExpensesThroughMonth(expenses, 2026, 0),
+      settings,
+      settlements,
+    );
+
+    // OLD (broken) behaviour: January view with only January settlements
+    const withFilteredSettlements = calculateBalance(
+      getExpensesThroughMonth(expenses, 2026, 0),
+      settings,
+      getSettlementsThroughMonth(settlements, 2026, 0),
+    );
+
+    // Jan debt = $1000 (partner2 paid $2000, each owes $1000).
+    // Jan+Feb settlements together = $1000 → fully cleared.
+    expect(withAllSettlements.partner1Balance).toBe(0);
+    expect(withAllSettlements.partner2Balance).toBe(0);
+
+    // Old behaviour: only the Jan $500 applied → $500 still showing as outstanding.
+    expect(withFilteredSettlements.partner1Balance).toBe(-500);
+    expect(withFilteredSettlements.partner2Balance).toBe(500);
+  });
+
   it('should carry an unpaid balance into the next month until settled', () => {
     const expenses: Expense[] = [
       {

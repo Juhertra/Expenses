@@ -7,7 +7,7 @@ import type {
   Settlement,
   ChartDataPoint,
 } from '@expenses/shared/types';
-import { getExpensesThroughMonth, getSettlementsThroughMonth, parseDateParts } from '@expenses/shared/calculations';
+import { getExpensesThroughMonth, parseDateParts } from '@expenses/shared/calculations';
 import type { Theme } from '../../lib/theme';
 import { BalanceView, CategoriesView, DashboardView, TransactionsView } from './views';
 
@@ -396,17 +396,19 @@ export function ViewRouter({
 
     case 'balance': {
       const balanceExpenses = getExpensesThroughMonth(expenses, selectedYear, selectedMonth);
-      const balanceSettlements = getSettlementsThroughMonth(settlements, selectedYear, selectedMonth);
       // monthExpenses: only the selected month (no category/search filters) for display values
       const balanceMonthExpenses = expenses.filter(e => {
         const { year, month } = parseDateParts(e.date);
         return year === selectedYear && month === selectedMonth;
       });
+      // Settlements are NOT time-filtered: a settlement made in a later month (e.g. to
+      // clear a January carryover) must still appear when viewing January, otherwise a
+      // past month will show an outstanding balance that has since been fully cleared.
       return (
         <BalanceView
           expenses={balanceExpenses}
           monthExpenses={balanceMonthExpenses}
-          settlements={balanceSettlements}
+          settlements={settlements}
           partnerNames={partnerNames}
           householdSettings={householdSettings}
           theme={theme}
