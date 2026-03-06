@@ -39,18 +39,6 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
-      - name: Ensure 7za is present
-        shell: pwsh
-        run: |
-          $sevenZip = Join-Path $env:GITHUB_WORKSPACE 'node_modules\7zip-bin\win\x64\7za.exe'
-          if (!(Test-Path $sevenZip)) {
-            Write-Host '7za.exe missing after npm ci; reinstalling 7zip-bin'
-            & npm install 7zip-bin@5.2.0 --no-save
-          }
-          if (!(Test-Path $sevenZip)) {
-            throw "7za.exe is still missing: $sevenZip"
-          }
-
       - id: check-win-cert
         shell: pwsh
         run: |
