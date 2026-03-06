@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "7zip-bin": "~5.2.0",
-    "app-builder-bin": "4.0.0"
+    "app-builder-bin": "4.0.0",
+    "electron-builder": "24.13.3"
   },
   "engines": {
     "node": ">=18.0.0"

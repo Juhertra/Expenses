@@ -80,9 +80,6 @@
         "owner": "Juhertra",
         "repo": "Expenses"
       }
-    ],
-    "npmArgs": [
-      "--workspaces=false"
     ]
   },
   "repository": {
