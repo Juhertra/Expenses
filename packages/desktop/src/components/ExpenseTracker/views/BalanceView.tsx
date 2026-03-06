@@ -6,7 +6,10 @@ import type { Theme } from '../../../lib/theme';
 import { Button, IconButton } from '../../ui';
 
 interface BalanceViewProps {
+  /** All expenses up to (and including) the selected month — used for cumulative settlement balance. */
   expenses: Expense[];
+  /** Only the selected month's expenses — used for the partner card and payment breakdown display. */
+  monthExpenses: Expense[];
   settlements: Settlement[];
   partnerNames: PartnerNames;
   householdSettings: HouseholdSettings;
@@ -21,6 +24,7 @@ interface BalanceViewProps {
 
 export function BalanceView({
   expenses,
+  monthExpenses,
   settlements,
   partnerNames,
   householdSettings,
@@ -46,35 +50,43 @@ export function BalanceView({
     note: '',
   });
 
-  // Calculate balance data
-  const partner1Paid = expenses
-    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const partner2Paid = expenses
-    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const jointPaid = expenses
-    .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
   // Split mode: Calculate fair share based on household settings
   const splitRatio = householdSettings.splitMode === 'equal'
     ? 0.5
     : Math.max(0.05, Math.min(0.95, householdSettings.partner1Ratio));
 
-  // Balance calculation: Only count personal payments
-  const totalSharedExpenses = partner1Paid + partner2Paid;
-  const partner1FairShare = totalSharedExpenses * splitRatio;
-  const partner2FairShare = totalSharedExpenses * (1 - splitRatio);
+  // --- Display values: current month only ---
+  const partner1Paid = monthExpenses
+    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const partner2Paid = monthExpenses
+    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const jointPaid = monthExpenses
+    .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const totalSharedMonth = partner1Paid + partner2Paid;
+  const partner1FairShare = totalSharedMonth * splitRatio;
+  const partner2FairShare = totalSharedMonth * (1 - splitRatio);
 
   // For progress bar display
   const totalAllPayments = partner1Paid + partner2Paid + jointPaid;
 
-  // Balance calculation
-  let partner1Balance = partner1Paid - partner1FairShare;
-  let partner2Balance = partner2Paid - partner2FairShare;
+  // --- Settlement balance: cumulative (all months through selected) ---
+  const partner1PaidTotal = expenses
+    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const partner2PaidTotal = expenses
+    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
+  const totalSharedCumulative = partner1PaidTotal + partner2PaidTotal;
+  let partner1Balance = partner1PaidTotal - totalSharedCumulative * splitRatio;
+  let partner2Balance = partner2PaidTotal - totalSharedCumulative * (1 - splitRatio);
 
   // Adjust balances for settlements
   const netSettlementToPartner1 = settlements.reduce((sum, settlement) => {

@@ -6,6 +6,7 @@ import {
   getFrequentExpenses,
   getExpensesThroughMonth,
   getSettlementsThroughMonth,
+  parseDateParts,
   isOnOrBeforeMonth,
   getAvailableYears,
   getChartData,
@@ -275,6 +276,49 @@ describe('calculateBalance', () => {
     expect(result.totalSharedExpenses).toBe(1500);
     expect(result.partner1Balance).toBe(750);   // paid $1500, owed $750 → owed +$750
     expect(result.partner2Balance).toBe(-750);  // paid $0, owed $750 → owes -$750
+  });
+
+  it('monthly paid amounts should differ from cumulative balance (display vs settlement split)', () => {
+    // Regression: BalanceView was showing cumulative partner1Paid/partner2Paid in
+    // the partner cards instead of just the selected month. The fix passes a separate
+    // monthExpenses set for display while keeping cumulative expenses for settlement.
+    const expenses: Expense[] = [
+      {
+        id: 1, description: 'Jan rent', amount: 800, category: 'Housing',
+        type: 'expense', date: '2026-01-15', paidBy: 'partner1',
+      },
+      {
+        id: 2, description: 'Feb groceries', amount: 200, category: 'Food',
+        type: 'expense', date: '2026-02-10', paidBy: 'partner2',
+      },
+    ];
+    const settings: HouseholdSettings = {
+      currencyCode: 'USD', currencySymbol: '$', splitMode: 'equal',
+      partner1Ratio: 0.5, budgets: {}, normalizationRules: {}, categories: {},
+    };
+
+    // Display values: Feb month only
+    const febMonthExpenses = expenses.filter(e => {
+      const { year, month } = parseDateParts(e.date);
+      return year === 2026 && month === 1; // month 1 = February (0-indexed)
+    });
+    const displayBalance = calculateBalance(febMonthExpenses, settings, []);
+
+    // Settlement balance: cumulative through Feb
+    const cumulativeBalance = calculateBalance(
+      getExpensesThroughMonth(expenses, 2026, 1),
+      settings,
+      getSettlementsThroughMonth([], 2026, 1),
+    );
+
+    // Display card: only Feb's $200 from partner2 matters
+    expect(displayBalance.partner1Balance).toBe(-100); // paid $0 of $200, owes $100
+    expect(displayBalance.partner2Balance).toBe(100);  // paid $200, fair share $100 → +$100
+
+    // Settlement: Jan's $800 (partner1) + Feb's $200 (partner2) → total $1000, each fair $500
+    // partner1 paid $800 → overpaid $300; partner2 paid $200 → underpaid $300
+    expect(cumulativeBalance.partner1Balance).toBe(300);
+    expect(cumulativeBalance.partner2Balance).toBe(-300);
   });
 
   it('should carry an unpaid balance into the next month until settled', () => {
