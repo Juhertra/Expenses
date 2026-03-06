@@ -39,16 +39,20 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
-      - name: Ensure 7za is present
+      - name: Ensure packaging binaries are present
         shell: pwsh
         run: |
           $sevenZip = Join-Path $env:GITHUB_WORKSPACE 'node_modules\7zip-bin\win\x64\7za.exe'
-          if (!(Test-Path $sevenZip)) {
-            Write-Host '7za.exe missing after npm ci; reinstalling 7zip-bin'
-            & npm install 7zip-bin@5.2.0 --no-save
+          $appBuilder = Join-Path $env:GITHUB_WORKSPACE 'node_modules\app-builder-bin\win\x64\app-builder.exe'
+          if (!(Test-Path $sevenZip) -or !(Test-Path $appBuilder)) {
+            Write-Host 'Packaging binary missing after npm ci; reinstalling 7zip-bin and app-builder-bin'
+            & npm install 7zip-bin@5.2.0 app-builder-bin@4.0.0 --no-save
           }
           if (!(Test-Path $sevenZip)) {
             throw "7za.exe is still missing: $sevenZip"
+          }
+          if (!(Test-Path $appBuilder)) {
+            throw "app-builder.exe is still missing: $appBuilder"
           }
 
       - id: check-win-cert
@@ -95,16 +99,20 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
-      - name: Ensure 7za is present
+      - name: Ensure packaging binaries are present
         run: |
           arch=$(uname -m)
           sevenZip="$GITHUB_WORKSPACE/node_modules/7zip-bin/mac/$arch/7za"
-          if [ ! -f "$sevenZip" ]; then
-            echo "7za missing after npm ci; reinstalling 7zip-bin"
-            npm install 7zip-bin@5.2.0 --no-save
+          appBuilder="$GITHUB_WORKSPACE/node_modules/app-builder-bin/mac/app-builder_$arch"
+          if [ ! -f "$sevenZip" ] || [ ! -f "$appBuilder" ]; then
+            echo "Packaging binary missing after npm ci; reinstalling 7zip-bin and app-builder-bin"
+            npm install 7zip-bin@5.2.0 app-builder-bin@4.0.0 --no-save
           fi
           if [ ! -f "$sevenZip" ]; then
             echo "7za is still missing: $sevenZip" && exit 1
+          fi
+          if [ ! -f "$appBuilder" ]; then
+            echo "app-builder is still missing: $appBuilder" && exit 1
           fi
 
       - id: check-mac-cert
