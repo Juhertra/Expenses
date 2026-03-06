@@ -67,6 +67,12 @@ export function validateExpenseForm(formData: FormData): ValidationResult {
 
 const VALID_PAID_BY = ['partner1', 'partner2', 'joint'] as const;
 const VALID_TYPES = ['expense', 'income'] as const;
+const REQUIRED_RAW_KEYS = [
+  'household-expenses',
+  'household-recurring',
+  'household-partner-names',
+  'household-settings',
+] as const;
 
 function validateExpenseItem(item: unknown, index: number): string[] {
   const errors: string[] = [];
@@ -118,10 +124,16 @@ export function validateImportData(data: unknown): ValidationResult {
     errors.push('Invalid or unsupported schema version');
   }
 
-  // Check data object exists
-  if (!importData.data || typeof importData.data !== 'object') {
+  const hasData = !!importData.data && typeof importData.data === 'object';
+  const hasRaw = !!importData.raw && typeof importData.raw === 'object';
+
+  // Require at least one import format: backup `data` or live file `raw`
+  if (!hasData && !hasRaw) {
     errors.push('Missing data object');
-  } else {
+  }
+
+  // Validate backup payload format
+  if (hasData) {
     const dataObj = importData.data as Record<string, unknown>;
 
     // Validate expenses array and each item
@@ -150,6 +162,80 @@ export function validateImportData(data: unknown): ValidationResult {
     // Validate household settings
     if (!dataObj.householdSettings || typeof dataObj.householdSettings !== 'object') {
       errors.push('Invalid household settings');
+    }
+  }
+
+  // Validate live-file raw payload format
+  if (hasRaw) {
+    const rawObj = importData.raw as Record<string, unknown>;
+
+    for (const key of REQUIRED_RAW_KEYS) {
+      if (typeof rawObj[key] !== 'string') {
+        errors.push(`Raw field ${key} must be a JSON string`);
+      }
+    }
+
+    if (typeof rawObj['household-expenses'] === 'string') {
+      try {
+        const rawExpenses = JSON.parse(rawObj['household-expenses']);
+        if (!Array.isArray(rawExpenses)) {
+          errors.push('Raw household-expenses must decode to an array');
+        } else {
+          rawExpenses.forEach((item: unknown, i: number) => {
+            errors.push(...validateExpenseItem(item, i));
+          });
+        }
+      } catch {
+        errors.push('Raw household-expenses is not valid JSON');
+      }
+    }
+
+    if (typeof rawObj['household-recurring'] === 'string') {
+      try {
+        const rawRecurring = JSON.parse(rawObj['household-recurring']);
+        if (!Array.isArray(rawRecurring)) {
+          errors.push('Raw household-recurring must decode to an array');
+        } else {
+          rawRecurring.forEach((item: unknown, i: number) => {
+            errors.push(...validateRecurringItem(item, i));
+          });
+        }
+      } catch {
+        errors.push('Raw household-recurring is not valid JSON');
+      }
+    }
+
+    if (typeof rawObj['household-partner-names'] === 'string') {
+      try {
+        const rawNames = JSON.parse(rawObj['household-partner-names']);
+        if (!rawNames || typeof rawNames !== 'object') {
+          errors.push('Raw household-partner-names must decode to an object');
+        }
+      } catch {
+        errors.push('Raw household-partner-names is not valid JSON');
+      }
+    }
+
+    if (typeof rawObj['household-settings'] === 'string') {
+      try {
+        const rawSettings = JSON.parse(rawObj['household-settings']);
+        if (!rawSettings || typeof rawSettings !== 'object') {
+          errors.push('Raw household-settings must decode to an object');
+        }
+      } catch {
+        errors.push('Raw household-settings is not valid JSON');
+      }
+    }
+
+    if (typeof rawObj['household-settlements'] === 'string') {
+      try {
+        const rawSettlements = JSON.parse(rawObj['household-settlements']);
+        if (!Array.isArray(rawSettlements)) {
+          errors.push('Raw household-settlements must decode to an array');
+        }
+      } catch {
+        errors.push('Raw household-settlements is not valid JSON');
+      }
     }
   }
 

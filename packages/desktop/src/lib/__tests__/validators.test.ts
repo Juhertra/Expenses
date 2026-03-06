@@ -146,8 +146,35 @@ describe('validateImportData', () => {
     },
   };
 
+  const validRawData = {
+    schemaVersion: 1,
+    exportDate: '2026-01-01T00:00:00.000Z',
+    raw: {
+      'household-expenses': JSON.stringify([]),
+      'household-recurring': JSON.stringify([]),
+      'household-partner-names': JSON.stringify({ partner1: 'Partner 1', partner2: 'Partner 2' }),
+      'household-settings': JSON.stringify({
+        currencyCode: 'USD',
+        currencySymbol: '$',
+        splitMode: 'equal',
+        partner1Ratio: 0.5,
+        budgets: {},
+        normalizationRules: {},
+        categories: {},
+      }),
+      'household-settlements': JSON.stringify([]),
+    },
+  };
+
   it('should validate correct import data', () => {
     const result = validateImportData(validData);
+
+    expect(result.isValid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should validate live raw import data', () => {
+    const result = validateImportData(validRawData);
 
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);

@@ -9,6 +9,8 @@ export interface ExportPayload {
   settlements: Settlement[];
 }
 
+type RawStorageMap = Record<string, string>;
+
 export const EXPORT_SCHEMA_VERSION = 1;
 
 export function buildExportObject(payload: ExportPayload) {
@@ -63,5 +65,21 @@ export function parseImport(text: string) {
     const error = validation.errors[0] || 'Invalid import data';
     throw new Error(error);
   }
+
+  if (!parsed.data && parsed.raw && typeof parsed.raw === 'object') {
+    const raw = parsed.raw as RawStorageMap;
+    const normalizedData: ExportPayload = {
+      expenses: JSON.parse(raw['household-expenses'] || '[]'),
+      recurring: JSON.parse(raw['household-recurring'] || '[]'),
+      partnerNames: JSON.parse(
+        raw['household-partner-names'] || '{"partner1":"Partner 1","partner2":"Partner 2"}'
+      ) as PartnerNames,
+      householdSettings: JSON.parse(raw['household-settings'] || '{}') as HouseholdSettings,
+      settlements: JSON.parse(raw['household-settlements'] || '[]'),
+    };
+
+    return { ...parsed, data: normalizedData };
+  }
+
   return parsed;
 }
