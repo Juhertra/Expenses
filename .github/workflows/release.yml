@@ -39,6 +39,18 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
+      - name: Ensure 7za is present
+        shell: pwsh
+        run: |
+          $sevenZip = Join-Path $env:GITHUB_WORKSPACE 'node_modules\7zip-bin\win\x64\7za.exe'
+          if (!(Test-Path $sevenZip)) {
+            Write-Host '7za.exe missing after npm ci; reinstalling 7zip-bin'
+            & npm install 7zip-bin@5.2.0 --no-save
+          }
+          if (!(Test-Path $sevenZip)) {
+            throw "7za.exe is still missing: $sevenZip"
+          }
+
       - id: check-win-cert
         shell: pwsh
         run: |
@@ -56,9 +68,6 @@ jobs:
           )
         env:
           CSC_FILE_BASE64: ${{ secrets.CSC_FILE_BASE64 }}
-
-      - name: Rebuild 7zip-bin
-        run: npm rebuild 7zip-bin
 
       - name: Build desktop app
         working-directory: packages/desktop
@@ -86,6 +95,18 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace=packages/shared
 
+      - name: Ensure 7za is present
+        run: |
+          arch=$(uname -m)
+          sevenZip="$GITHUB_WORKSPACE/node_modules/7zip-bin/mac/$arch/7za"
+          if [ ! -f "$sevenZip" ]; then
+            echo "7za missing after npm ci; reinstalling 7zip-bin"
+            npm install 7zip-bin@5.2.0 --no-save
+          fi
+          if [ ! -f "$sevenZip" ]; then
+            echo "7za is still missing: $sevenZip" && exit 1
+          fi
+
       - id: check-mac-cert
         run: |
           if [ -n "$MACOS_CERT_BASE64" ]; then echo "has_cert=true" >> $GITHUB_OUTPUT; fi
@@ -106,9 +127,6 @@ jobs:
         env:
           MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
           MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-
-      - name: Rebuild 7zip-bin
-        run: npm rebuild 7zip-bin
 
       - name: Build desktop app
         working-directory: packages/desktop
