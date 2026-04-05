@@ -409,6 +409,8 @@ export function ViewRouter({
         <BalanceView
           expenses={balanceExpenses}
           monthExpenses={balanceMonthExpenses}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
           settlements={settlements}
           partnerNames={partnerNames}
           householdSettings={householdSettings}

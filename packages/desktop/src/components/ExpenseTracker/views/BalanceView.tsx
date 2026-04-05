@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusCircle, Trash2, X } from 'lucide-react';
+import { parseDateParts } from '@expenses/shared/calculations';
 import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 import { getLocalISODate } from '../../../lib/date';
 import { Button, IconButton } from '../../ui';
+
+type BalanceMode = 'month' | 'cumulative';
 
 interface BalanceViewProps {
   /** All expenses up to (and including) the selected month — used for cumulative settlement balance. */
   expenses: Expense[];
   /** Only the selected month's expenses — used for the partner card and payment breakdown display. */
   monthExpenses: Expense[];
+  selectedMonth: number;
+  selectedYear: number;
   settlements: Settlement[];
   partnerNames: PartnerNames;
   householdSettings: HouseholdSettings;
@@ -26,6 +31,8 @@ interface BalanceViewProps {
 export function BalanceView({
   expenses,
   monthExpenses,
+  selectedMonth,
+  selectedYear,
   settlements,
   partnerNames,
   householdSettings,
@@ -42,6 +49,7 @@ export function BalanceView({
   const dir = i18n.dir();
 
   // Settlement modal state
+  const [balanceMode, setBalanceMode] = useState<BalanceMode>('month');
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementForm, setSettlementForm] = useState({
     date: getLocalISODate(),
@@ -72,6 +80,8 @@ export function BalanceView({
   const totalSharedMonth = partner1Paid + partner2Paid;
   const partner1FairShare = totalSharedMonth * splitRatio;
   const partner2FairShare = totalSharedMonth * (1 - splitRatio);
+  const partner1MonthBalance = partner1Paid - partner1FairShare;
+  const partner2MonthBalance = partner2Paid - partner2FairShare;
 
   // For progress bar display
   const totalAllPayments = partner1Paid + partner2Paid + jointPaid;
@@ -86,8 +96,8 @@ export function BalanceView({
     .reduce((sum, exp) => sum + exp.amount, 0);
 
   const totalSharedCumulative = partner1PaidTotal + partner2PaidTotal;
-  let partner1Balance = partner1PaidTotal - totalSharedCumulative * splitRatio;
-  let partner2Balance = partner2PaidTotal - totalSharedCumulative * (1 - splitRatio);
+  let partner1CumulativeBalance = partner1PaidTotal - totalSharedCumulative * splitRatio;
+  let partner2CumulativeBalance = partner2PaidTotal - totalSharedCumulative * (1 - splitRatio);
 
   // Adjust balances for settlements
   const netSettlementToPartner1 = settlements.reduce((sum, settlement) => {
@@ -98,8 +108,19 @@ export function BalanceView({
     return sum;
   }, 0);
 
-  partner1Balance -= netSettlementToPartner1;
-  partner2Balance += netSettlementToPartner1;
+  partner1CumulativeBalance -= netSettlementToPartner1;
+  partner2CumulativeBalance += netSettlementToPartner1;
+
+  const partner1Balance = balanceMode === 'month' ? partner1MonthBalance : partner1CumulativeBalance;
+  const partner2Balance = balanceMode === 'month' ? partner2MonthBalance : partner2CumulativeBalance;
+
+  const displayedSettlements =
+    balanceMode === 'month'
+      ? settlements.filter(settlement => {
+          const { year, month } = parseDateParts(settlement.date);
+          return year === selectedYear && month === selectedMonth;
+        })
+      : settlements;
 
   const handleRecordSettlement = async () => {
     const amount = parseFloat(settlementForm.amount);
@@ -189,14 +210,47 @@ export function BalanceView({
             </div>
           </div>
 
+          <div className="mb-4 sm:mb-6">
+            <div className="inline-flex bg-slate-800 rounded-xl p-1 border border-slate-700">
+              <button
+                type="button"
+                onClick={() => setBalanceMode('month')}
+                className={`px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${
+                  balanceMode === 'month'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {t('labels.monthOnly', 'Month only')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBalanceMode('cumulative')}
+                className={`px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${
+                  balanceMode === 'cumulative'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {t('labels.cumulativeWithSettlements', 'Cumulative + settlements')}
+              </button>
+            </div>
+          </div>
+
           {/* Settlement summary */}
           {Math.abs(partner1Balance) < 0.01 ? (
             <div className="bg-green-900/20 border border-green-700 rounded-xl p-6 text-center">
               <div className="text-5xl mb-3">✅</div>
               <h4 className="text-xl font-bold text-green-400 mb-2">{t('messages.perfectBalance')}</h4>
-              <p className="text-slate-300">{t('messages.allSettled')}</p>
+              <p className="text-slate-300">
+                {balanceMode === 'month'
+                  ? t('messages.monthBalanced', 'Selected month is balanced')
+                  : t('messages.allSettled')}
+              </p>
               <p className="text-xs text-slate-500 mt-2">
-                {t('labels.cumulativeBalance', 'Running total across all months')}
+                {balanceMode === 'month'
+                  ? t('labels.monthOnlyScope', 'Selected month only (settlements excluded)')
+                  : t('labels.cumulativeBalance', 'Running total across all months')}
               </p>
             </div>
           ) : (
@@ -204,7 +258,9 @@ export function BalanceView({
               <div className="text-center">
                 <div className="text-lg font-bold mb-1">{t('messages.settlementRequired')}</div>
                 <div className="text-xs text-slate-400 mb-2">
-                  {t('labels.cumulativeBalance', 'Running total across all months')}
+                  {balanceMode === 'month'
+                    ? t('labels.monthOnlyScope', 'Selected month only (settlements excluded)')
+                    : t('labels.cumulativeBalance', 'Running total across all months')}
                 </div>
                 {householdSettings.splitMode === 'proportional' && (
                   <div className="text-xs text-slate-400 mb-2">
@@ -283,7 +339,14 @@ export function BalanceView({
         {/* Settlements section */}
         <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-            <h3 className="text-lg sm:text-xl font-bold">{t('labels.settlements')}</h3>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold">{t('labels.settlements')}</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                {balanceMode === 'month'
+                  ? t('labels.selectedMonthSettlements', 'Showing settlements from selected month')
+                  : t('labels.allSettlements', 'Showing all settlements')}
+              </p>
+            </div>
             <Button
               onClick={() => setShowSettlementModal(true)}
               variant="accent"
@@ -294,11 +357,15 @@ export function BalanceView({
             </Button>
           </div>
 
-          {settlements.length === 0 ? (
-            <p className="text-slate-400 text-center py-4 text-sm">{t('messages.noSettlements')}</p>
+          {displayedSettlements.length === 0 ? (
+            <p className="text-slate-400 text-center py-4 text-sm">
+              {balanceMode === 'month'
+                ? t('messages.noSettlementsInMonth', 'No settlements in selected month')
+                : t('messages.noSettlements')}
+            </p>
           ) : (
             <div className="space-y-2 sm:space-y-3">
-              {[...settlements]
+              {[...displayedSettlements]
                 .sort((a, b) => b.date.localeCompare(a.date))
                 .map((settlement) => (
                   <div
