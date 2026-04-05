@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusCircle, Trash2, X } from 'lucide-react';
-import { parseDateParts } from '@expenses/shared/calculations';
 import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 import { getLocalISODate } from '../../../lib/date';
+import { calculateBalanceScopes } from '../../../lib/balanceScopes';
 import { Button, IconButton } from '../../ui';
 
 type BalanceMode = 'month' | 'cumulative';
@@ -64,82 +64,47 @@ export function BalanceView({
     ? 0.5
     : Math.max(0.05, Math.min(0.95, householdSettings.partner1Ratio));
 
-  // --- Display values: current month only ---
-  const partner1Paid = monthExpenses
-    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
+  const scopes = calculateBalanceScopes(
+    monthExpenses,
+    expenses,
+    settlements,
+    selectedYear,
+    selectedMonth,
+    splitRatio
+  );
+  const { month, cumulative, settlementsInMonth, settlementsThroughMonth } = scopes;
 
-  const partner2Paid = monthExpenses
-    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
+  const partner1Paid = month.partner1Paid;
+  const partner2Paid = month.partner2Paid;
+
+  const partner1SettlementPaid = settlementsInMonth
+    .filter(settlement => settlement.from === 'partner1' && settlement.to === 'partner2')
+    .reduce((sum, settlement) => sum + Number(settlement.amount || 0), 0);
+  const partner1SettlementReceived = settlementsInMonth
+    .filter(settlement => settlement.from === 'partner2' && settlement.to === 'partner1')
+    .reduce((sum, settlement) => sum + Number(settlement.amount || 0), 0);
+  const partner2SettlementPaid = partner1SettlementReceived;
+  const partner2SettlementReceived = partner1SettlementPaid;
+  const partner1NetOutflow = partner1Paid + partner1SettlementPaid - partner1SettlementReceived;
+  const partner2NetOutflow = partner2Paid + partner2SettlementPaid - partner2SettlementReceived;
 
   const jointPaid = monthExpenses
     .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
     .reduce((sum, exp) => sum + exp.amount, 0);
 
-  const totalSharedMonth = partner1Paid + partner2Paid;
-  const partner1FairShare = totalSharedMonth * splitRatio;
-  const partner2FairShare = totalSharedMonth * (1 - splitRatio);
-  const partner1MonthBalanceBeforeSettlements = partner1Paid - partner1FairShare;
-  const partner2MonthBalanceBeforeSettlements = partner2Paid - partner2FairShare;
+  const partner1FairShare = month.partner1FairShare;
+  const partner2FairShare = month.partner2FairShare;
 
   // For progress bar display
   const totalAllPayments = partner1Paid + partner2Paid + jointPaid;
 
-  // --- Settlement balance: cumulative (all months through selected) ---
-  const partner1PaidTotal = expenses
-    .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const partner2PaidTotal = expenses
-    .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const totalSharedCumulative = partner1PaidTotal + partner2PaidTotal;
-  let partner1CumulativeBalanceBeforeSettlements = partner1PaidTotal - totalSharedCumulative * splitRatio;
-  let partner2CumulativeBalanceBeforeSettlements = partner2PaidTotal - totalSharedCumulative * (1 - splitRatio);
-
-  const settlementsThroughSelectedMonth = settlements.filter(settlement => {
-    const { year, month } = parseDateParts(settlement.date);
-    return year < selectedYear || (year === selectedYear && month <= selectedMonth);
-  });
-
-  const settlementsInSelectedMonth = settlementsThroughSelectedMonth.filter(settlement => {
-    const { year, month } = parseDateParts(settlement.date);
-    return year === selectedYear && month === selectedMonth;
-  });
-
-  const netSettlementToPartner1Month = settlementsInSelectedMonth.reduce((sum, settlement) => {
-    const amount = Number(settlement.amount);
-    if (!Number.isFinite(amount)) return sum;
-    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
-    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + amount;
-    return sum;
-  }, 0);
-
-  const netSettlementToPartner1Cumulative = settlementsThroughSelectedMonth.reduce((sum, settlement) => {
-    const amount = Number(settlement.amount);
-    if (!Number.isFinite(amount)) return sum;
-    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
-    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + amount;
-    return sum;
-  }, 0);
-
-  const partner1MonthBalance = partner1MonthBalanceBeforeSettlements - netSettlementToPartner1Month;
-  const partner2MonthBalance = partner2MonthBalanceBeforeSettlements + netSettlementToPartner1Month;
-
-  const partner1CumulativeBalance =
-    partner1CumulativeBalanceBeforeSettlements - netSettlementToPartner1Cumulative;
-  const partner2CumulativeBalance =
-    partner2CumulativeBalanceBeforeSettlements + netSettlementToPartner1Cumulative;
-
-  const partner1Balance = balanceMode === 'month' ? partner1MonthBalance : partner1CumulativeBalance;
-  const partner2Balance = balanceMode === 'month' ? partner2MonthBalance : partner2CumulativeBalance;
+  const partner1Balance = balanceMode === 'month' ? month.partner1Balance : cumulative.partner1Balance;
+  const partner2Balance = balanceMode === 'month' ? month.partner2Balance : cumulative.partner2Balance;
 
   const displayedSettlements =
     balanceMode === 'month'
-      ? settlementsInSelectedMonth
-      : settlementsThroughSelectedMonth;
+      ? settlementsInMonth
+      : settlementsThroughMonth;
 
   const handleRecordSettlement = async () => {
     const amount = parseFloat(settlementForm.amount);
@@ -187,7 +152,7 @@ export function BalanceView({
                 {partnerNames.partner1}
               </div>
               <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 break-words">
-                {withLtr(formatCurrency(partner1Paid))}
+                {withLtr(formatCurrency(partner1NetOutflow))}
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs sm:text-sm gap-2">
@@ -202,6 +167,24 @@ export function BalanceView({
                     {withLtr(formatCurrency(partner1FairShare))}
                   </span>
                 </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{t('labels.settlementsPaid', 'Settlements paid')}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(partner1SettlementPaid))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{t('labels.settlementsReceived', 'Settlements received')}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(partner1SettlementReceived))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{t('labels.netOutflow', 'Net outflow')}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(partner1NetOutflow))}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -210,7 +193,7 @@ export function BalanceView({
                 {partnerNames.partner2}
               </div>
               <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 break-words">
-                {withLtr(formatCurrency(partner2Paid))}
+                {withLtr(formatCurrency(partner2NetOutflow))}
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs sm:text-sm gap-2">
@@ -223,6 +206,24 @@ export function BalanceView({
                   <span className="text-slate-400">{t('labels.fairShare')}</span>
                   <span className="font-medium break-words text-right">
                     {withLtr(formatCurrency(partner2FairShare))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{t('labels.settlementsPaid', 'Settlements paid')}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(partner2SettlementPaid))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{t('labels.settlementsReceived', 'Settlements received')}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(partner2SettlementReceived))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{t('labels.netOutflow', 'Net outflow')}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(partner2NetOutflow))}
                   </span>
                 </div>
               </div>
