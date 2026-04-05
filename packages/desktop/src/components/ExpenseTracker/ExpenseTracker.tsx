@@ -23,6 +23,7 @@ import type {
   HouseholdSettings,
   Settlement
 } from '@expenses/shared/types';
+import { parseDateParts } from '@expenses/shared/calculations';
 import { DEFAULT_CATEGORIES, defaultPartnerNames, defaultSettings } from '@expenses/shared/defaults';
 import {
   setExpenses as persistExpenses,
@@ -44,6 +45,7 @@ import { useDataContext } from '../../contexts/ExpenseContext';
 import { useModalContext } from '../../contexts/ModalContext';
 import { getSuggestedCloudPaths, type CloudDriveInfo } from '../../lib/cloudDriveDetection';
 import { isFirstLaunch, markWelcomeSeen } from '../../lib/firstLaunch';
+import { parseISODateToLocalDate } from '../../lib/date';
 import { ViewRouter } from './ViewRouter';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
@@ -945,7 +947,7 @@ const ExpenseTracker: React.FC = () => {
   };
 
   const formatDateLocalized = useCallback(
-    (dateStr: string) => new Date(dateStr).toLocaleDateString(i18n.language || undefined),
+    (dateStr: string) => parseISODateToLocalDate(dateStr).toLocaleDateString(i18n.language || undefined),
     [i18n.language]
   );
 
@@ -1026,10 +1028,10 @@ const ExpenseTracker: React.FC = () => {
    */
   const filteredExpenses = useMemo(() => {
     return expenses.filter(exp => {
-      const expDate = new Date(exp.date);
+      const expDate = parseDateParts(exp.date);
       const matchesDate = (
-        expDate.getMonth() === selectedMonth &&
-        expDate.getFullYear() === selectedYear
+        expDate.month === selectedMonth &&
+        expDate.year === selectedYear
       );
 
       if (!matchesDate) return false;
@@ -1214,7 +1216,7 @@ const ExpenseTracker: React.FC = () => {
     }
     
     // Get unique years from actual transactions
-    const years = [...new Set(expenses.map(exp => new Date(exp.date).getFullYear()))];
+    const years = [...new Set(expenses.map(exp => parseDateParts(exp.date).year))];
     years.sort((a, b) => a - b);
     
     // Always include current year and next year for planning
@@ -1235,15 +1237,15 @@ const ExpenseTracker: React.FC = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const dayExpenses = filteredExpenses
         .filter(exp => {
-          const expDate = new Date(exp.date);
-          return expDate.getDate() === day && exp.type === 'expense';
+          const expDate = parseDateParts(exp.date);
+          return expDate.day === day && exp.type === 'expense';
         })
         .reduce((sum, exp) => sum + exp.amount, 0);
 
       const dayIncome = filteredExpenses
         .filter(exp => {
-          const expDate = new Date(exp.date);
-          return expDate.getDate() === day && exp.type === 'income';
+          const expDate = parseDateParts(exp.date);
+          return expDate.day === day && exp.type === 'income';
         })
         .reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -1280,7 +1282,7 @@ const ExpenseTracker: React.FC = () => {
 
     // Days with spending (unique days)
     const daysWithSpending = new Set(
-      monthExpenses.map(e => new Date(e.date).getDate())
+      monthExpenses.map(e => parseDateParts(e.date).day)
     ).size;
 
     // Average daily spend (only count days with spending)
@@ -1307,10 +1309,10 @@ const ExpenseTracker: React.FC = () => {
     const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
 
     const prevExpenses = expenses.filter(e => {
-      const d = new Date(e.date);
+      const d = parseDateParts(e.date);
       return e.type === 'expense' &&
-             d.getMonth() === prevMonth &&
-             d.getFullYear() === prevYear;
+             d.month === prevMonth &&
+             d.year === prevYear;
     });
 
     const prevCategoryTotals: Record<string, number> = {};
@@ -1345,11 +1347,11 @@ const ExpenseTracker: React.FC = () => {
       const year = d.getFullYear();
 
       const monthExpenses = expenses.filter(e => {
-        const expDate = new Date(e.date);
+        const expDate = parseDateParts(e.date);
         return (
           e.type === 'expense' &&
-          expDate.getMonth() === month &&
-          expDate.getFullYear() === year
+          expDate.month === month &&
+          expDate.year === year
         );
       });
 

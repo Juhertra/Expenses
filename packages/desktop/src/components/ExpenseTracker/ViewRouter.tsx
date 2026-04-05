@@ -9,6 +9,7 @@ import type {
 } from '@expenses/shared/types';
 import { getExpensesThroughMonth, parseDateParts } from '@expenses/shared/calculations';
 import type { Theme } from '../../lib/theme';
+import { getLocalISODate } from '../../lib/date';
 import { BalanceView, CategoriesView, DashboardView, TransactionsView } from './views';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
@@ -281,7 +282,7 @@ export function ViewRouter({
                 amount: exp.amount,
                 category: exp.category,
                 type: 'expense',
-                date: new Date().toISOString().split('T')[0],
+                date: getLocalISODate(),
                 paidBy: 'partner1',
                 isAuto: false
               };

@@ -8,6 +8,7 @@ import {
   setExpenses as persistExpenses,
   setRecurring as persistRecurring,
 } from '../services/storage';
+import { getLocalISODate } from '../lib/date';
 
 /**
  * Hook for managing expense form state and operations (add, edit, validate)
@@ -30,7 +31,7 @@ export function useExpenseForm() {
     amount: '',
     category: 'Housing',
     type: 'expense',
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalISODate(),
     paidBy: 'partner1',
     isRecurring: false,
     recurringDay: 1
@@ -156,7 +157,7 @@ export function useExpenseForm() {
       amount: '',
       category: 'Housing',
       type: 'expense',
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalISODate(),
       paidBy: 'partner1',
       isRecurring: false,
       recurringDay: 1
@@ -338,7 +339,7 @@ export function useExpenseForm() {
     setFormData(prev => ({
       ...prev,
       type,
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalISODate(),
       category: type === 'expense' ? lastExpenseCategory : lastIncomeCategory
     }));
     setShowAddModal(true);

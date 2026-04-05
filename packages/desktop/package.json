@@ -1,7 +1,7 @@
 {
   "name": "expense-tracker",
   "private": true,
-  "version": "1.0.16",
+  "version": "1.0.26",
   "type": "module",
   "scripts": {
     "dev": "vite",

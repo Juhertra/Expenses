@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, IconButton } from '../../ui';
 import type { Expense, RecurringTransaction, PartnerNames } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
+import { getLocalISODate } from '../../../lib/date';
 
 interface ChartDataPoint {
   day: number;
@@ -269,13 +270,13 @@ export function DashboardView({
                   <div key={idx} className="relative group flex-shrink-0">
                     <button
                       onClick={() => {
-                        onPrefillForm({
-                          description: exp.description,
-                          category: exp.category,
-                          amount: exp.amount.toString(),
-                          type: 'expense',
-                          date: new Date().toISOString().split('T')[0]
-                        });
+                          onPrefillForm({
+                            description: exp.description,
+                            category: exp.category,
+                            amount: exp.amount.toString(),
+                            type: 'expense',
+                            date: getLocalISODate()
+                          });
                         onSetShowAddModal(true);
                         showToast(t('toasts.prefilled', { description: exp.description }), 'success');
                       }}

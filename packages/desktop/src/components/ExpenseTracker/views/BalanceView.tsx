@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PlusCircle, Trash2, X } from 'lucide-react';
 import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
+import { getLocalISODate } from '../../../lib/date';
 import { Button, IconButton } from '../../ui';
 
 interface BalanceViewProps {
@@ -43,7 +44,7 @@ export function BalanceView({
   // Settlement modal state
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementForm, setSettlementForm] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalISODate(),
     amount: '',
     from: 'partner1' as 'partner1' | 'partner2',
     to: 'partner2' as 'partner1' | 'partner2',
@@ -123,7 +124,7 @@ export function BalanceView({
     await onRecordSettlement(newSettlement);
     setShowSettlementModal(false);
     setSettlementForm({
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalISODate(),
       amount: '',
       from: 'partner1',
       to: 'partner2',
@@ -297,8 +298,8 @@ export function BalanceView({
             <p className="text-slate-400 text-center py-4 text-sm">{t('messages.noSettlements')}</p>
           ) : (
             <div className="space-y-2 sm:space-y-3">
-              {settlements
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              {[...settlements]
+                .sort((a, b) => b.date.localeCompare(a.date))
                 .map((settlement) => (
                   <div
                     key={settlement.id}
