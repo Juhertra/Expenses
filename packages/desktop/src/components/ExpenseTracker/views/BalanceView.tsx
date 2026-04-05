@@ -80,8 +80,8 @@ export function BalanceView({
   const totalSharedMonth = partner1Paid + partner2Paid;
   const partner1FairShare = totalSharedMonth * splitRatio;
   const partner2FairShare = totalSharedMonth * (1 - splitRatio);
-  const partner1MonthBalance = partner1Paid - partner1FairShare;
-  const partner2MonthBalance = partner2Paid - partner2FairShare;
+  const partner1MonthBalanceBeforeSettlements = partner1Paid - partner1FairShare;
+  const partner2MonthBalanceBeforeSettlements = partner2Paid - partner2FairShare;
 
   // For progress bar display
   const totalAllPayments = partner1Paid + partner2Paid + jointPaid;
@@ -96,11 +96,20 @@ export function BalanceView({
     .reduce((sum, exp) => sum + exp.amount, 0);
 
   const totalSharedCumulative = partner1PaidTotal + partner2PaidTotal;
-  let partner1CumulativeBalance = partner1PaidTotal - totalSharedCumulative * splitRatio;
-  let partner2CumulativeBalance = partner2PaidTotal - totalSharedCumulative * (1 - splitRatio);
+  let partner1CumulativeBalanceBeforeSettlements = partner1PaidTotal - totalSharedCumulative * splitRatio;
+  let partner2CumulativeBalanceBeforeSettlements = partner2PaidTotal - totalSharedCumulative * (1 - splitRatio);
 
-  // Adjust balances for settlements
-  const netSettlementToPartner1 = settlements.reduce((sum, settlement) => {
+  const settlementsThroughSelectedMonth = settlements.filter(settlement => {
+    const { year, month } = parseDateParts(settlement.date);
+    return year < selectedYear || (year === selectedYear && month <= selectedMonth);
+  });
+
+  const settlementsInSelectedMonth = settlementsThroughSelectedMonth.filter(settlement => {
+    const { year, month } = parseDateParts(settlement.date);
+    return year === selectedYear && month === selectedMonth;
+  });
+
+  const netSettlementToPartner1Month = settlementsInSelectedMonth.reduce((sum, settlement) => {
     const amount = Number(settlement.amount);
     if (!Number.isFinite(amount)) return sum;
     if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
@@ -108,19 +117,29 @@ export function BalanceView({
     return sum;
   }, 0);
 
-  partner1CumulativeBalance -= netSettlementToPartner1;
-  partner2CumulativeBalance += netSettlementToPartner1;
+  const netSettlementToPartner1Cumulative = settlementsThroughSelectedMonth.reduce((sum, settlement) => {
+    const amount = Number(settlement.amount);
+    if (!Number.isFinite(amount)) return sum;
+    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
+    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + amount;
+    return sum;
+  }, 0);
+
+  const partner1MonthBalance = partner1MonthBalanceBeforeSettlements - netSettlementToPartner1Month;
+  const partner2MonthBalance = partner2MonthBalanceBeforeSettlements + netSettlementToPartner1Month;
+
+  const partner1CumulativeBalance =
+    partner1CumulativeBalanceBeforeSettlements - netSettlementToPartner1Cumulative;
+  const partner2CumulativeBalance =
+    partner2CumulativeBalanceBeforeSettlements + netSettlementToPartner1Cumulative;
 
   const partner1Balance = balanceMode === 'month' ? partner1MonthBalance : partner1CumulativeBalance;
   const partner2Balance = balanceMode === 'month' ? partner2MonthBalance : partner2CumulativeBalance;
 
   const displayedSettlements =
     balanceMode === 'month'
-      ? settlements.filter(settlement => {
-          const { year, month } = parseDateParts(settlement.date);
-          return year === selectedYear && month === selectedMonth;
-        })
-      : settlements;
+      ? settlementsInSelectedMonth
+      : settlementsThroughSelectedMonth;
 
   const handleRecordSettlement = async () => {
     const amount = parseFloat(settlementForm.amount);
@@ -249,8 +268,8 @@ export function BalanceView({
               </p>
               <p className="text-xs text-slate-500 mt-2">
                 {balanceMode === 'month'
-                  ? t('labels.monthOnlyScope', 'Selected month only (settlements excluded)')
-                  : t('labels.cumulativeBalance', 'Running total across all months')}
+                  ? t('labels.monthOnlyScope', 'Selected month (including that month settlements)')
+                  : t('labels.cumulativeBalance', 'Running total through selected month')}
               </p>
             </div>
           ) : (
@@ -259,8 +278,8 @@ export function BalanceView({
                 <div className="text-lg font-bold mb-1">{t('messages.settlementRequired')}</div>
                 <div className="text-xs text-slate-400 mb-2">
                   {balanceMode === 'month'
-                    ? t('labels.monthOnlyScope', 'Selected month only (settlements excluded)')
-                    : t('labels.cumulativeBalance', 'Running total across all months')}
+                    ? t('labels.monthOnlyScope', 'Selected month (including that month settlements)')
+                    : t('labels.cumulativeBalance', 'Running total through selected month')}
                 </div>
                 {householdSettings.splitMode === 'proportional' && (
                   <div className="text-xs text-slate-400 mb-2">
@@ -344,7 +363,7 @@ export function BalanceView({
               <p className="text-xs text-slate-400 mt-1">
                 {balanceMode === 'month'
                   ? t('labels.selectedMonthSettlements', 'Showing settlements from selected month')
-                  : t('labels.allSettlements', 'Showing all settlements')}
+                  : t('labels.allSettlements', 'Showing settlements through selected month')}
               </p>
             </div>
             <Button

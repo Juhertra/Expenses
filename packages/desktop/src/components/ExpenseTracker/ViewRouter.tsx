@@ -402,9 +402,9 @@ export function ViewRouter({
         const { year, month } = parseDateParts(e.date);
         return year === selectedYear && month === selectedMonth;
       });
-      // Settlements are NOT time-filtered: a settlement made in a later month (e.g. to
-      // clear a January carryover) must still appear when viewing January, otherwise a
-      // past month will show an outstanding balance that has since been fully cleared.
+      // BalanceView handles settlement scope per mode:
+      // - month mode: selected month settlements
+      // - cumulative mode: settlements through selected month
       return (
         <BalanceView
           expenses={balanceExpenses}
