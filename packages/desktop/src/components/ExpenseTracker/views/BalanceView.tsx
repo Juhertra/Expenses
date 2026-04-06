@@ -152,9 +152,12 @@ export function BalanceView({
     settlementsAffectingMonth,
     settlementsAffectingThroughMonth,
   } = scopes;
-
-  const partner1Paid = month.partner1Paid;
-  const partner2Paid = month.partner2Paid;
+  const activeScope = balanceMode === 'month' ? month : cumulative;
+  const selectedScopeExpenses = balanceMode === 'month' ? monthExpenses : expenses;
+  const partner1Paid = activeScope.partner1Paid;
+  const partner2Paid = activeScope.partner2Paid;
+  const partner1FairShare = activeScope.partner1FairShare;
+  const partner2FairShare = activeScope.partner2FairShare;
 
   const settlementsForSelectedMode = balanceMode === 'month'
     ? settlementsAffectingMonth
@@ -171,19 +174,15 @@ export function BalanceView({
   const partner1NetOutflow = partner1Paid + partner1SettlementPaid - partner1SettlementReceived;
   const partner2NetOutflow = partner2Paid + partner2SettlementPaid - partner2SettlementReceived;
 
-  const jointPaid = monthExpenses
+  const jointPaid = selectedScopeExpenses
     .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
     .reduce((sum, exp) => sum + exp.amount, 0);
-
-  const partner1FairShare = month.partner1FairShare;
-  const partner2FairShare = month.partner2FairShare;
 
   // For progress bar display
   const totalAllPayments = partner1Paid + partner2Paid + jointPaid;
 
-  const partner1Balance = balanceMode === 'month' ? month.partner1Balance : cumulative.partner1Balance;
-  const partner2Balance = balanceMode === 'month' ? month.partner2Balance : cumulative.partner2Balance;
-  const selectedScopeExpenses = balanceMode === 'month' ? monthExpenses : expenses;
+  const partner1Balance = activeScope.partner1Balance;
+  const partner2Balance = activeScope.partner2Balance;
   const expenseShareBreakdown = useMemo(() => {
     const partner1OwesItems: Array<{ expense: Expense; shareAmount: number }> = [];
     const partner2OwesItems: Array<{ expense: Expense; shareAmount: number }> = [];
@@ -216,10 +215,12 @@ export function BalanceView({
       partner2OwesTotal,
     };
   }, [selectedScopeExpenses, splitRatio]);
-  const activeScope = balanceMode === 'month' ? month : cumulative;
   const partner1ExpenseDelta = activeScope.partner1Paid - activeScope.partner1FairShare;
+  const partner2ExpenseDelta = activeScope.partner2Paid - activeScope.partner2FairShare;
   const partner1EquationResult =
     partner1ExpenseDelta + partner1SettlementPaid - partner1SettlementReceived;
+  const partner2EquationResult =
+    partner2ExpenseDelta + partner2SettlementPaid - partner2SettlementReceived;
 
   const getDirectionForExpenseId = (expenseIdRaw: string) => {
     const expense = expenseLookup.get(Number(expenseIdRaw));
@@ -509,7 +510,9 @@ export function BalanceView({
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
           <h3 className="text-lg sm:text-xl font-bold mb-1">{t('labels.balanceSettlement')}</h3>
           <p className="text-xs text-slate-400 mb-4 sm:mb-6">
-            {t('labels.monthlyContributions', 'This month\'s contributions')}
+            {balanceMode === 'month'
+              ? t('labels.monthlyContributions', 'This month\'s contributions')
+              : t('labels.cumulativeContributions', 'Cumulative contributions through selected month')}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
@@ -688,49 +691,99 @@ export function BalanceView({
               : t('labels.cumulativeBalance', 'Running total through selected month')}
           </p>
 
-          <div className="space-y-2 text-xs sm:text-sm mb-5">
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-400">
-                {t('labels.owedFromPartner2Expenses', '{{name}} share from {{other}}-paid expenses', {
-                  name: partnerNames.partner1,
-                  other: partnerNames.partner2,
-                })}
-              </span>
-              <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner1OwesTotal))}</span>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5 text-xs sm:text-sm">
+            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 space-y-2">
+              <div className="text-sm font-semibold text-slate-100">{partnerNames.partner1}</div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.owedFromPartner2Expenses', '{{name}} share from {{other}}-paid expenses', {
+                    name: partnerNames.partner1,
+                    other: partnerNames.partner2,
+                  })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner1OwesTotal))}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.creditFromPartner1Expenses', '{{name}} credit from own-paid shared expenses', {
+                    name: partnerNames.partner1,
+                  })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner2OwesTotal))}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">{t('labels.expenseDelta', 'Expense delta (paid - fair share)')}</span>
+                <span className={`font-medium ${partner1ExpenseDelta >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                  {withLtr(formatCurrency(partner1ExpenseDelta))}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner1 })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(partner1SettlementPaid))}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.settlementsReceivedBy', 'Settlements received by {{name}}', { name: partnerNames.partner1 })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(partner1SettlementReceived))}</span>
+              </div>
+              <div className="border-t border-slate-700 pt-2 flex justify-between gap-2">
+                <span className="text-slate-300 font-semibold">
+                  {t('labels.finalBalanceFor', 'Final balance for {{name}}', { name: partnerNames.partner1 })}
+                </span>
+                <span className={`font-semibold ${partner1EquationResult >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                  {withLtr(formatCurrency(partner1EquationResult))}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-400">
-                {t('labels.creditFromPartner1Expenses', '{{name}} credit from own-paid shared expenses', {
-                  name: partnerNames.partner1,
-                })}
-              </span>
-              <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner2OwesTotal))}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-400">{t('labels.expenseDelta', 'Expense delta (paid - fair share)')}</span>
-              <span className={`font-medium ${partner1ExpenseDelta >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
-                {withLtr(formatCurrency(partner1ExpenseDelta))}
-              </span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-400">
-                {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner1 })}
-              </span>
-              <span className="font-medium">{withLtr(formatCurrency(partner1SettlementPaid))}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-slate-400">
-                {t('labels.settlementsReceivedBy', 'Settlements received by {{name}}', { name: partnerNames.partner1 })}
-              </span>
-              <span className="font-medium">{withLtr(formatCurrency(partner1SettlementReceived))}</span>
-            </div>
-            <div className="border-t border-slate-700 pt-2 flex justify-between gap-2">
-              <span className="text-slate-300 font-semibold">
-                {t('labels.finalBalanceFor', 'Final balance for {{name}}', { name: partnerNames.partner1 })}
-              </span>
-              <span className={`font-semibold ${partner1EquationResult >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
-                {withLtr(formatCurrency(partner1EquationResult))}
-              </span>
+
+            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 space-y-2">
+              <div className="text-sm font-semibold text-slate-100">{partnerNames.partner2}</div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.owedFromPartner2Expenses', '{{name}} share from {{other}}-paid expenses', {
+                    name: partnerNames.partner2,
+                    other: partnerNames.partner1,
+                  })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner2OwesTotal))}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.creditFromPartner1Expenses', '{{name}} credit from own-paid shared expenses', {
+                    name: partnerNames.partner2,
+                  })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner1OwesTotal))}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">{t('labels.expenseDelta', 'Expense delta (paid - fair share)')}</span>
+                <span className={`font-medium ${partner2ExpenseDelta >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                  {withLtr(formatCurrency(partner2ExpenseDelta))}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner2 })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(partner2SettlementPaid))}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">
+                  {t('labels.settlementsReceivedBy', 'Settlements received by {{name}}', { name: partnerNames.partner2 })}
+                </span>
+                <span className="font-medium">{withLtr(formatCurrency(partner2SettlementReceived))}</span>
+              </div>
+              <div className="border-t border-slate-700 pt-2 flex justify-between gap-2">
+                <span className="text-slate-300 font-semibold">
+                  {t('labels.finalBalanceFor', 'Final balance for {{name}}', { name: partnerNames.partner2 })}
+                </span>
+                <span className={`font-semibold ${partner2EquationResult >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                  {withLtr(formatCurrency(partner2EquationResult))}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -783,7 +836,11 @@ export function BalanceView({
 
         {/* Payment breakdown */}
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
-          <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">{t('labels.paymentBreakdown')}</h3>
+          <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">
+            {balanceMode === 'month'
+              ? t('labels.paymentBreakdown')
+              : t('labels.cumulativePaymentBreakdown', 'Cumulative payment breakdown')}
+          </h3>
           <div className="space-y-3 sm:space-y-4">
             <div>
               <div className="flex justify-between mb-2 gap-2">
