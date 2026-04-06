@@ -425,6 +425,14 @@ export function ViewRouter({
             setSettlements(newSettlements);
             setDirty(true);
           }}
+          onUpdateSettlement={async (updatedSettlement) => {
+            const newSettlements = settlements.map(settlement =>
+              settlement.id === updatedSettlement.id ? updatedSettlement : settlement
+            );
+            await persistSettlements(newSettlements);
+            setSettlements(newSettlements);
+            setDirty(true);
+          }}
           onDeleteSettlement={deleteSettlement}
         />
       );

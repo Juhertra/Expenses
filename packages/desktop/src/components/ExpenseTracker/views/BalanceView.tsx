@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlusCircle, Trash2, X } from 'lucide-react';
+import { Pencil, PlusCircle, Trash2, X } from 'lucide-react';
 import type {
   Expense,
   Settlement,
@@ -37,6 +37,7 @@ interface BalanceViewProps {
   withLtr: (content: React.ReactNode) => React.ReactNode;
   getFocusClasses: () => string;
   onRecordSettlement: (settlement: Settlement) => Promise<void>;
+  onUpdateSettlement: (settlement: Settlement) => Promise<void>;
   onDeleteSettlement: (id: number) => Promise<void>;
 }
 
@@ -54,6 +55,7 @@ export function BalanceView({
   withLtr,
   getFocusClasses,
   onRecordSettlement,
+  onUpdateSettlement,
   onDeleteSettlement,
 }: BalanceViewProps) {
   const { t, i18n } = useTranslation();
@@ -69,13 +71,17 @@ export function BalanceView({
   // Settlement modal state
   const [balanceMode, setBalanceMode] = useState<BalanceMode>('month');
   const [showSettlementModal, setShowSettlementModal] = useState(false);
-  const [settlementForm, setSettlementForm] = useState({
+  const [editingSettlementId, setEditingSettlementId] = useState<number | null>(null);
+  const createDefaultSettlementForm = () => ({
     date: getLocalISODate(),
     amount: '',
     from: 'partner1' as 'partner1' | 'partner2',
     to: 'partner2' as 'partner1' | 'partner2',
     note: '',
     allocationRows: [] as SettlementAllocationFormRow[],
+  });
+  const [settlementForm, setSettlementForm] = useState({
+    ...createDefaultSettlementForm(),
   });
 
   // Split mode: Calculate fair share based on household settings
@@ -269,7 +275,40 @@ export function BalanceView({
     syncFormDirectionFromRows(rows);
   };
 
-  const handleRecordSettlement = async () => {
+  const closeSettlementModal = () => {
+    setShowSettlementModal(false);
+    setEditingSettlementId(null);
+    setSettlementForm(createDefaultSettlementForm());
+  };
+
+  const openNewSettlementModal = () => {
+    setEditingSettlementId(null);
+    setSettlementForm(createDefaultSettlementForm());
+    setShowSettlementModal(true);
+  };
+
+  const openEditSettlementModal = (settlement: Settlement) => {
+    const allocationRows: SettlementAllocationFormRow[] = Array.isArray(settlement.allocations)
+      ? settlement.allocations.map((allocation, index) => ({
+        id: Date.now() + index,
+        expenseId: String(allocation.expenseId),
+        amount: String(allocation.amount),
+      }))
+      : [];
+
+    setEditingSettlementId(settlement.id);
+    setSettlementForm({
+      date: settlement.date || getLocalISODate(),
+      amount: String(settlement.amount ?? ''),
+      from: settlement.from,
+      to: settlement.to,
+      note: settlement.note || '',
+      allocationRows,
+    });
+    setShowSettlementModal(true);
+  };
+
+  const handleSaveSettlement = async () => {
     const amount = parseFloat(settlementForm.amount);
     if (!amount || amount <= 0) {
       alert(t('errors.settlementAmountInvalid'));
@@ -341,7 +380,7 @@ export function BalanceView({
     const allocations = parsedAllocations.length > 0 ? parsedAllocations : undefined;
 
     const newSettlement: Settlement = {
-      id: Date.now(),
+      id: editingSettlementId ?? Date.now(),
       date: settlementForm.date,
       amount,
       from,
@@ -350,16 +389,13 @@ export function BalanceView({
       allocations,
     };
 
-    await onRecordSettlement(newSettlement);
-    setShowSettlementModal(false);
-    setSettlementForm({
-      date: getLocalISODate(),
-      amount: '',
-      from: 'partner1',
-      to: 'partner2',
-      note: '',
-      allocationRows: [],
-    });
+    if (editingSettlementId !== null) {
+      await onUpdateSettlement(newSettlement);
+    } else {
+      await onRecordSettlement(newSettlement);
+    }
+
+    closeSettlementModal();
   };
 
   return (
@@ -593,7 +629,7 @@ export function BalanceView({
               </p>
             </div>
             <Button
-              onClick={() => setShowSettlementModal(true)}
+              onClick={openNewSettlementModal}
               variant="accent"
               iconStart={<PlusCircle className="w-5 h-5" />}
               className="w-full sm:w-auto"
@@ -655,6 +691,14 @@ export function BalanceView({
                         {withLtr(formatCurrency(amountToShow))}
                       </span>
                       <IconButton
+                        onClick={() => openEditSettlementModal(settlement)}
+                        variant="ghost"
+                        size="sm"
+                        title={t('tooltips.editSettlement', 'Edit settlement')}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </IconButton>
+                      <IconButton
                         onClick={() => onDeleteSettlement(settlement.id)}
                         variant="danger"
                         size="sm"
@@ -674,16 +718,20 @@ export function BalanceView({
       {showSettlementModal && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto"
-          onClick={() => setShowSettlementModal(false)}
+          onClick={closeSettlementModal}
         >
           <div
             className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-700 my-8 max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">{t('labels.recordSettlement')}</h3>
+              <h3 className="text-xl font-bold">
+                {editingSettlementId !== null
+                  ? t('labels.editSettlement', 'Edit settlement')
+                  : t('labels.recordSettlement')}
+              </h3>
               <button
-                onClick={() => setShowSettlementModal(false)}
+                onClick={closeSettlementModal}
                 className="p-2 hover:bg-slate-700 rounded-lg"
               >
                 <X className="w-5 h-5" />
@@ -858,18 +906,20 @@ export function BalanceView({
 
               <div className="flex gap-2 pt-4">
                 <Button
-                  onClick={() => setShowSettlementModal(false)}
+                  onClick={closeSettlementModal}
                   variant="secondary"
                   className="flex-1"
                 >
                   {t('buttons.cancel')}
                 </Button>
                 <Button
-                  onClick={handleRecordSettlement}
+                  onClick={handleSaveSettlement}
                   variant="accent"
                   className="flex-1"
                 >
-                  {t('buttons.recordPayment')}
+                  {editingSettlementId !== null
+                    ? t('buttons.save', 'Save')
+                    : t('buttons.recordPayment')}
                 </Button>
               </div>
             </div>
