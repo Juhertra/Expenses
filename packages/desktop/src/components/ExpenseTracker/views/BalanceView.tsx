@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, HelpCircle, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
 import type {
@@ -15,7 +15,11 @@ import {
   getLinkableExpenseAvailabilities,
   getReimbursementDirectionForExpense,
 } from '../../../lib/settlementAllocation';
-import { buildBalanceViewModel, type BalanceMode, type ObligationRowModel } from '../../../lib/balanceViewModel';
+import {
+  buildBalanceViewModel,
+  type BalanceMode,
+  type DisplayedSettlementModel,
+} from '../../../lib/balanceViewModel';
 import { Button, IconButton } from '../../ui';
 
 interface SettlementAllocationFormRow {
@@ -82,9 +86,7 @@ export function BalanceView({
   const [balanceMode, setBalanceMode] = useState<BalanceMode>('month');
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [editingSettlementId, setEditingSettlementId] = useState<number | null>(null);
-  const [showNeedsLinkingRows, setShowNeedsLinkingRows] = useState(false);
-  const [highlightSettlementsSection, setHighlightSettlementsSection] = useState(false);
-  const settlementsSectionRef = useRef<HTMLDivElement | null>(null);
+  const [showAllEligibleExpenses, setShowAllEligibleExpenses] = useState(false);
   const createDefaultSettlementForm = () => ({
     date: getLocalISODate(),
     amount: '',
@@ -108,7 +110,11 @@ export function BalanceView({
     () =>
       [...expenses]
         .filter(exp => exp.type === 'expense' && (exp.paidBy === 'partner1' || exp.paidBy === 'partner2'))
-        .sort((a, b) => b.date.localeCompare(a.date)),
+        .sort((a, b) => {
+          const byDate = a.date.localeCompare(b.date);
+          if (byDate !== 0) return byDate;
+          return a.id - b.id;
+        }),
     [expenses]
   );
 
@@ -156,6 +162,29 @@ export function BalanceView({
     [monthExpenses, expenses, settlements, selectedYear, selectedMonth, splitRatio, balanceMode]
   );
 
+  const activeScopeExpenses = balanceMode === 'month' ? monthExpenses : expenses;
+  const activeScopeExpenseIds = useMemo(
+    () => new Set(activeScopeExpenses.map(expense => expense.id)),
+    [activeScopeExpenses]
+  );
+  const scopeFirstLinkableExpenseAvailabilities = useMemo(
+    () =>
+      linkableExpenseAvailabilities.filter(availability =>
+        activeScopeExpenseIds.has(availability.expense.id)
+      ),
+    [linkableExpenseAvailabilities, activeScopeExpenseIds]
+  );
+  const historicalLinkableExpenseAvailabilities = useMemo(
+    () =>
+      linkableExpenseAvailabilities.filter(
+        availability => !activeScopeExpenseIds.has(availability.expense.id)
+      ),
+    [linkableExpenseAvailabilities, activeScopeExpenseIds]
+  );
+  const hasHistoricalEligibleExpenses = historicalLinkableExpenseAvailabilities.some(
+    availability => !availability.isFullyLinked
+  );
+
   const { topSummary, paymentBreakdown, explanation, expenseShareBreakdown, reconciliation } = viewModel;
   const partner1Paid = paymentBreakdown.partner1Paid;
   const partner2Paid = paymentBreakdown.partner2Paid;
@@ -193,7 +222,7 @@ export function BalanceView({
     return resolved;
   };
 
-  const getLinkedExpenseSummary = (linkedExpenseIds: number[]): string | null => {
+  const getAllocatedExpenseSummary = (linkedExpenseIds: number[]): string | null => {
     const uniqueIds = [...new Set(linkedExpenseIds)];
     if (uniqueIds.length === 0) return null;
     const labels = uniqueIds.slice(0, 2).map(id => {
@@ -221,17 +250,30 @@ export function BalanceView({
   };
 
   const displayedSettlements = viewModel.displayedSettlements;
-  const reimbursementStatus = viewModel.obligations;
-  const openToSettleRows = reimbursementStatus.openToSettleRows;
-  const needsLinkingRows = reimbursementStatus.needsLinkingRows;
+  const unallocatedSettlements = viewModel.unallocatedSettlements;
 
-  useEffect(() => {
-    if (!highlightSettlementsSection) return;
-    const timer = setTimeout(() => {
-      setHighlightSettlementsSection(false);
-    }, 1800);
-    return () => clearTimeout(timer);
-  }, [highlightSettlementsSection]);
+  const getSelectableAvailabilities = (selectedExpenseId: number | null) => {
+    const selectedAvailability =
+      selectedExpenseId !== null ? linkableExpenseAvailabilityById.get(selectedExpenseId) : undefined;
+    const items = new Map<number, (typeof linkableExpenseAvailabilities)[number]>();
+
+    const pushAvailabilities = (availabilities: typeof linkableExpenseAvailabilities) => {
+      for (const availability of availabilities) {
+        const isSelected = availability.expense.id === selectedExpenseId;
+        if (availability.isFullyLinked && !isSelected) continue;
+        items.set(availability.expense.id, availability);
+      }
+    };
+
+    pushAvailabilities(scopeFirstLinkableExpenseAvailabilities);
+    if (showAllEligibleExpenses) {
+      pushAvailabilities(historicalLinkableExpenseAvailabilities);
+    } else if (selectedAvailability && !activeScopeExpenseIds.has(selectedAvailability.expense.id)) {
+      items.set(selectedAvailability.expense.id, selectedAvailability);
+    }
+
+    return [...items.values()];
+  };
 
   const linkedDirection = resolveLinkedDirection(settlementForm.allocationRows);
   const hasLinkedRows = settlementForm.allocationRows.some(row => row.expenseId);
@@ -239,14 +281,60 @@ export function BalanceView({
     const rowAmount = Number(row.amount);
     return Number.isFinite(rowAmount) && rowAmount > 0 ? sum + rowAmount : sum;
   }, 0);
-  const hasAvailableLinkableExpenses = linkableExpenseAvailabilities.some(
+  const hasAvailableLinkableExpenses = scopeFirstLinkableExpenseAvailabilities.some(
     availability => !availability.isFullyLinked
-  );
+  ) || historicalLinkableExpenseAvailabilities.some(availability => !availability.isFullyLinked);
   const settlementAmountDraft = Number(settlementForm.amount);
-  const unlinkedRemainderDraft = Number.isFinite(settlementAmountDraft)
+  const unallocatedRemainderDraft = Number.isFinite(settlementAmountDraft)
     ? settlementAmountDraft - linkedDraftTotal
     : 0;
-  const hasPositiveRemainderDraft = Number.isFinite(unlinkedRemainderDraft) && unlinkedRemainderDraft > 0.000001;
+  const hasPositiveRemainderDraft =
+    Number.isFinite(unallocatedRemainderDraft) && unallocatedRemainderDraft > 0.000001;
+
+  const getAllocationStatusLabel = (status: DisplayedSettlementModel['allocationStatus']) =>
+    t(`labels.settlementAllocationStatus.${status}`, status);
+
+  const getAllocationStatusClasses = (status: DisplayedSettlementModel['allocationStatus']) => {
+    if (status === 'fully_allocated') {
+      return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200';
+    }
+    if (status === 'partially_allocated') {
+      return 'border-amber-500/40 bg-amber-500/10 text-amber-200';
+    }
+    return 'border-sky-500/40 bg-sky-500/10 text-sky-200';
+  };
+
+  const getAutoAllocationCandidates = () => {
+    if (linkedDirection === 'mixed') return [];
+    const direction =
+      linkedDirection ?? {
+        from: settlementForm.from,
+        to: settlementForm.to,
+      };
+
+    const scopedCandidates = scopeFirstLinkableExpenseAvailabilities.filter(availability => {
+      if (availability.isFullyLinked) return false;
+      const reimbursementDirection = getReimbursementDirection(availability.expense);
+      return (
+        reimbursementDirection?.from === direction.from &&
+        reimbursementDirection?.to === direction.to
+      );
+    });
+
+    if (!showAllEligibleExpenses) return scopedCandidates;
+
+    const historicalCandidates = historicalLinkableExpenseAvailabilities.filter(availability => {
+      if (availability.isFullyLinked) return false;
+      const reimbursementDirection = getReimbursementDirection(availability.expense);
+      return (
+        reimbursementDirection?.from === direction.from &&
+        reimbursementDirection?.to === direction.to
+      );
+    });
+
+    return [...scopedCandidates, ...historicalCandidates];
+  };
+  const autoAllocationCandidates = getAutoAllocationCandidates();
 
   const syncFormDirectionFromRows = (rows: SettlementAllocationFormRow[]) => {
     const direction = resolveLinkedDirection(rows);
@@ -301,41 +389,44 @@ export function BalanceView({
     syncFormDirectionFromRows(rows);
   };
 
+  const autoAllocateOldestFirst = () => {
+    if (!Number.isFinite(settlementAmountDraft) || settlementAmountDraft <= 0) return;
+
+    let remainingToAllocate = settlementAmountDraft;
+    const rows: SettlementAllocationFormRow[] = [];
+    for (const availability of getAutoAllocationCandidates()) {
+      if (remainingToAllocate <= 0) break;
+
+      const allocatedAmount = roundDownToCents(
+        Math.min(availability.remaining, remainingToAllocate)
+      );
+      if (allocatedAmount <= 0) continue;
+
+      rows.push({
+        id: Date.now() + rows.length,
+        expenseId: String(availability.expense.id),
+        amount: toAmountInput(allocatedAmount),
+      });
+      remainingToAllocate -= allocatedAmount;
+    }
+
+    if (rows.length > 0) {
+      syncFormDirectionFromRows(rows);
+    }
+  };
+
   const closeSettlementModal = () => {
     setShowSettlementModal(false);
     setEditingSettlementId(null);
+    setShowAllEligibleExpenses(false);
     setSettlementForm(createDefaultSettlementForm());
   };
 
   const openNewSettlementModal = () => {
     setEditingSettlementId(null);
+    setShowAllEligibleExpenses(false);
     setSettlementForm(createDefaultSettlementForm());
     setShowSettlementModal(true);
-  };
-
-  const openSettlementFromObligation = (obligation: ObligationRowModel) => {
-    const amount = toAmountInput(obligation.actionableRemaining);
-    const nextForm = {
-      ...createDefaultSettlementForm(),
-      amount,
-      from: obligation.from,
-      to: obligation.to,
-      allocationRows: [
-        {
-          id: Date.now() + Math.floor(Math.random() * 10000),
-          expenseId: String(obligation.expenseId),
-          amount,
-        },
-      ],
-    };
-    setEditingSettlementId(null);
-    setSettlementForm(nextForm);
-    setShowSettlementModal(true);
-  };
-
-  const reviewSettlements = () => {
-    settlementsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setHighlightSettlementsSection(true);
   };
 
   const openEditSettlementModal = (settlement: Settlement) => {
@@ -348,6 +439,7 @@ export function BalanceView({
       : [];
 
     setEditingSettlementId(settlement.id);
+    setShowAllEligibleExpenses(false);
     const settlementDate = settlement.date || getLocalISODate();
     setSettlementForm({
       date: settlementDate,
@@ -382,23 +474,23 @@ export function BalanceView({
       const linkedExpenseId = Number(row.expenseId);
       const linkedAmount = Number(row.amount);
       if (!Number.isFinite(linkedExpenseId) || !expenseLookup.has(linkedExpenseId)) {
-        alert(t('errors.invalidSelection', 'Please select a valid expense to link'));
+        alert(t('errors.invalidSelection', 'Please select a valid expense to allocate'));
         return;
       }
       if (!Number.isFinite(linkedAmount) || linkedAmount <= 0) {
-        alert(t('errors.invalidAmount', 'Please enter a valid linked amount'));
+        alert(t('errors.invalidAmount', 'Please enter a valid allocated amount'));
         return;
       }
       const linkedAvailability = linkableExpenseAvailabilityById.get(linkedExpenseId);
       if (!linkedAvailability || linkedAvailability.isFullyLinked) {
-        alert(t('errors.invalidSelection', 'Please select a valid expense to link'));
+        alert(t('errors.invalidSelection', 'Please select a valid expense to allocate'));
         return;
       }
       if (linkedAmount - linkedAvailability.remaining > 0.000001) {
         alert(
           t(
             'errors.linkedAmountExceedsRemaining',
-            'Linked amount exceeds the remaining amount available for this expense'
+            'Allocated amount exceeds the remaining amount available for this expense'
           )
         );
         return;
@@ -423,7 +515,7 @@ export function BalanceView({
         alert(
           t(
             'errors.linkedDirectionMismatch',
-            'Linked expenses with opposite reimbursement directions must be split into separate settlements'
+            'Allocated expenses with opposite reimbursement directions must be split into separate settlements'
           )
         );
         return;
@@ -434,7 +526,7 @@ export function BalanceView({
 
     const totalLinked = parsedAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
     if (totalLinked - amount > 0.000001) {
-      alert(t('errors.linkedAmountTooHigh', 'Linked amount cannot exceed settlement amount'));
+      alert(t('errors.linkedAmountTooHigh', 'Allocated amount cannot exceed settlement amount'));
       return;
     }
     const hasRemainder = amount - totalLinked > 0.000001;
@@ -838,200 +930,91 @@ export function BalanceView({
           </div>
         </div>
 
-        {/* Reimbursement status */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
-          <div data-testid="reimbursement-status-section">
-          <h3 className="text-lg sm:text-xl font-bold mb-1">
-            {t('labels.reimbursementStatus', 'Reimbursement status')}
-          </h3>
-          <p className="text-xs text-slate-400 mb-4">
-            {balanceMode === 'month'
-              ? t('labels.reimbursementStatusMonthScope', 'Selected month reimbursement status')
-              : t('labels.reimbursementStatusCumulativeScope', 'Reimbursement status through selected month')}
-          </p>
+        {unallocatedSettlements.length > 0 && (
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
+            <div data-testid="unallocated-settlements-section">
+              <h3 className="text-lg sm:text-xl font-bold mb-1">
+                {t('labels.unallocatedSettlements', 'Unallocated settlements')}
+              </h3>
+              <p className="text-xs text-slate-400 mb-4">
+                {balanceMode === 'month'
+                  ? t('labels.unallocatedSettlementsMonthScope', 'Payments affecting the selected month that are not fully allocated')
+                  : t(
+                      'labels.unallocatedSettlementsCumulativeScope',
+                      'Payments affecting months through the selected month that are not fully allocated'
+                    )}
+              </p>
 
-          {reimbursementStatus.showBalancedNoActionState ? (
-            <p className="text-xs text-slate-500">
-              {balanceMode === 'month'
-                ? t('messages.reimbursementMonthNoAction', 'This month is balanced. No settlement action needed.')
-                : t(
-                    'messages.reimbursementCumulativeNoAction',
-                    'This balance is settled through the selected month. No settlement action needed.'
-                  )}
-            </p>
-          ) : reimbursementStatus.showNoRowsNeedsReviewState ? (
-            <p className="text-xs text-slate-500">
-              {t(
-                'messages.reimbursementNoRowsNeedsReview',
-                'No reimbursement rows are available in this scope. Check the top balance for any residual amount.'
-              )}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {openToSettleRows.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-amber-300">
-                    {t('labels.openToSettle', 'Open to settle')}
-                  </div>
-                  {openToSettleRows.map((row) => (
+              <div className="space-y-2">
+                {[...unallocatedSettlements]
+                  .sort((a, b) => b.settlement.date.localeCompare(a.settlement.date))
+                  .map(({ settlement, amountToShow, linkedAppliedAmount, unallocatedAppliedAmount, allocationStatus, linkedExpenseIds }) => (
                     <div
-                      key={`open-${row.expenseId}`}
-                      data-testid="reimbursement-open-row"
-                      className="rounded-xl border border-slate-700 bg-slate-800/50 p-3"
+                      key={`unallocated-${settlement.id}`}
+                      data-testid="unallocated-settlement-row"
+                      className="rounded-xl border border-slate-700 bg-slate-800/40 p-3"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-slate-100 truncate">
-                            {formatDateLocalized(row.expenseDate)} - {row.expenseDescription}
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-medium text-sm sm:text-base truncate">
+                              {settlement.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
+                            </span>
+                            <span className="text-slate-400 flex-shrink-0">{isRTL ? 'â†' : 'â†’'}</span>
+                            <span className="font-medium text-sm sm:text-base truncate">
+                              {settlement.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
+                            </span>
+                            <span
+                              data-testid="settlement-allocation-status-badge"
+                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${getAllocationStatusClasses(allocationStatus)}`}
+                            >
+                              {getAllocationStatusLabel(allocationStatus)}
+                            </span>
                           </div>
                           <div className="text-xs text-slate-400">
-                            {t('labels.paidBy', 'Paid by')}:{' '}
-                            {row.paidBy === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
+                            {formatDateLocalized(settlement.date)}
+                            {settlement.note ? ` • ${settlement.note}` : ''}
                           </div>
-                          <div className="text-xs text-slate-500">
-                            {t('messages.partnerOwes', {
-                              from: row.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
-                              to: row.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
-                            })}
-                          </div>
+                          {linkedExpenseIds.length > 0 && (
+                            <div className="text-xs text-slate-500 mt-1">
+                              {t('labels.allocatedTo', 'Allocated to')}: {getAllocatedExpenseSummary(linkedExpenseIds)}
+                            </div>
+                          )}
+                          {settlement.remainderMode && (
+                            <div className="text-xs text-slate-500 mt-1">
+                              {getRemainderModeLabel(settlement)}
+                            </div>
+                          )}
                         </div>
                         <Button
-                          onClick={() => openSettlementFromObligation(row)}
+                          onClick={() => openEditSettlementModal(settlement)}
                           variant="secondary"
                           className="w-full sm:w-auto"
                         >
-                          {t('buttons.createSettlement', 'Create settlement')}
+                          {t('labels.editSettlement', 'Edit settlement')}
                         </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mt-3 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 text-xs">
                         <div className="rounded-lg bg-slate-900/60 p-2">
-                          <div className="text-slate-500">{t('labels.owed', 'Owed')}</div>
-                          <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.owed))}</div>
+                          <div className="text-slate-500">{t('labels.amountAffectingScope', 'Amount affecting this scope')}</div>
+                          <div className="font-medium text-slate-100">{withLtr(formatCurrency(amountToShow))}</div>
                         </div>
                         <div className="rounded-lg bg-slate-900/60 p-2">
-                          <div className="text-slate-500">{t('labels.linkedSettled', 'Linked settled')}</div>
-                          <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.linkedSettled))}</div>
+                          <div className="text-slate-500">{t('labels.allocatedInScope', 'Allocated in this scope')}</div>
+                          <div className="font-medium text-slate-100">{withLtr(formatCurrency(linkedAppliedAmount))}</div>
                         </div>
                         <div className="rounded-lg bg-slate-900/60 p-2">
-                          <div className="text-slate-500">{t('labels.unlinkedRemainder', 'Unlinked remainder')}</div>
-                          <div className="font-medium text-amber-300">
-                            {withLtr(formatCurrency(row.expenseRemainingUnlinked))}
-                          </div>
-                        </div>
-                        <div className="rounded-lg bg-slate-900/60 p-2">
-                          <div className="text-slate-500">{t('labels.actionableNow', 'Actionable now')}</div>
-                          <div className="font-medium text-yellow-300">
-                            {withLtr(formatCurrency(row.actionableRemaining))}
-                          </div>
-                        </div>
-                        <div className="rounded-lg bg-slate-900/60 p-2">
-                          <div className="text-slate-500">{t('labels.status', 'Status')}</div>
-                          <div className="font-medium text-slate-100">
-                            {t(`labels.obligationStatus.${row.status}`, row.status)}
-                          </div>
+                          <div className="text-slate-500">{t('labels.unallocatedInScope', 'Unallocated in this scope')}</div>
+                          <div className="font-medium text-sky-300">{withLtr(formatCurrency(unallocatedAppliedAmount))}</div>
                         </div>
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-
-              {reimbursementStatus.showTraceabilityOnlyNote && (
-                <p className="text-xs text-slate-400">
-                  {t(
-                    'messages.reimbursementTraceabilityNote',
-                    'Some expenses are still unlinked for traceability.'
-                  )}
-                </p>
-              )}
-
-              {needsLinkingRows.length > 0 && (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowNeedsLinkingRows(prev => !prev)}
-                    data-testid="needs-linking-toggle"
-                    className="w-full flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 text-left hover:bg-slate-800/70 transition-colors"
-                  >
-                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-300">
-                      {t('labels.needsLinking', 'Needs linking')}
-                    </span>
-                    <span className="inline-flex items-center gap-2 text-xs text-slate-300">
-                      <span className="rounded-full border border-slate-600 px-2 py-0.5">
-                        {needsLinkingRows.length}
-                      </span>
-                      {showNeedsLinkingRows
-                        ? t('buttons.collapse', 'Collapse')
-                        : t('buttons.expand', 'Expand')}
-                    </span>
-                  </button>
-
-                  {showNeedsLinkingRows && (
-                    <div className="space-y-2">
-                      {needsLinkingRows.map((row) => (
-                        <div
-                          key={`needs-${row.expenseId}`}
-                          data-testid="reimbursement-needs-linking-row"
-                          className="rounded-xl border border-slate-700 bg-slate-800/30 p-3"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-slate-100 truncate">
-                                {formatDateLocalized(row.expenseDate)} - {row.expenseDescription}
-                              </div>
-                              <div className="text-xs text-slate-400">
-                                {t('labels.paidBy', 'Paid by')}:{' '}
-                                {row.paidBy === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                {t(
-                                  'messages.reimbursementNeedsLinkingHint',
-                                  'This scope is already balanced for this direction. Link to an existing settlement for traceability.'
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              onClick={reviewSettlements}
-                              variant="ghost"
-                              className="w-full sm:w-auto"
-                            >
-                              {t('buttons.reviewSettlements', 'Review settlements')}
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mt-3 text-xs">
-                            <div className="rounded-lg bg-slate-900/60 p-2">
-                              <div className="text-slate-500">{t('labels.owed', 'Owed')}</div>
-                              <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.owed))}</div>
-                            </div>
-                            <div className="rounded-lg bg-slate-900/60 p-2">
-                              <div className="text-slate-500">{t('labels.linkedSettled', 'Linked settled')}</div>
-                              <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.linkedSettled))}</div>
-                            </div>
-                            <div className="rounded-lg bg-slate-900/60 p-2">
-                              <div className="text-slate-500">{t('labels.unlinkedRemainder', 'Unlinked remainder')}</div>
-                              <div className="font-medium text-blue-300">
-                                {withLtr(formatCurrency(row.expenseRemainingUnlinked))}
-                              </div>
-                            </div>
-                            <div className="rounded-lg bg-slate-900/60 p-2">
-                              <div className="text-slate-500">{t('labels.status', 'Status')}</div>
-                              <div className="font-medium text-slate-100">
-                                {t(`labels.obligationStatus.${row.status}`, row.status)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              </div>
             </div>
-          )}
           </div>
-        </div>
+        )}
 
         {/* Payment breakdown */}
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
@@ -1084,11 +1067,8 @@ export function BalanceView({
 
         {/* Settlements section */}
         <div
-          ref={settlementsSectionRef}
           data-testid="settlements-section"
-          className={`bg-slate-800/50 backdrop-blur border rounded-2xl p-4 sm:p-6 transition-colors ${
-            highlightSettlementsSection ? 'border-amber-400/80 shadow-[0_0_0_1px_rgba(251,191,36,0.45)]' : 'border-slate-700'
-          }`}
+          className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
             <div>
@@ -1119,7 +1099,7 @@ export function BalanceView({
             <div className="space-y-2 sm:space-y-3">
               {[...displayedSettlements]
                 .sort((a, b) => b.settlement.date.localeCompare(a.settlement.date))
-                .map(({ settlement, amountToShow, linkedExpenseIds, isPartialForScope }) => (
+                .map(({ settlement, amountToShow, linkedExpenseIds, isPartialForScope, allocationStatus }) => (
                   <div
                     key={settlement.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-slate-700/50 rounded-lg"
@@ -1133,6 +1113,12 @@ export function BalanceView({
                         <span className="font-medium text-sm sm:text-base truncate">
                           {settlement.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
                         </span>
+                        <span
+                          data-testid="settlement-allocation-status-badge"
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${getAllocationStatusClasses(allocationStatus)}`}
+                        >
+                          {getAllocationStatusLabel(allocationStatus)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-400 flex-wrap">
                         <span className="whitespace-nowrap">{formatDateLocalized(settlement.date)}</span>
@@ -1145,7 +1131,7 @@ export function BalanceView({
                       </div>
                       {linkedExpenseIds.length > 0 && (
                         <div className="text-xs text-slate-400 mt-1 truncate">
-                          {t('labels.linkedToExpense', 'Linked to expense')}: {getLinkedExpenseSummary(linkedExpenseIds)}
+                          {t('labels.allocatedTo', 'Allocated to')}: {getAllocatedExpenseSummary(linkedExpenseIds)}
                         </div>
                       )}
                       {settlement.remainderMode && (
@@ -1245,41 +1231,77 @@ export function BalanceView({
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="block text-sm text-slate-400">
-                    {t('labels.linkExpenseOptional', 'Linked expenses (optional)')}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addAllocationRow}
-                    disabled={!hasAvailableLinkableExpenses}
-                    className={`text-xs px-3 py-1.5 rounded-lg border border-slate-600 ${
-                      hasAvailableLinkableExpenses
-                        ? 'text-slate-200 hover:bg-slate-700'
-                        : 'text-slate-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {t('buttons.addLink', 'Add link')}
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <label className="block text-sm text-slate-400">
+                      {t('labels.settlementAllocationsOptional', 'Settlement allocations (optional)')}
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {hasHistoricalEligibleExpenses && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllEligibleExpenses(prev => !prev)}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-700"
+                        >
+                          {showAllEligibleExpenses
+                            ? t('buttons.showScopeExpenses', 'Show current-scope expenses')
+                            : t('buttons.showAllEligibleExpenses', 'Show all eligible expenses')}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={autoAllocateOldestFirst}
+                        disabled={
+                          !Number.isFinite(settlementAmountDraft) ||
+                          settlementAmountDraft <= 0 ||
+                          autoAllocationCandidates.length === 0
+                        }
+                        className={`text-xs px-3 py-1.5 rounded-lg border border-slate-600 ${
+                          Number.isFinite(settlementAmountDraft) &&
+                          settlementAmountDraft > 0 &&
+                          autoAllocationCandidates.length > 0
+                            ? 'text-slate-200 hover:bg-slate-700'
+                            : 'text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {t('buttons.autoAllocateOldestFirst', 'Auto-allocate oldest first')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addAllocationRow}
+                        disabled={!hasAvailableLinkableExpenses}
+                        className={`text-xs px-3 py-1.5 rounded-lg border border-slate-600 ${
+                          hasAvailableLinkableExpenses
+                            ? 'text-slate-200 hover:bg-slate-700'
+                            : 'text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {t('buttons.addAllocation', 'Add allocation')}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {showAllEligibleExpenses
+                      ? t('labels.showingAllEligibleExpenses', 'Showing eligible expenses from the full visible history.')
+                      : t('labels.scopeFirstAllocationHint', 'Showing current-scope expenses first. Reveal older eligible expenses when needed.')}
+                  </p>
                 </div>
                 {!hasAvailableLinkableExpenses && (
                   <p className="text-xs text-slate-500">
-                    {t('labels.allExpensesFullyLinked', 'All expenses are already fully linked')}
+                    {t('labels.allExpensesFullyAllocated', 'All eligible expenses are already fully allocated')}
                   </p>
                 )}
 
                 {settlementForm.allocationRows.length === 0 ? (
                   <p className="text-xs text-slate-500">
-                    {t('labels.noLinkedExpense', 'No linked expense')}
+                    {t('labels.noSettlementAllocations', 'No settlement allocations')}
                   </p>
                 ) : (
                   <div className="space-y-2">
                     {settlementForm.allocationRows.map(row => {
                       const selectedExpenseId = Number(row.expenseId);
-                      const selectableAvailabilities = linkableExpenseAvailabilities.filter(
-                        availability =>
-                          !availability.isFullyLinked ||
-                          availability.expense.id === selectedExpenseId
+                      const selectableAvailabilities = getSelectableAvailabilities(
+                        Number.isFinite(selectedExpenseId) ? selectedExpenseId : null
                       );
                       const selectedExpense = row.expenseId
                         ? expenseLookup.get(selectedExpenseId)
@@ -1301,7 +1323,7 @@ export function BalanceView({
                             <option value="">{t('labels.selectExpense', 'Select expense')}</option>
                             {selectableAvailabilities.map(({ expense, remaining }) => (
                               <option key={expense.id} value={expense.id}>
-                                {`${formatDateLocalized(expense.date)} - ${expense.description} - ${formatCurrency(expense.amount)} (${t('labels.remainingToLink', 'remaining')}: ${formatCurrency(remaining)})`}
+                                {`${formatDateLocalized(expense.date)} - ${expense.description} - ${formatCurrency(expense.amount)} (${t('labels.remainingToAllocate', 'remaining to allocate')}: ${formatCurrency(remaining)})`}
                               </option>
                             ))}
                           </select>
@@ -1313,7 +1335,7 @@ export function BalanceView({
                               value={row.amount}
                               onChange={(e) => updateAllocationRow(row.id, { amount: e.target.value })}
                               className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
-                              placeholder={t('labels.linkedAmount', 'Amount applied')}
+                              placeholder={t('labels.allocatedAmount', 'Amount allocated')}
                             />
                             <button
                               type="button"
@@ -1334,7 +1356,8 @@ export function BalanceView({
                               {selectedAvailability && (
                                 <>
                                   {' | '}
-                                  {t('labels.remainingToLink', 'remaining')}: {withLtr(formatCurrency(selectedAvailability.remaining))}
+                                  {t('labels.remainingToAllocate', 'remaining to allocate')}:{' '}
+                                  {withLtr(formatCurrency(selectedAvailability.remaining))}
                                 </>
                               )}
                             </p>
@@ -1348,12 +1371,12 @@ export function BalanceView({
                 {hasLinkedRows && (
                   <div className="text-xs text-slate-400 space-y-1">
                     <p>
-                      {t('labels.linkedAmount', 'Linked amount')}:{' '}
+                      {t('labels.allocatedAmount', 'Amount allocated')}:{' '}
                       {withLtr(formatCurrency(linkedDraftTotal))}
                     </p>
                     <p>
-                      {t('labels.unlinkedRemainder', 'Unlinked remainder')}:{' '}
-                      {withLtr(formatCurrency(Math.max(0, unlinkedRemainderDraft)))}
+                      {t('labels.unallocatedRemainder', 'Unallocated remainder')}:{' '}
+                      {withLtr(formatCurrency(Math.max(0, unallocatedRemainderDraft)))}
                     </p>
                   </div>
                 )}
@@ -1417,7 +1440,7 @@ export function BalanceView({
                   <p className="text-xs text-rose-300">
                     {t(
                       'errors.linkedDirectionMismatch',
-                      'Linked expenses with opposite reimbursement directions must be split into separate settlements'
+                      'Allocated expenses with opposite reimbursement directions must be split into separate settlements'
                     )}
                   </p>
                 )}

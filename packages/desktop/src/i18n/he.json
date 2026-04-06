@@ -48,16 +48,16 @@
     "chooseSaveFolder": "בחר תיקיית שמירה",
     "changeFolder": "שנה תיקייה",
     "recordPaymentAction": "רשום תשלום",
+    "addAllocation": "הוסף הקצאה",
+    "showAllEligibleExpenses": "הצג את כל ההוצאות הזכאיות",
+    "showScopeExpenses": "הצג רק הוצאות מהטווח הנוכחי",
+    "autoAllocateOldestFirst": "הקצה אוטומטית מהוותיקות",
     "previous": "הקודם",
     "next": "הבא",
     "close": "סגור",
     "reload": "טען מחדש",
     "dismiss": "התעלם",
-    "revealInFolder": "הצג בתיקייה",
-    "createSettlement": "צור התחשבנות",
-    "reviewSettlements": "סקור התחשבנויות",
-    "expand": "הרחב",
-    "collapse": "כווץ"
+    "revealInFolder": "הצג בתיקייה"
   },
   "labels": {
     "balance": "יתרה",
@@ -135,27 +135,30 @@
     "cashFlow": "תזרים מזומנים",
     "fairSplitResult": "תוצאת חלוקה הוגנת",
     "finalBalanceEquation": "יתרה סופית = פער הוצאות + התחשבנויות ששולמו - התחשבנויות שהתקבלו",
-    "outstandingObligations": "חיובים פתוחים",
-    "outstandingMonthScope": "חיובים פתוחים מהוצאות בחודש הנבחר",
-    "outstandingCumulativeScope": "חיובים פתוחים מהוצאות עד החודש הנבחר",
-    "owed": "חוב",
-    "linkedSettled": "שולם בקישור",
-    "remaining": "נותר",
-    "status": "סטטוס",
     "reconciliationWarning": "אזהרת התאמה",
     "netMismatch": "פער נטו",
-    "obligationStatus": {
-      "unlinked": "לא מקושר",
-      "partially_settled": "שולם חלקית",
-      "settled": "שולם במלואו"
-    },
-    "reimbursementStatus": "סטטוס החזרים",
-    "reimbursementStatusMonthScope": "סטטוס החזרים בחודש הנבחר",
-    "reimbursementStatusCumulativeScope": "סטטוס החזרים עד החודש הנבחר",
-    "openToSettle": "פתוח לתשלום",
-    "needsLinking": "דורש קישור",
-    "unlinkedRemainder": "יתרה לא מקושרת",
-    "actionableNow": "ניתן להסדרה כעת"
+    "selectedMonthSettlements": "מציג התחשבנויות שמשפיעות על החודש הנבחר",
+    "cumulativeAffectingSettlements": "מציג התחשבנויות שמשפיעות עד החודש הנבחר",
+    "unallocatedSettlements": "התחשבנויות לא מוקצות",
+    "unallocatedSettlementsMonthScope": "תשלומים שמשפיעים על החודש הנבחר ועדיין לא הוקצו במלואם",
+    "unallocatedSettlementsCumulativeScope": "תשלומים שמשפיעים עד החודש הנבחר ועדיין לא הוקצו במלואם",
+    "amountAffectingScope": "סכום שמשפיע על הטווח הזה",
+    "allocatedInScope": "הוקצה בטווח הזה",
+    "unallocatedInScope": "לא הוקצה בטווח הזה",
+    "allocatedTo": "הוקצה אל",
+    "settlementAllocationsOptional": "הקצאות להתחשבנות (אופציונלי)",
+    "allExpensesFullyAllocated": "כל ההוצאות הזכאיות כבר מוקצות במלואן",
+    "noSettlementAllocations": "אין הקצאות להתחשבנות",
+    "remainingToAllocate": "יתרה להקצאה",
+    "allocatedAmount": "סכום מוקצה",
+    "unallocatedRemainder": "יתרה לא מוקצית",
+    "scopeFirstAllocationHint": "מציג תחילה הוצאות מהטווח הנוכחי. ניתן לחשוף הוצאות זכאיות ישנות יותר לפי הצורך.",
+    "showingAllEligibleExpenses": "מוצגות הוצאות זכאיות מכל ההיסטוריה הזמינה.",
+    "settlementAllocationStatus": {
+      "fully_allocated": "מוקצה במלואו",
+      "partially_allocated": "מוקצה חלקית",
+      "unallocated": "לא מוקצה"
+    }
   },
   "messages": {
     "searchBreadcrumb": "חיפוש",
@@ -195,12 +198,7 @@
     "settlementRequired": "נדרשת התחשבנות",
     "partnerOwes": "{{from}} חייב ל-{{to}}",
     "balanced": "מאוזן",
-    "noOutstandingObligations": "אין חיובים פתוחים בטווח זה",
-    "reimbursementMonthNoAction": "החודש מאוזן. אין צורך בפעולת התחשבנות.",
-    "reimbursementCumulativeNoAction": "היתרה סגורה עד החודש הנבחר. אין צורך בפעולת התחשבנות.",
-    "reimbursementNoRowsNeedsReview": "אין שורות החזר זמינות בטווח הזה. בדקו את היתרה העליונה עבור שארית אפשרית.",
-    "reimbursementTraceabilityNote": "חלק מההוצאות עדיין לא מקושרות לצורכי מעקב.",
-    "reimbursementNeedsLinkingHint": "הטווח הזה כבר מאוזן לכיוון הזה. קשרו להתחשבנות קיימת לצורכי מעקב."
+    "noSettlementsInMonth": "אין התחשבנויות שמשפיעות על החודש הנבחר"
   },
   "dialogs": {
     "bulkDeleteConfirm": "למחוק {{count}} נבחרים?",
@@ -248,7 +246,10 @@
     "addTransactionFailed": "הוספת תנועה נכשלה",
     "categoryDeleteFailed": "מחיקת קטגוריה נכשלה",
     "descriptionRequiredShort": "נדרש תיאור",
-    "storageFailed": "השמירה לאחסון נכשלה. הנתונים עלולים לא להישמר."
+    "storageFailed": "השמירה לאחסון נכשלה. הנתונים עלולים לא להישמר.",
+    "linkedAmountExceedsRemaining": "הסכום המוקצה חורג מהיתרה הזמינה להוצאה הזאת",
+    "linkedAmountTooHigh": "הסכום המוקצה לא יכול לחרוג מסכום ההתחשבנות",
+    "linkedDirectionMismatch": "הוצאות מוקצות עם כיווני החזר הפוכים חייבות להופיע בהתחשבנויות נפרדות"
   },
   "toasts": {
     "deletedTransactions": "נמחקו {{count}} תנועות",

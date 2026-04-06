@@ -16,6 +16,11 @@ export interface LinkableExpenseAvailability {
   isFullyLinked: boolean;
 }
 
+export interface CappedSettlementAllocation {
+  expenseId: number;
+  amount: number;
+}
+
 function parsePositiveAmount(value: unknown): number | null {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount <= 0) return null;
@@ -60,25 +65,38 @@ export function getCappedLinkedAmountsByExpenseId(
   for (const settlement of settlements) {
     if (excludeSettlementId !== null && settlement.id === excludeSettlementId) continue;
 
-    let settlementRemaining = parsePositiveAmount(settlement.amount);
-    if (settlementRemaining === null) continue;
-
-    const allocations = Array.isArray(settlement.allocations) ? settlement.allocations : [];
-    for (const allocation of allocations) {
-      if (settlementRemaining <= 0) break;
-
-      const expenseId = Number(allocation?.expenseId);
-      const requested = parsePositiveAmount(allocation?.amount);
-      if (!Number.isFinite(expenseId) || requested === null) continue;
-
-      const consumed = Math.min(requested, settlementRemaining);
-      settlementRemaining -= consumed;
-
-      linkedByExpense.set(expenseId, (linkedByExpense.get(expenseId) ?? 0) + consumed);
+    for (const allocation of getCappedSettlementAllocations(settlement)) {
+      linkedByExpense.set(
+        allocation.expenseId,
+        (linkedByExpense.get(allocation.expenseId) ?? 0) + allocation.amount
+      );
     }
   }
 
   return linkedByExpense;
+}
+
+export function getCappedSettlementAllocations(
+  settlement: Settlement
+): CappedSettlementAllocation[] {
+  let settlementRemaining = parsePositiveAmount(settlement.amount);
+  if (settlementRemaining === null) return [];
+
+  const cappedAllocations: CappedSettlementAllocation[] = [];
+  const allocations = Array.isArray(settlement.allocations) ? settlement.allocations : [];
+  for (const allocation of allocations) {
+    if (settlementRemaining <= 0) break;
+
+    const expenseId = Number(allocation?.expenseId);
+    const requested = parsePositiveAmount(allocation?.amount);
+    if (!Number.isFinite(expenseId) || requested === null) continue;
+
+    const consumed = Math.min(requested, settlementRemaining);
+    settlementRemaining -= consumed;
+    cappedAllocations.push({ expenseId, amount: consumed });
+  }
+
+  return cappedAllocations;
 }
 
 export function getLinkableExpenseAvailabilities(

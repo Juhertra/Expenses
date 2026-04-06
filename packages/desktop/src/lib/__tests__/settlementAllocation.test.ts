@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Expense, Settlement } from '@expenses/shared/types';
 import {
+  getCappedSettlementAllocations,
   getCappedLinkedAmountsByExpenseId,
   getLinkableExpenseAvailabilities,
   getReimbursementDirectionForExpense,
@@ -57,6 +58,26 @@ describe('settlementAllocation', () => {
     const linked = getCappedLinkedAmountsByExpenseId(settlements);
     expect(linked.get(1)).toBeCloseTo(50, 8);
     expect(linked.get(2)).toBeCloseTo(10, 8);
+  });
+
+  it('returns capped settlement allocations for shared callers', () => {
+    const settlement: Settlement = {
+      id: 31,
+      date: '2026-03-15',
+      amount: 60,
+      from: 'partner1',
+      to: 'partner2',
+      allocations: [
+        { expenseId: 1, amount: 50 },
+        { expenseId: 2, amount: 50 },
+        { expenseId: 3, amount: -5 },
+      ],
+    };
+
+    expect(getCappedSettlementAllocations(settlement)).toEqual([
+      { expenseId: 1, amount: 50 },
+      { expenseId: 2, amount: 10 },
+    ]);
   });
 
   it('supports excluding a settlement and ignores invalid or non-positive values', () => {

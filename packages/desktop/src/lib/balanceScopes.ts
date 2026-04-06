@@ -1,5 +1,6 @@
 import { parseDateParts } from '@expenses/shared/calculations';
 import type { Expense, Settlement, SettlementRemainderMode } from '@expenses/shared/types';
+import { getCappedSettlementAllocations } from './settlementAllocation';
 
 export interface ScopedBalanceResult {
   partner1Paid: number;
@@ -15,9 +16,17 @@ export interface ScopedBalanceResult {
 export interface ScopedSettlementEntry {
   settlement: Settlement;
   appliedAmount: number;
+  linkedAppliedAmount: number;
+  unallocatedAppliedAmount: number;
+  allocationStatus: SettlementAllocationStatus;
   linkedExpenseIds: number[];
   includesPaymentMonthRemainder: boolean;
 }
+
+export type SettlementAllocationStatus =
+  | 'fully_allocated'
+  | 'partially_allocated'
+  | 'unallocated';
 
 export interface BalanceScopesResult {
   month: ScopedBalanceResult;
@@ -122,6 +131,8 @@ interface MonthState {
 
 interface SettlementMonthApplication {
   amount: number;
+  linkedAppliedAmount: number;
+  unallocatedAppliedAmount: number;
   linkedExpenseIds: Set<number>;
   includesPaymentMonthRemainder: boolean;
 }
@@ -191,15 +202,50 @@ function applySettlementToMonth(
 
   const existing = accumulator.applicationsByMonth.get(monthState.key) ?? {
     amount: 0,
+    linkedAppliedAmount: 0,
+    unallocatedAppliedAmount: 0,
     linkedExpenseIds: new Set<number>(),
     includesPaymentMonthRemainder: false,
   };
   existing.amount += parsedAmount;
-  if (linkedExpenseId !== null) existing.linkedExpenseIds.add(linkedExpenseId);
+  if (linkedExpenseId !== null) {
+    existing.linkedExpenseIds.add(linkedExpenseId);
+    existing.linkedAppliedAmount += parsedAmount;
+  } else {
+    existing.unallocatedAppliedAmount += parsedAmount;
+  }
   if (includesPaymentMonthRemainder) existing.includesPaymentMonthRemainder = true;
   accumulator.applicationsByMonth.set(monthState.key, existing);
 
   return parsedAmount;
+}
+
+function getAllocationStatus(
+  linkedAppliedAmount: number,
+  unallocatedAppliedAmount: number
+): SettlementAllocationStatus {
+  if (unallocatedAppliedAmount <= 0.000001) return 'fully_allocated';
+  if (linkedAppliedAmount <= 0.000001) return 'unallocated';
+  return 'partially_allocated';
+}
+
+function toScopedSettlementEntry(
+  settlement: Settlement,
+  amount: number,
+  linkedAppliedAmount: number,
+  unallocatedAppliedAmount: number,
+  linkedExpenseIds: Iterable<number>,
+  includesPaymentMonthRemainder: boolean
+): ScopedSettlementEntry {
+  return {
+    settlement,
+    appliedAmount: amount,
+    linkedAppliedAmount,
+    unallocatedAppliedAmount,
+    allocationStatus: getAllocationStatus(linkedAppliedAmount, unallocatedAppliedAmount),
+    linkedExpenseIds: [...linkedExpenseIds],
+    includesPaymentMonthRemainder,
+  };
 }
 
 function buildSettlementApplications(
@@ -258,29 +304,22 @@ function buildSettlementApplications(
       return a.settlement.id - b.settlement.id;
     });
 
-  // Apply linked allocations first (no capping; link validation handles upper bounds).
+  // Apply linked allocations first using the shared capped-allocation semantics.
   for (const accumulator of accumulators) {
-    const allocations = Array.isArray(accumulator.settlement.allocations)
-      ? accumulator.settlement.allocations
-      : [];
-    for (const allocation of allocations) {
+    for (const allocation of getCappedSettlementAllocations(accumulator.settlement)) {
       if (accumulator.remainder <= 0) break;
 
-      const expenseId = Number(allocation?.expenseId);
-      const allocationAmount = parsePositiveAmount(allocation?.amount);
-      if (!Number.isFinite(expenseId) || allocationAmount === null) continue;
-
-      const consumed = Math.min(allocationAmount, accumulator.remainder);
+      const consumed = Math.min(allocation.amount, accumulator.remainder);
       accumulator.remainder -= consumed;
 
-      const linkedExpense = expenseById.get(expenseId);
+      const linkedExpense = expenseById.get(allocation.expenseId);
       if (!linkedExpense || !isPersonalSharedExpense(linkedExpense)) continue;
 
       const linkedParts = parseDateParts(linkedExpense.date);
       const monthState = statesByMonth.get(toMonthKey(linkedParts.year, linkedParts.month));
       if (!monthState) continue;
 
-      applySettlementToMonth(accumulator, monthState, consumed, expenseId, false);
+      applySettlementToMonth(accumulator, monthState, consumed, allocation.expenseId, false);
     }
   }
 
@@ -386,30 +425,42 @@ export function calculateBalanceScopes(
   for (const accumulator of settlementApplications) {
     const monthApp = accumulator.applicationsByMonth.get(selectedMonthKey);
     if (monthApp && monthApp.amount > 0) {
-      settlementsAffectingMonth.push({
-        settlement: accumulator.settlement,
-        appliedAmount: monthApp.amount,
-        linkedExpenseIds: [...monthApp.linkedExpenseIds],
-        includesPaymentMonthRemainder: monthApp.includesPaymentMonthRemainder,
-      });
+      settlementsAffectingMonth.push(
+        toScopedSettlementEntry(
+          accumulator.settlement,
+          monthApp.amount,
+          monthApp.linkedAppliedAmount,
+          monthApp.unallocatedAppliedAmount,
+          monthApp.linkedExpenseIds,
+          monthApp.includesPaymentMonthRemainder
+        )
+      );
     }
 
     let throughAmount = 0;
+    let throughLinkedAppliedAmount = 0;
+    let throughUnallocatedAppliedAmount = 0;
     const throughLinkedIds = new Set<number>();
     let throughIncludesPaymentRemainder = false;
     for (const [monthKey, app] of accumulator.applicationsByMonth.entries()) {
       if (compareMonthKeys(monthKey, selectedMonthKey) > 0) continue;
       throughAmount += app.amount;
+      throughLinkedAppliedAmount += app.linkedAppliedAmount;
+      throughUnallocatedAppliedAmount += app.unallocatedAppliedAmount;
       for (const id of app.linkedExpenseIds) throughLinkedIds.add(id);
       throughIncludesPaymentRemainder ||= app.includesPaymentMonthRemainder;
     }
     if (throughAmount > 0) {
-      settlementsAffectingThroughMonth.push({
-        settlement: accumulator.settlement,
-        appliedAmount: throughAmount,
-        linkedExpenseIds: [...throughLinkedIds],
-        includesPaymentMonthRemainder: throughIncludesPaymentRemainder,
-      });
+      settlementsAffectingThroughMonth.push(
+        toScopedSettlementEntry(
+          accumulator.settlement,
+          throughAmount,
+          throughLinkedAppliedAmount,
+          throughUnallocatedAppliedAmount,
+          throughLinkedIds,
+          throughIncludesPaymentRemainder
+        )
+      );
     }
   }
 

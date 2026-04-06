@@ -661,4 +661,82 @@ describe('calculateBalanceScopes', () => {
     expect(result.month.partner2Balance).toBe(80);
     expect(result.month.partner1Balance + result.month.partner2Balance).toBeCloseTo(0, 8);
   });
+
+  it('tracks scoped linked and unallocated applied amounts for partially allocated settlements', () => {
+    const monthExpenses: Expense[] = [
+      {
+        id: 1,
+        description: 'Rent',
+        amount: 200,
+        category: 'Housing',
+        type: 'expense',
+        date: '2026-01-10',
+        paidBy: 'partner2',
+      },
+    ];
+
+    const settlements: Settlement[] = [
+      {
+        id: 2,
+        date: '2026-01-15',
+        amount: 70,
+        from: 'partner1',
+        to: 'partner2',
+        allocations: [{ expenseId: 1, amount: 50 }],
+      },
+    ];
+
+    const result = calculateBalanceScopes(
+      monthExpenses,
+      monthExpenses,
+      settlements,
+      2026,
+      0,
+      0.5
+    );
+
+    expect(result.settlementsAffectingMonth).toHaveLength(1);
+    expect(result.settlementsAffectingMonth[0].linkedAppliedAmount).toBeCloseTo(50, 8);
+    expect(result.settlementsAffectingMonth[0].unallocatedAppliedAmount).toBeCloseTo(20, 8);
+    expect(result.settlementsAffectingMonth[0].allocationStatus).toBe('partially_allocated');
+  });
+
+  it('marks legacy settlements without allocations as unallocated in scope', () => {
+    const monthExpenses: Expense[] = [
+      {
+        id: 1,
+        description: 'Rent',
+        amount: 100,
+        category: 'Housing',
+        type: 'expense',
+        date: '2026-01-10',
+        paidBy: 'partner2',
+      },
+    ];
+
+    const settlements: Settlement[] = [
+      {
+        id: 3,
+        date: '2026-01-15',
+        amount: 50,
+        from: 'partner1',
+        to: 'partner2',
+        allocations: [],
+      },
+    ];
+
+    const result = calculateBalanceScopes(
+      monthExpenses,
+      monthExpenses,
+      settlements,
+      2026,
+      0,
+      0.5
+    );
+
+    expect(result.settlementsAffectingMonth).toHaveLength(1);
+    expect(result.settlementsAffectingMonth[0].linkedAppliedAmount).toBeCloseTo(0, 8);
+    expect(result.settlementsAffectingMonth[0].unallocatedAppliedAmount).toBeCloseTo(50, 8);
+    expect(result.settlementsAffectingMonth[0].allocationStatus).toBe('unallocated');
+  });
 });

@@ -1,9 +1,5 @@
 import type { Expense, Settlement } from '@expenses/shared/types';
 import { calculateBalanceScopes, type ScopedBalanceResult, type ScopedSettlementEntry } from './balanceScopes';
-import {
-  getCappedLinkedAmountsByExpenseId,
-  getReimbursementDirectionForExpense,
-} from './settlementAllocation';
 
 export type BalanceMode = 'month' | 'cumulative';
 
@@ -54,37 +50,14 @@ export interface PaymentBreakdownModel {
 export interface DisplayedSettlementModel {
   settlement: Settlement;
   amountToShow: number;
+  linkedAppliedAmount: number;
+  unallocatedAppliedAmount: number;
+  allocationStatus: ScopedSettlementEntry['allocationStatus'];
   linkedExpenseIds: number[];
   isPartialForScope: boolean;
 }
 
-export type ObligationStatus = 'unlinked' | 'partially_settled' | 'settled';
-export type ReimbursementBucket = 'open_to_settle' | 'needs_linking';
-
-export interface ObligationRowModel {
-  expenseId: number;
-  expenseDate: string;
-  expenseDescription: string;
-  paidBy: PartnerKey;
-  from: PartnerKey;
-  to: PartnerKey;
-  owed: number;
-  linkedSettled: number;
-  expenseRemainingUnlinked: number;
-  remaining: number;
-  actionableRemaining: number;
-  bucket: ReimbursementBucket | null;
-  status: ObligationStatus;
-}
-
-export interface ReimbursementStatusModel {
-  allRows: ObligationRowModel[];
-  openToSettleRows: ObligationRowModel[];
-  needsLinkingRows: ObligationRowModel[];
-  showBalancedNoActionState: boolean;
-  showNoRowsNeedsReviewState: boolean;
-  showTraceabilityOnlyNote: boolean;
-}
+export interface UnallocatedSettlementRowModel extends DisplayedSettlementModel {}
 
 export interface ReconciliationModel {
   partner1Balance: number;
@@ -107,7 +80,7 @@ export interface BalanceViewModel {
   };
   paymentBreakdown: PaymentBreakdownModel;
   displayedSettlements: DisplayedSettlementModel[];
-  obligations: ReimbursementStatusModel;
+  unallocatedSettlements: UnallocatedSettlementRowModel[];
   reconciliation: ReconciliationModel;
 }
 
@@ -119,10 +92,6 @@ interface BuildBalanceViewModelInput {
   selectedMonth: number;
   splitRatio: number;
   balanceMode: BalanceMode;
-}
-
-function isPersonalSharedExpense(expense: Expense): expense is Expense & { paidBy: PartnerKey } {
-  return expense.type === 'expense' && (expense.paidBy === 'partner1' || expense.paidBy === 'partner2');
 }
 
 function computeSettlementFlows(entries: ScopedSettlementEntry[]): {
@@ -150,129 +119,20 @@ function toDisplayedSettlements(entries: ScopedSettlementEntry[]): DisplayedSett
   return entries.map(entry => ({
     settlement: entry.settlement,
     amountToShow: entry.appliedAmount,
+    linkedAppliedAmount: entry.linkedAppliedAmount,
+    unallocatedAppliedAmount: entry.unallocatedAppliedAmount,
+    allocationStatus: entry.allocationStatus,
     linkedExpenseIds: entry.linkedExpenseIds,
     isPartialForScope: Math.abs(entry.appliedAmount - Number(entry.settlement.amount || 0)) > UI_ZERO_EPSILON,
   }));
 }
 
-function calculateObligations(
-  selectedScopeExpenses: Expense[],
-  settlements: Settlement[],
-  splitRatio: number,
-  activeScope: ScopedBalanceResult
-): ReimbursementStatusModel {
-  const linkedByExpenseId = getCappedLinkedAmountsByExpenseId(settlements);
-
-  const sortNewestFirst = (a: ObligationRowModel, b: ObligationRowModel) => {
-    if (a.expenseDate === b.expenseDate) return b.expenseId - a.expenseId;
-    return b.expenseDate.localeCompare(a.expenseDate);
-  };
-  const sortOldestFirst = (a: ObligationRowModel, b: ObligationRowModel) => {
-    if (a.expenseDate === b.expenseDate) return a.expenseId - b.expenseId;
-    return a.expenseDate.localeCompare(b.expenseDate);
-  };
-
-  const rows = selectedScopeExpenses
-    .filter(isPersonalSharedExpense)
-    .map(expense => {
-      const direction = getReimbursementDirectionForExpense(expense, splitRatio);
-      if (!direction) return null;
-
-      const owed = Math.max(0, direction.recommendedAmount);
-      const linkedSettled = Math.min(owed, Math.max(0, linkedByExpenseId.get(expense.id) ?? 0));
-      const expenseRemainingUnlinked = Math.max(0, owed - linkedSettled);
-
-      let status: ObligationStatus = 'unlinked';
-      if (expenseRemainingUnlinked < UI_ZERO_EPSILON) {
-        status = 'settled';
-      } else if (linkedSettled >= UI_ZERO_EPSILON) {
-        status = 'partially_settled';
-      }
-
-      const row: ObligationRowModel = {
-        expenseId: expense.id,
-        expenseDate: expense.date,
-        expenseDescription: expense.description,
-        paidBy: expense.paidBy,
-        from: direction.from,
-        to: direction.to,
-        owed,
-        linkedSettled,
-        expenseRemainingUnlinked,
-        remaining: expenseRemainingUnlinked,
-        actionableRemaining: 0,
-        bucket: null,
-        status,
-      };
-      return row;
-    })
-    .filter((row): row is ObligationRowModel => row !== null);
-
-  const rowsById = new Map<number, ObligationRowModel>();
-  for (const row of rows) {
-    rowsById.set(row.expenseId, row);
-  }
-
-  const directionalBudgets = [
-    {
-      from: 'partner1' as const,
-      to: 'partner2' as const,
-      budget: Math.max(-activeScope.partner1Balance, 0),
-    },
-    {
-      from: 'partner2' as const,
-      to: 'partner1' as const,
-      budget: Math.max(activeScope.partner1Balance, 0),
-    },
-  ];
-
-  for (const direction of directionalBudgets) {
-    let remainingBudget = direction.budget;
-    const directionalRows = [...rowsById.values()]
-      .filter(
-        row =>
-          row.from === direction.from &&
-          row.to === direction.to &&
-          row.expenseRemainingUnlinked >= UI_ZERO_EPSILON
-      )
-      .sort(sortOldestFirst);
-
-    for (const row of directionalRows) {
-      if (remainingBudget <= 0) break;
-      const actionable = Math.min(row.expenseRemainingUnlinked, remainingBudget);
-      row.actionableRemaining = actionable;
-      remainingBudget -= actionable;
-    }
-  }
-
-  for (const row of rowsById.values()) {
-    if (row.expenseRemainingUnlinked < UI_ZERO_EPSILON) {
-      row.bucket = null;
-      continue;
-    }
-    row.bucket = row.actionableRemaining >= UI_ZERO_EPSILON ? 'open_to_settle' : 'needs_linking';
-  }
-
-  const allRows = [...rowsById.values()].sort(sortNewestFirst);
-  const openToSettleRows = allRows
-    .filter(row => row.bucket === 'open_to_settle')
-    .sort(sortOldestFirst);
-  const needsLinkingRows = allRows
-    .filter(row => row.bucket === 'needs_linking')
-    .sort(sortNewestFirst);
-  const hasDisplayRows = openToSettleRows.length > 0 || needsLinkingRows.length > 0;
-  const isScopeBalanced =
-    Math.abs(activeScope.partner1Balance) < UI_ZERO_EPSILON &&
-    Math.abs(activeScope.partner2Balance) < UI_ZERO_EPSILON;
-
-  return {
-    allRows,
-    openToSettleRows,
-    needsLinkingRows,
-    showBalancedNoActionState: !hasDisplayRows && isScopeBalanced,
-    showNoRowsNeedsReviewState: !hasDisplayRows && !isScopeBalanced,
-    showTraceabilityOnlyNote: openToSettleRows.length === 0 && needsLinkingRows.length > 0,
-  };
+function toUnallocatedSettlements(
+  settlements: DisplayedSettlementModel[]
+): UnallocatedSettlementRowModel[] {
+  return settlements.filter(
+    settlement => settlement.unallocatedAppliedAmount >= UI_ZERO_EPSILON
+  );
 }
 
 function calculateExpenseShareBreakdown(
@@ -389,8 +249,8 @@ export function buildBalanceViewModel({
     .filter(expense => expense.type === 'expense' && expense.paidBy === 'joint')
     .reduce((sum, expense) => sum + expense.amount, 0);
 
-  const obligations = calculateObligations(selectedScopeExpenses, settlements, splitRatio, activeScope);
   const expenseShareBreakdown = calculateExpenseShareBreakdown(selectedScopeExpenses, splitRatio);
+  const displayedSettlements = toDisplayedSettlements(settlementsForMode);
 
   const reconciliationMismatch = activeScope.partner1Balance + activeScope.partner2Balance;
 
@@ -430,8 +290,8 @@ export function buildBalanceViewModel({
       jointPaid,
       totalAllPayments: activeScope.partner1Paid + activeScope.partner2Paid + jointPaid,
     },
-    displayedSettlements: toDisplayedSettlements(settlementsForMode),
-    obligations,
+    displayedSettlements,
+    unallocatedSettlements: toUnallocatedSettlements(displayedSettlements),
     reconciliation: {
       partner1Balance: activeScope.partner1Balance,
       partner2Balance: activeScope.partner2Balance,
