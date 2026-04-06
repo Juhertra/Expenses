@@ -15,6 +15,12 @@ import { Button, IconButton } from '../../ui';
 
 type BalanceMode = 'month' | 'cumulative';
 
+interface SettlementAllocationFormRow {
+  id: number;
+  expenseId: string;
+  amount: string;
+}
+
 interface BalanceViewProps {
   /** All expenses up to (and including) the selected month — used for cumulative settlement balance. */
   expenses: Expense[];
@@ -54,6 +60,12 @@ export function BalanceView({
   const isRTL = i18n.dir() === 'rtl';
   const dir = i18n.dir();
 
+  const createAllocationRow = (): SettlementAllocationFormRow => ({
+    id: Date.now() + Math.floor(Math.random() * 10000),
+    expenseId: '',
+    amount: '',
+  });
+
   // Settlement modal state
   const [balanceMode, setBalanceMode] = useState<BalanceMode>('month');
   const [showSettlementModal, setShowSettlementModal] = useState(false);
@@ -63,8 +75,7 @@ export function BalanceView({
     from: 'partner1' as 'partner1' | 'partner2',
     to: 'partner2' as 'partner1' | 'partner2',
     note: '',
-    linkedExpenseId: '',
-    linkedAmount: '',
+    allocationRows: [] as SettlementAllocationFormRow[],
   });
 
   // Split mode: Calculate fair share based on household settings
@@ -143,12 +154,28 @@ export function BalanceView({
   const partner1Balance = balanceMode === 'month' ? month.partner1Balance : cumulative.partner1Balance;
   const partner2Balance = balanceMode === 'month' ? month.partner2Balance : cumulative.partner2Balance;
 
-  const selectedLinkedExpense = settlementForm.linkedExpenseId
-    ? expenseLookup.get(Number(settlementForm.linkedExpenseId))
-    : undefined;
-  const selectedLinkedDirection = selectedLinkedExpense
-    ? getReimbursementDirection(selectedLinkedExpense)
-    : null;
+  const getDirectionForExpenseId = (expenseIdRaw: string) => {
+    const expense = expenseLookup.get(Number(expenseIdRaw));
+    if (!expense) return null;
+    return getReimbursementDirection(expense);
+  };
+
+  const resolveLinkedDirection = (rows: SettlementAllocationFormRow[]) => {
+    let resolved: { from: 'partner1' | 'partner2'; to: 'partner1' | 'partner2' } | null = null;
+    for (const row of rows) {
+      if (!row.expenseId) continue;
+      const direction = getDirectionForExpenseId(row.expenseId);
+      if (!direction) continue;
+      if (!resolved) {
+        resolved = { from: direction.from, to: direction.to };
+        continue;
+      }
+      if (resolved.from !== direction.from || resolved.to !== direction.to) {
+        return 'mixed' as const;
+      }
+    }
+    return resolved;
+  };
 
   const getLinkedExpenseIds = (settlement: Settlement): number[] => {
     if (!Array.isArray(settlement.allocations)) return [];
@@ -186,38 +213,60 @@ export function BalanceView({
       isPartialForScope: false,
     }));
 
-  const handleLinkedExpenseChange = (linkedExpenseId: string) => {
-    if (!linkedExpenseId) {
-      setSettlementForm(prev => ({
+  const linkedDirection = resolveLinkedDirection(settlementForm.allocationRows);
+  const hasLinkedRows = settlementForm.allocationRows.some(row => row.expenseId);
+  const linkedDraftTotal = settlementForm.allocationRows.reduce((sum, row) => {
+    const rowAmount = Number(row.amount);
+    return Number.isFinite(rowAmount) && rowAmount > 0 ? sum + rowAmount : sum;
+  }, 0);
+  const settlementAmountDraft = Number(settlementForm.amount);
+  const unlinkedRemainderDraft = Number.isFinite(settlementAmountDraft)
+    ? settlementAmountDraft - linkedDraftTotal
+    : 0;
+
+  const syncFormDirectionFromRows = (rows: SettlementAllocationFormRow[]) => {
+    const direction = resolveLinkedDirection(rows);
+    setSettlementForm(prev => {
+      if (direction === 'mixed' || !direction) {
+        return { ...prev, allocationRows: rows };
+      }
+      return {
         ...prev,
-        linkedExpenseId: '',
-        linkedAmount: '',
-      }));
-      return;
-    }
+        allocationRows: rows,
+        from: direction.from,
+        to: direction.to,
+      };
+    });
+  };
 
-    const linkedExpense = expenseLookup.get(Number(linkedExpenseId));
-    if (!linkedExpense) {
-      setSettlementForm(prev => ({
-        ...prev,
-        linkedExpenseId: '',
-        linkedAmount: '',
-      }));
-      return;
-    }
+  const addAllocationRow = () => {
+    syncFormDirectionFromRows([...settlementForm.allocationRows, createAllocationRow()]);
+  };
 
-    const direction = getReimbursementDirection(linkedExpense);
-    const suggestedAmount = direction?.recommendedAmount ?? 0;
-    const suggestedAmountText = suggestedAmount > 0 ? suggestedAmount.toFixed(2) : '';
+  const removeAllocationRow = (rowId: number) => {
+    syncFormDirectionFromRows(settlementForm.allocationRows.filter(row => row.id !== rowId));
+  };
 
-    setSettlementForm(prev => ({
-      ...prev,
-      linkedExpenseId,
-      linkedAmount: prev.linkedAmount || prev.amount || suggestedAmountText,
-      amount: prev.amount || suggestedAmountText,
-      from: direction?.from ?? prev.from,
-      to: direction?.to ?? prev.to,
-    }));
+  const updateAllocationRow = (
+    rowId: number,
+    patch: Partial<Omit<SettlementAllocationFormRow, 'id'>>
+  ) => {
+    const rows = settlementForm.allocationRows.map(row => {
+      if (row.id !== rowId) return row;
+
+      const nextRow = { ...row, ...patch };
+      if (patch.expenseId !== undefined && patch.expenseId) {
+        const expense = expenseLookup.get(Number(patch.expenseId));
+        const direction = expense ? getReimbursementDirection(expense) : null;
+        const suggestedAmount = direction?.recommendedAmount ?? 0;
+        if (!nextRow.amount && suggestedAmount > 0) {
+          nextRow.amount = suggestedAmount.toFixed(2);
+        }
+      }
+      return nextRow;
+    });
+
+    syncFormDirectionFromRows(rows);
   };
 
   const handleRecordSettlement = async () => {
@@ -226,15 +275,19 @@ export function BalanceView({
       alert(t('errors.settlementAmountInvalid'));
       return;
     }
-    if (settlementForm.from === settlementForm.to) {
-      alert(t('errors.settlementSamePartner'));
-      return;
-    }
 
-    let allocations: SettlementAllocation[] | undefined;
-    if (settlementForm.linkedExpenseId) {
-      const linkedExpenseId = Number(settlementForm.linkedExpenseId);
-      const linkedAmount = parseFloat(settlementForm.linkedAmount || settlementForm.amount);
+    const activeRows = settlementForm.allocationRows.filter(row => row.expenseId || row.amount);
+    const parsedAllocations: SettlementAllocation[] = [];
+    let linkedDirectionCandidate: { from: 'partner1' | 'partner2'; to: 'partner1' | 'partner2' } | null = null;
+
+    for (const row of activeRows) {
+      if (!row.expenseId || !row.amount) {
+        alert(t('errors.invalidSelection', 'Please complete each linked expense row'));
+        return;
+      }
+
+      const linkedExpenseId = Number(row.expenseId);
+      const linkedAmount = Number(row.amount);
       if (!Number.isFinite(linkedExpenseId) || !expenseLookup.has(linkedExpenseId)) {
         alert(t('errors.invalidSelection', 'Please select a valid expense to link'));
         return;
@@ -243,19 +296,56 @@ export function BalanceView({
         alert(t('errors.invalidAmount', 'Please enter a valid linked amount'));
         return;
       }
-      if (linkedAmount > amount) {
-        alert(t('errors.linkedAmountTooHigh', 'Linked amount cannot exceed settlement amount'));
+      if (parsedAllocations.some(allocation => allocation.expenseId === linkedExpenseId)) {
+        alert(t('errors.invalidSelection', 'You cannot link the same expense twice in one settlement'));
         return;
       }
-      allocations = [{ expenseId: linkedExpenseId, amount: linkedAmount }];
+
+      const linkedExpense = expenseLookup.get(linkedExpenseId)!;
+      const direction = getReimbursementDirection(linkedExpense);
+      if (!direction) {
+        alert(t('errors.invalidSelection', 'Linked expense must be paid by one partner'));
+        return;
+      }
+      if (!linkedDirectionCandidate) {
+        linkedDirectionCandidate = { from: direction.from, to: direction.to };
+      } else if (
+        linkedDirectionCandidate.from !== direction.from ||
+        linkedDirectionCandidate.to !== direction.to
+      ) {
+        alert(
+          t(
+            'errors.linkedDirectionMismatch',
+            'Linked expenses with opposite reimbursement directions must be split into separate settlements'
+          )
+        );
+        return;
+      }
+
+      parsedAllocations.push({ expenseId: linkedExpenseId, amount: linkedAmount });
     }
+
+    const totalLinked = parsedAllocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+    if (totalLinked - amount > 0.000001) {
+      alert(t('errors.linkedAmountTooHigh', 'Linked amount cannot exceed settlement amount'));
+      return;
+    }
+
+    const from = linkedDirectionCandidate ? linkedDirectionCandidate.from : settlementForm.from;
+    const to = linkedDirectionCandidate ? linkedDirectionCandidate.to : settlementForm.to;
+    if (from === to) {
+      alert(t('errors.settlementSamePartner'));
+      return;
+    }
+
+    const allocations = parsedAllocations.length > 0 ? parsedAllocations : undefined;
 
     const newSettlement: Settlement = {
       id: Date.now(),
       date: settlementForm.date,
       amount,
-      from: settlementForm.from,
-      to: settlementForm.to,
+      from,
+      to,
       note: settlementForm.note,
       allocations,
     };
@@ -268,8 +358,7 @@ export function BalanceView({
       from: 'partner1',
       to: 'partner2',
       note: '',
-      linkedExpenseId: '',
-      linkedAmount: '',
+      allocationRows: [],
     });
   };
 
@@ -624,56 +713,111 @@ export function BalanceView({
                 />
               </div>
 
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">
-                  {t('labels.linkExpenseOptional', 'Link to expense (optional)')}
-                </label>
-                <select
-                  value={settlementForm.linkedExpenseId}
-                  onChange={(e) => handleLinkedExpenseChange(e.target.value)}
-                  dir={dir}
-                  className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
-                >
-                  <option value="">{t('labels.noLinkedExpense', 'No linked expense')}</option>
-                  {linkableExpenses.map(expense => (
-                    <option key={expense.id} value={expense.id}>
-                      {`${formatDateLocalized(expense.date)} - ${expense.description} - ${formatCurrency(expense.amount)}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {settlementForm.linkedExpenseId && (
-                <div>
-                  <label className="block text-sm text-slate-400 mb-2">
-                    {t('labels.linkedAmount', 'Amount applied to linked expense')}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="block text-sm text-slate-400">
+                    {t('labels.linkExpenseOptional', 'Linked expenses (optional)')}
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={settlementForm.linkedAmount}
-                    onChange={(e) => setSettlementForm({ ...settlementForm, linkedAmount: e.target.value })}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
-                    placeholder={t('placeholders.amountApplied', '0.00')}
-                  />
-                  {selectedLinkedExpense && selectedLinkedDirection && (
-                    <p className="text-xs text-slate-400 mt-2">
-                      {t('labels.recommendedSettlement', 'Recommended for this expense')}:{' '}
-                      {withLtr(formatCurrency(selectedLinkedDirection.recommendedAmount))}{' '}
-                      ({selectedLinkedDirection.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}{' '}
-                      {'->'}{' '}
-                      {selectedLinkedDirection.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2})
-                    </p>
-                  )}
+                  <button
+                    type="button"
+                    onClick={addAllocationRow}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-700"
+                  >
+                    {t('buttons.addLink', 'Add link')}
+                  </button>
                 </div>
-              )}
+
+                {settlementForm.allocationRows.length === 0 ? (
+                  <p className="text-xs text-slate-500">
+                    {t('labels.noLinkedExpense', 'No linked expense')}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {settlementForm.allocationRows.map(row => {
+                      const selectedExpense = row.expenseId
+                        ? expenseLookup.get(Number(row.expenseId))
+                        : undefined;
+                      const selectedDirection = selectedExpense
+                        ? getReimbursementDirection(selectedExpense)
+                        : null;
+                      return (
+                        <div key={row.id} className="rounded-lg border border-slate-700 p-2 space-y-2">
+                          <select
+                            value={row.expenseId}
+                            onChange={(e) => updateAllocationRow(row.id, { expenseId: e.target.value })}
+                            dir={dir}
+                            className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
+                          >
+                            <option value="">{t('labels.selectExpense', 'Select expense')}</option>
+                            {linkableExpenses.map(expense => (
+                              <option key={expense.id} value={expense.id}>
+                                {`${formatDateLocalized(expense.date)} - ${expense.description} - ${formatCurrency(expense.amount)}`}
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={row.amount}
+                              onChange={(e) => updateAllocationRow(row.id, { amount: e.target.value })}
+                              className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2"
+                              placeholder={t('labels.linkedAmount', 'Amount applied')}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeAllocationRow(row.id)}
+                              className="text-xs px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-700"
+                            >
+                              {t('buttons.remove', 'Remove')}
+                            </button>
+                          </div>
+
+                          {selectedDirection && (
+                            <p className="text-xs text-slate-500">
+                              {t('labels.recommendedSettlement', 'Recommended for this expense')}:{' '}
+                              {withLtr(formatCurrency(selectedDirection.recommendedAmount))}{' '}
+                              ({selectedDirection.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}{' '}
+                              {'->'}{' '}
+                              {selectedDirection.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2})
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {hasLinkedRows && (
+                  <div className="text-xs text-slate-400 space-y-1">
+                    <p>
+                      {t('labels.linkedAmount', 'Linked amount')}:{' '}
+                      {withLtr(formatCurrency(linkedDraftTotal))}
+                    </p>
+                    <p>
+                      {t('labels.unlinkedRemainder', 'Unlinked remainder (payment month)')}:{' '}
+                      {withLtr(formatCurrency(Math.max(0, unlinkedRemainderDraft)))}
+                    </p>
+                  </div>
+                )}
+
+                {linkedDirection === 'mixed' && (
+                  <p className="text-xs text-rose-300">
+                    {t(
+                      'errors.linkedDirectionMismatch',
+                      'Linked expenses with opposite reimbursement directions must be split into separate settlements'
+                    )}
+                  </p>
+                )}
+              </div>
 
               <div>
                 <label className="block text-sm text-slate-400 mb-2">{t('labels.from')}</label>
                 <select
                   value={settlementForm.from}
                   onChange={(e) => setSettlementForm({ ...settlementForm, from: e.target.value as 'partner1' | 'partner2' })}
-                  disabled={Boolean(settlementForm.linkedExpenseId)}
+                  disabled={hasLinkedRows}
                   dir={dir}
                   className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                 >
@@ -687,14 +831,14 @@ export function BalanceView({
                 <select
                   value={settlementForm.to}
                   onChange={(e) => setSettlementForm({ ...settlementForm, to: e.target.value as 'partner1' | 'partner2' })}
-                  disabled={Boolean(settlementForm.linkedExpenseId)}
+                  disabled={hasLinkedRows}
                   dir={dir}
                   className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                 >
                   <option value="partner1">{partnerNames.partner1}</option>
                   <option value="partner2">{partnerNames.partner2}</option>
                 </select>
-                {settlementForm.linkedExpenseId && (
+                {hasLinkedRows && linkedDirection !== 'mixed' && (
                   <p className="text-xs text-slate-500 mt-2">
                     {t('labels.directionLockedByLink', 'Direction is set by the linked expense')}
                   </p>
