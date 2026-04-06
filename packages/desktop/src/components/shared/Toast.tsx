@@ -42,7 +42,7 @@ export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
     timeoutRef.current = setTimeout(requestClose, duration);
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      cancelAnimation(toastRef.current);
+      cancelAnimation(node);
     };
   }, [duration, requestClose]);
 

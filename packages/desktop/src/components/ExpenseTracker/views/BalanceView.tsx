@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pencil, PlusCircle, Trash2, X } from 'lucide-react';
+import { AlertTriangle, HelpCircle, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
 import type {
   Expense,
   Settlement,
@@ -11,14 +11,12 @@ import type {
 } from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 import { getLocalISODate } from '../../../lib/date';
-import { calculateBalanceScopes } from '../../../lib/balanceScopes';
 import {
   getLinkableExpenseAvailabilities,
   getReimbursementDirectionForExpense,
 } from '../../../lib/settlementAllocation';
+import { buildBalanceViewModel, type BalanceMode, type ObligationRowModel } from '../../../lib/balanceViewModel';
 import { Button, IconButton } from '../../ui';
-
-type BalanceMode = 'month' | 'cumulative';
 
 interface SettlementAllocationFormRow {
   id: number;
@@ -54,7 +52,6 @@ export function BalanceView({
   settlements,
   partnerNames,
   householdSettings,
-  theme: _theme,
   formatCurrency,
   formatDateLocalized,
   withLtr,
@@ -72,6 +69,10 @@ export function BalanceView({
     expenseId: '',
     amount: '',
   });
+  const roundDownToCents = (value: number): number =>
+    Math.floor((Math.max(0, value) + 1e-9) * 100) / 100;
+  const toAmountInput = (value: number): string => roundDownToCents(value).toFixed(2);
+
   const toYearMonth = (isoDate: string): string => {
     if (!isoDate || isoDate.length < 7) return getLocalISODate().slice(0, 7);
     return isoDate.slice(0, 7);
@@ -138,89 +139,33 @@ export function BalanceView({
   const getReimbursementDirection = (expense: Expense) =>
     getReimbursementDirectionForExpense(expense, splitRatio);
 
-  const scopes = calculateBalanceScopes(
-    monthExpenses,
-    expenses,
-    settlements,
-    selectedYear,
-    selectedMonth,
-    splitRatio
+  const viewModel = useMemo(
+    () =>
+      buildBalanceViewModel({
+        monthExpenses,
+        expenses,
+        settlements,
+        selectedYear,
+        selectedMonth,
+        splitRatio,
+        balanceMode,
+      }),
+    [monthExpenses, expenses, settlements, selectedYear, selectedMonth, splitRatio, balanceMode]
   );
-  const {
-    month,
-    cumulative,
-    settlementsAffectingMonth,
-    settlementsAffectingThroughMonth,
-  } = scopes;
-  const activeScope = balanceMode === 'month' ? month : cumulative;
-  const selectedScopeExpenses = balanceMode === 'month' ? monthExpenses : expenses;
-  const partner1Paid = activeScope.partner1Paid;
-  const partner2Paid = activeScope.partner2Paid;
-  const partner1FairShare = activeScope.partner1FairShare;
-  const partner2FairShare = activeScope.partner2FairShare;
 
-  const settlementsForSelectedMode = balanceMode === 'month'
-    ? settlementsAffectingMonth
-    : settlementsAffectingThroughMonth;
-
-  const partner1SettlementPaid = settlementsForSelectedMode
-    .filter(entry => entry.settlement.from === 'partner1' && entry.settlement.to === 'partner2')
-    .reduce((sum, entry) => sum + entry.appliedAmount, 0);
-  const partner1SettlementReceived = settlementsForSelectedMode
-    .filter(entry => entry.settlement.from === 'partner2' && entry.settlement.to === 'partner1')
-    .reduce((sum, entry) => sum + entry.appliedAmount, 0);
-  const partner2SettlementPaid = partner1SettlementReceived;
-  const partner2SettlementReceived = partner1SettlementPaid;
-  const partner1NetOutflow = partner1Paid + partner1SettlementPaid - partner1SettlementReceived;
-  const partner2NetOutflow = partner2Paid + partner2SettlementPaid - partner2SettlementReceived;
-
-  const jointPaid = selectedScopeExpenses
-    .filter(exp => exp.paidBy === 'joint' && exp.type === 'expense')
-    .reduce((sum, exp) => sum + exp.amount, 0);
-
-  // For progress bar display
-  const totalAllPayments = partner1Paid + partner2Paid + jointPaid;
-
-  const partner1Balance = activeScope.partner1Balance;
-  const partner2Balance = activeScope.partner2Balance;
-  const expenseShareBreakdown = useMemo(() => {
-    const partner1OwesItems: Array<{ expense: Expense; shareAmount: number }> = [];
-    const partner2OwesItems: Array<{ expense: Expense; shareAmount: number }> = [];
-
-    for (const expense of selectedScopeExpenses) {
-      if (expense.type !== 'expense') continue;
-      if (expense.paidBy === 'partner2') {
-        partner1OwesItems.push({
-          expense,
-          shareAmount: expense.amount * splitRatio,
-        });
-      } else if (expense.paidBy === 'partner1') {
-        partner2OwesItems.push({
-          expense,
-          shareAmount: expense.amount * (1 - splitRatio),
-        });
-      }
-    }
-
-    partner1OwesItems.sort((a, b) => b.shareAmount - a.shareAmount);
-    partner2OwesItems.sort((a, b) => b.shareAmount - a.shareAmount);
-
-    const partner1OwesTotal = partner1OwesItems.reduce((sum, item) => sum + item.shareAmount, 0);
-    const partner2OwesTotal = partner2OwesItems.reduce((sum, item) => sum + item.shareAmount, 0);
-
-    return {
-      partner1OwesItems,
-      partner2OwesItems,
-      partner1OwesTotal,
-      partner2OwesTotal,
-    };
-  }, [selectedScopeExpenses, splitRatio]);
-  const partner1ExpenseDelta = activeScope.partner1Paid - activeScope.partner1FairShare;
-  const partner2ExpenseDelta = activeScope.partner2Paid - activeScope.partner2FairShare;
-  const partner1EquationResult =
-    partner1ExpenseDelta + partner1SettlementPaid - partner1SettlementReceived;
-  const partner2EquationResult =
-    partner2ExpenseDelta + partner2SettlementPaid - partner2SettlementReceived;
+  const { topSummary, paymentBreakdown, explanation, expenseShareBreakdown, reconciliation } = viewModel;
+  const partner1Paid = paymentBreakdown.partner1Paid;
+  const partner2Paid = paymentBreakdown.partner2Paid;
+  const partner1SettlementPaid = explanation.partner1.settlementsPaid;
+  const partner1SettlementReceived = explanation.partner1.settlementsReceived;
+  const partner2SettlementPaid = explanation.partner2.settlementsPaid;
+  const partner2SettlementReceived = explanation.partner2.settlementsReceived;
+  const partner1ExpenseDelta = explanation.partner1.expenseDelta;
+  const partner2ExpenseDelta = explanation.partner2.expenseDelta;
+  const partner1EquationResult = explanation.partner1.finalBalance;
+  const partner2EquationResult = explanation.partner2.finalBalance;
+  const jointPaid = paymentBreakdown.jointPaid;
+  const totalAllPayments = paymentBreakdown.totalAllPayments;
 
   const getDirectionForExpenseId = (expenseIdRaw: string) => {
     const expense = expenseLookup.get(Number(expenseIdRaw));
@@ -272,19 +217,7 @@ export function BalanceView({
     return t('labels.remainderPaymentMonth', 'Apply to payment month');
   };
 
-  const displayedSettlements = balanceMode === 'month'
-    ? settlementsAffectingMonth.map(entry => ({
-      settlement: entry.settlement,
-      amountToShow: entry.appliedAmount,
-      linkedExpenseIds: entry.linkedExpenseIds,
-      isPartialForScope: Math.abs(entry.appliedAmount - Number(entry.settlement.amount || 0)) > 0.01,
-    }))
-    : settlementsAffectingThroughMonth.map(entry => ({
-      settlement: entry.settlement,
-      amountToShow: entry.appliedAmount,
-      linkedExpenseIds: entry.linkedExpenseIds,
-      isPartialForScope: Math.abs(entry.appliedAmount - Number(entry.settlement.amount || 0)) > 0.01,
-    }));
+  const displayedSettlements = viewModel.displayedSettlements;
 
   const linkedDirection = resolveLinkedDirection(settlementForm.allocationRows);
   const hasLinkedRows = settlementForm.allocationRows.some(row => row.expenseId);
@@ -345,7 +278,7 @@ export function BalanceView({
           )
         );
         if (!nextRow.amount && suggestedAmount > 0) {
-          nextRow.amount = suggestedAmount.toFixed(2);
+          nextRow.amount = toAmountInput(suggestedAmount);
         }
       }
       return nextRow;
@@ -363,6 +296,26 @@ export function BalanceView({
   const openNewSettlementModal = () => {
     setEditingSettlementId(null);
     setSettlementForm(createDefaultSettlementForm());
+    setShowSettlementModal(true);
+  };
+
+  const openSettlementFromObligation = (obligation: ObligationRowModel) => {
+    const amount = toAmountInput(obligation.remaining);
+    const nextForm = {
+      ...createDefaultSettlementForm(),
+      amount,
+      from: obligation.from,
+      to: obligation.to,
+      allocationRows: [
+        {
+          id: Date.now() + Math.floor(Math.random() * 10000),
+          expenseId: String(obligation.expenseId),
+          amount,
+        },
+      ],
+    };
+    setEditingSettlementId(null);
+    setSettlementForm(nextForm);
     setShowSettlementModal(true);
   };
 
@@ -508,7 +461,7 @@ export function BalanceView({
     <>
       <div className="space-y-4 sm:space-y-6">
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
-          <h3 className="text-lg sm:text-xl font-bold mb-1">{t('labels.balanceSettlement')}</h3>
+          <h3 className="text-lg sm:text-xl font-bold mb-1">{t('labels.balanceOverview', 'Balance overview')}</h3>
           <p className="text-xs text-slate-400 mb-4 sm:mb-6">
             {balanceMode === 'month'
               ? t('labels.monthlyContributions', 'This month\'s contributions')
@@ -517,82 +470,64 @@ export function BalanceView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div className="bg-slate-800/60 rounded-xl p-4 sm:p-6 shadow-lg shadow-purple-900/20">
-              <div className="text-slate-400 text-xs sm:text-sm mb-2 truncate">
-                {partnerNames.partner1}
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 break-words">
-                {withLtr(formatCurrency(partner1NetOutflow))}
+              <div className="flex items-center gap-2 text-slate-200 text-xs sm:text-sm mb-3">
+                <span>{t('labels.cashFlow', 'Cash flow')}</span>
+                <span
+                  title={t('tooltips.cashFlow', 'Cash flow = paid + settlements paid - settlements received')}
+                  aria-label={t('tooltips.cashFlow', 'Cash flow = paid + settlements paid - settlements received')}
+                >
+                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                </span>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{partnerNames.partner1}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(viewModel.cashFlow.partner1))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{partnerNames.partner2}</span>
+                  <span className="font-medium break-words text-right">
+                    {withLtr(formatCurrency(viewModel.cashFlow.partner2))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2 border-t border-slate-700 pt-2">
                   <span className="text-slate-400">{t('labels.paid')}</span>
                   <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner1Paid))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.fairShare')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner1FairShare))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.settlementsPaid', 'Settlements paid')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner1SettlementPaid))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.settlementsReceived', 'Settlements received')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner1SettlementReceived))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.netOutflow', 'Net outflow')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner1NetOutflow))}
+                    {withLtr(formatCurrency(viewModel.activeScope.partner1Paid + viewModel.activeScope.partner2Paid))}
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="bg-slate-800/60 rounded-xl p-4 sm:p-6 shadow-lg shadow-purple-900/20">
-              <div className="text-slate-400 text-xs sm:text-sm mb-2 truncate">
-                {partnerNames.partner2}
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 break-words">
-                {withLtr(formatCurrency(partner2NetOutflow))}
+              <div className="flex items-center gap-2 text-slate-200 text-xs sm:text-sm mb-3">
+                <span>{t('labels.fairSplitResult', 'Fair split result')}</span>
+                <span
+                  title={t('tooltips.fairSplitResult', 'Fair split result = paid - fair share (before settlements)')}
+                  aria-label={t('tooltips.fairSplitResult', 'Fair split result = paid - fair share (before settlements)')}
+                >
+                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                </span>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.paid')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner2Paid))}
+                  <span className="text-slate-400">{partnerNames.partner1}</span>
+                  <span className={`font-medium break-words text-right ${viewModel.fairSplitResult.partner1 >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                    {withLtr(formatCurrency(viewModel.fairSplitResult.partner1))}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-slate-400">{partnerNames.partner2}</span>
+                  <span className={`font-medium break-words text-right ${viewModel.fairSplitResult.partner2 >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                    {withLtr(formatCurrency(viewModel.fairSplitResult.partner2))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm gap-2 border-t border-slate-700 pt-2">
                   <span className="text-slate-400">{t('labels.fairShare')}</span>
                   <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner2FairShare))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.settlementsPaid', 'Settlements paid')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner2SettlementPaid))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.settlementsReceived', 'Settlements received')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner2SettlementReceived))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm gap-2">
-                  <span className="text-slate-400">{t('labels.netOutflow', 'Net outflow')}</span>
-                  <span className="font-medium break-words text-right">
-                    {withLtr(formatCurrency(partner2NetOutflow))}
+                    {withLtr(formatCurrency(viewModel.activeScope.partner1FairShare + viewModel.activeScope.partner2FairShare))}
                   </span>
                 </div>
               </div>
@@ -627,10 +562,10 @@ export function BalanceView({
           </div>
 
           {/* Settlement summary */}
-          {Math.abs(partner1Balance) < 0.01 ? (
+          {topSummary.isBalanced ? (
             <div className="bg-green-900/20 border border-green-700 rounded-xl p-6 text-center">
               <div className="text-5xl mb-3">✅</div>
-              <h4 className="text-xl font-bold text-green-400 mb-2">{t('messages.perfectBalance')}</h4>
+              <h4 className="text-xl font-bold text-green-400 mb-2">{t('messages.balanced', 'Balanced')}</h4>
               <p className="text-slate-300">
                 {balanceMode === 'month'
                   ? t('messages.monthBalanced', 'Selected month is balanced')
@@ -656,13 +591,13 @@ export function BalanceView({
                     {t('labels.splitRatio')}: {withLtr(`${(splitRatio * 100).toFixed(0)}% / ${((1-splitRatio) * 100).toFixed(0)}%`)}
                   </div>
                 )}
-                {partner1Balance > 0 ? (
+                {topSummary.from === 'partner2' && topSummary.to === 'partner1' ? (
                   <div>
                     <div className="text-2xl font-bold mb-2">
                       {t('messages.partnerOwes', { from: partnerNames.partner2, to: partnerNames.partner1 })}
                     </div>
                     <div className="text-4xl font-bold text-yellow-400">
-                      {withLtr(formatCurrency(Math.abs(partner1Balance)))}
+                      {withLtr(formatCurrency(topSummary.amount))}
                     </div>
                   </div>
                 ) : (
@@ -671,10 +606,33 @@ export function BalanceView({
                       {t('messages.partnerOwes', { from: partnerNames.partner1, to: partnerNames.partner2 })}
                     </div>
                     <div className="text-4xl font-bold text-yellow-400">
-                      {withLtr(formatCurrency(Math.abs(partner2Balance)))}
+                      {withLtr(formatCurrency(topSummary.amount))}
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {reconciliation.showWarning && (
+            <div className="mt-4 rounded-xl border border-amber-600/70 bg-amber-900/20 p-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-2 text-amber-200 font-semibold mb-2">
+                <AlertTriangle className="w-4 h-4" />
+                <span>{t('labels.reconciliationWarning', 'Reconciliation warning')}</span>
+              </div>
+              <div className="text-slate-200 space-y-1">
+                <div className="flex justify-between gap-2">
+                  <span>{partnerNames.partner1}</span>
+                  <span>{withLtr(formatCurrency(reconciliation.partner1Balance))}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>{partnerNames.partner2}</span>
+                  <span>{withLtr(formatCurrency(reconciliation.partner2Balance))}</span>
+                </div>
+                <div className="flex justify-between gap-2 border-t border-amber-700/50 pt-1">
+                  <span>{t('labels.netMismatch', 'Net mismatch')}</span>
+                  <span>{withLtr(formatCurrency(reconciliation.netMismatch))}</span>
+                </div>
               </div>
             </div>
           )}
@@ -689,6 +647,9 @@ export function BalanceView({
             {balanceMode === 'month'
               ? t('labels.monthOnlyScope', 'Selected month (including that month settlements)')
               : t('labels.cumulativeBalance', 'Running total through selected month')}
+          </p>
+          <p className="text-xs text-slate-500 mb-4">
+            {t('labels.finalBalanceEquation', 'final balance = expense delta + settlements paid - settlements received')}
           </p>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5 text-xs sm:text-sm">
@@ -712,14 +673,26 @@ export function BalanceView({
                 <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner2OwesTotal))}</span>
               </div>
               <div className="flex justify-between gap-2">
-                <span className="text-slate-400">{t('labels.expenseDelta', 'Expense delta (paid - fair share)')}</span>
+                <span
+                  className="text-slate-400 inline-flex items-center gap-1"
+                  title={t('tooltips.expenseDelta', 'Expense delta = paid - fair share')}
+                >
+                  {t('labels.expenseDelta', 'Expense delta (paid - fair share)')}
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
+                </span>
                 <span className={`font-medium ${partner1ExpenseDelta >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
                   {withLtr(formatCurrency(partner1ExpenseDelta))}
                 </span>
               </div>
               <div className="flex justify-between gap-2">
                 <span className="text-slate-400">
-                  {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner1 })}
+                  {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner1 })}{' '}
+                  <span
+                    className="inline-flex align-middle"
+                    title={t('tooltips.settlementEffect', 'Settlements paid increase this partner final balance in this equation')}
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
+                  </span>
                 </span>
                 <span className="font-medium">{withLtr(formatCurrency(partner1SettlementPaid))}</span>
               </div>
@@ -759,14 +732,26 @@ export function BalanceView({
                 <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner1OwesTotal))}</span>
               </div>
               <div className="flex justify-between gap-2">
-                <span className="text-slate-400">{t('labels.expenseDelta', 'Expense delta (paid - fair share)')}</span>
+                <span
+                  className="text-slate-400 inline-flex items-center gap-1"
+                  title={t('tooltips.expenseDelta', 'Expense delta = paid - fair share')}
+                >
+                  {t('labels.expenseDelta', 'Expense delta (paid - fair share)')}
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
+                </span>
                 <span className={`font-medium ${partner2ExpenseDelta >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
                   {withLtr(formatCurrency(partner2ExpenseDelta))}
                 </span>
               </div>
               <div className="flex justify-between gap-2">
                 <span className="text-slate-400">
-                  {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner2 })}
+                  {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner2 })}{' '}
+                  <span
+                    className="inline-flex align-middle"
+                    title={t('tooltips.settlementEffect', 'Settlements paid increase this partner final balance in this equation')}
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
+                  </span>
                 </span>
                 <span className="font-medium">{withLtr(formatCurrency(partner2SettlementPaid))}</span>
               </div>
@@ -832,6 +817,76 @@ export function BalanceView({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Outstanding obligations */}
+        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
+          <h3 className="text-lg sm:text-xl font-bold mb-1">
+            {t('labels.outstandingObligations', 'Outstanding obligations')}
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">
+            {balanceMode === 'month'
+              ? t('labels.outstandingMonthScope', 'Open obligations from expenses in selected month')
+              : t('labels.outstandingCumulativeScope', 'Open obligations from expenses through selected month')}
+          </p>
+
+          {viewModel.obligations.openRows.length === 0 ? (
+            <p className="text-xs text-slate-500">{t('messages.noOutstandingObligations', 'No open obligations in this scope')}</p>
+          ) : (
+            <div className="space-y-2">
+              {viewModel.obligations.openRows.map((row) => (
+                <div
+                  key={row.expenseId}
+                  className="rounded-xl border border-slate-700 bg-slate-800/50 p-3"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-100 truncate">
+                        {formatDateLocalized(row.expenseDate)} - {row.expenseDescription}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {t('labels.paidBy', 'Paid by')}: {row.paidBy === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {t('messages.partnerOwes', {
+                          from: row.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
+                          to: row.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
+                        })}
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => openSettlementFromObligation(row)}
+                      variant="secondary"
+                      className="w-full sm:w-auto"
+                    >
+                      {t('buttons.createSettlement', 'Create settlement')}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mt-3 text-xs">
+                    <div className="rounded-lg bg-slate-900/60 p-2">
+                      <div className="text-slate-500">{t('labels.owed', 'Owed')}</div>
+                      <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.owed))}</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900/60 p-2">
+                      <div className="text-slate-500">{t('labels.linkedSettled', 'Linked settled')}</div>
+                      <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.linkedSettled))}</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900/60 p-2">
+                      <div className="text-slate-500">{t('labels.remaining', 'Remaining')}</div>
+                      <div className="font-medium text-amber-300">{withLtr(formatCurrency(row.remaining))}</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-900/60 p-2">
+                      <div className="text-slate-500">{t('labels.status', 'Status')}</div>
+                      <div className="font-medium text-slate-100">
+                        {t(`labels.obligationStatus.${row.status}`, row.status)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Payment breakdown */}

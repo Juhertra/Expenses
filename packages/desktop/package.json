@@ -1,16 +1,16 @@
 {
   "name": "expense-tracker",
   "private": true,
-  "version": "1.0.36",
+  "version": "1.0.37",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit; if ($LASTEXITCODE -ne 0) { exit 1 }; vite build",
+    "build": "node ../../node_modules/typescript/bin/tsc --noEmit; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; node ../../node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "node ../../node_modules/vitest/vitest.mjs --run",
+    "test:ui": "node ../../node_modules/vitest/vitest.mjs --ui",
+    "test:coverage": "node ../../node_modules/vitest/vitest.mjs --coverage",
     "electron:dev": "scripts\\electron-dev.cmd",
     "electron:build": "vite build; if ($LASTEXITCODE -ne 0) { exit 1 }; electron-builder",
     "electron:pack": "electron-builder --dir"

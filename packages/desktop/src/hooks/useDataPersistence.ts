@@ -91,6 +91,11 @@ export function useDataPersistence() {
     []
   );
 
+  const isElectronStorageHandle = useCallback((directory: FileSystemDirectoryHandle | null): boolean => {
+    if (!directory) return false;
+    return (directory as unknown as { kind?: string }).kind === 'electron-file';
+  }, []);
+
   /**
    * Check if File System Access API is supported
    */
@@ -326,7 +331,7 @@ export function useDataPersistence() {
 
         if (supportsFileSystem && targetDirectory) {
           // In Electron, data is already persisted via storage API, skip file write
-          const isElectronStorage = isElectron() || (targetDirectory as any).kind === 'electron-file';
+          const isElectronStorage = isElectron() || isElectronStorageHandle(targetDirectory);
 
           if (!isElectronStorage) {
             await writeJsonToDirectory(targetDirectory, filename, jsonString);
@@ -377,6 +382,7 @@ export function useDataPersistence() {
       showToast,
       t,
       formatPersistenceError,
+      isElectronStorageHandle,
     ]
   );
 

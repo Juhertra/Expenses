@@ -1,12 +1,14 @@
 import React from 'react';
 import type {
   Expense,
+  FormData,
   RecurringTransaction,
   PartnerNames,
   HouseholdSettings,
   Settlement,
   ChartDataPoint,
 } from '@expenses/shared/types';
+import type { TFunction } from 'i18next';
 import { getExpensesThroughMonth, parseDateParts } from '@expenses/shared/calculations';
 import type { Theme } from '../../lib/theme';
 import { getLocalISODate } from '../../lib/date';
@@ -40,6 +42,12 @@ interface FrequentExpense {
   description: string;
   category: string;
   amount: number;
+}
+
+interface CategoryData {
+  name: string;
+  icon: string;
+  color: string;
 }
 
 interface FilterPreset {
@@ -105,7 +113,7 @@ interface ViewRouterProps {
 
   // Setters
   setShowAddModal: (show: boolean) => void;
-  setFormData: React.Dispatch<React.SetStateAction<any>>;
+  setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   setExpenses: (expenses: Expense[]) => void;
   setDirty: (dirty: boolean) => void;
   setSavingTransaction: (saving: boolean) => void;
@@ -141,15 +149,15 @@ interface ViewRouterProps {
   confirmDeleteExpense: (id: number, description: string) => void;
   confirmDeleteRecurring: (id: number, description: string) => void;
   deleteSettlement: (id: number) => Promise<void>;
-  addCategory: (categoryData: any) => Promise<void>;
-  editCategory: (oldName: string, categoryData: any) => Promise<void>;
+  addCategory: (categoryData: CategoryData) => Promise<void>;
+  editCategory: (oldName: string, categoryData: CategoryData) => Promise<void>;
   confirmDeleteCategory: (name: string) => void;
   updateTransactionCategory: (txId: number, newCategory: string) => Promise<void>;
   persistExpenses: (expenses: Expense[]) => Promise<boolean>;
   persistSettlements: (settlements: Settlement[]) => Promise<boolean>;
 
   // Translation
-  t: (key: string, options?: any) => string;
+  t: TFunction;
 }
 
 export function ViewRouter({
@@ -268,7 +276,7 @@ export function ViewRouter({
           onOpenQuickAdd={openQuickAdd}
           onSetShowAddModal={setShowAddModal}
           onPrefillForm={(data) => {
-            setFormData((prev: any) => ({
+            setFormData((prev) => ({
               ...prev,
               ...data
             }));

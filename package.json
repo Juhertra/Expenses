@@ -11,7 +11,7 @@
     "build:shared": "npm run build --workspace=packages/shared",
     "build:desktop": "npm run build --workspace=packages/desktop",
     "build:all": "npm run build --workspaces",
-    "test": "node -e \"const {spawnSync}=require('node:child_process');const npm=process.platform==='win32'?'npm.cmd':'npm';const r=spawnSync(npm,['run','test','--workspaces','--if-present','--','--run'],{stdio:'inherit'});process.exit(r.status ?? 1);\"",
+    "test": "npm run test --workspaces --if-present",
     "test:all": "npm run test --workspaces",
     "typecheck:all": "npm run typecheck --workspaces",
     "electron:dev": "npm run electron:dev --workspace=packages/desktop",

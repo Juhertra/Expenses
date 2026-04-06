@@ -20,7 +20,7 @@ export const storage = {
         return await window.storage.get(key, shared);
       }
       // Dev-only fallback (web). Avoid in production/Electron to ensure file-backed persistence.
-      if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
+      if (!isElectron() && typeof localStorage !== 'undefined' && !import.meta.env?.PROD) {
         const value = localStorage.getItem(key);
         return value ? { key, value, shared: false } : null;
       }
@@ -35,7 +35,7 @@ export const storage = {
       if (window.storage) {
         return await window.storage.set(key, value, shared);
       }
-      if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
+      if (!isElectron() && typeof localStorage !== 'undefined' && !import.meta.env?.PROD) {
         localStorage.setItem(key, value);
         return { key, value, shared: false };
       }
@@ -50,7 +50,7 @@ export const storage = {
       if (window.storage) {
         return await window.storage.delete?.(key, shared);
       }
-      if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
+      if (!isElectron() && typeof localStorage !== 'undefined' && !import.meta.env?.PROD) {
         localStorage.removeItem(key);
         return { key, deleted: true, shared: false };
       }
@@ -65,7 +65,7 @@ export const storage = {
       if (window.storage) {
         return await window.storage.list?.(prefix, shared);
       }
-      if (!isElectron() && typeof localStorage !== 'undefined' && !(import.meta as any)?.env?.PROD) {
+      if (!isElectron() && typeof localStorage !== 'undefined' && !import.meta.env?.PROD) {
         const keys = Object.keys(localStorage).filter(k => !prefix || k.startsWith(prefix));
         return { keys, prefix, shared: false };
       }

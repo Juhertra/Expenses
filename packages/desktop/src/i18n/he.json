@@ -53,7 +53,8 @@
     "close": "סגור",
     "reload": "טען מחדש",
     "dismiss": "התעלם",
-    "revealInFolder": "הצג בתיקייה"
+    "revealInFolder": "הצג בתיקייה",
+    "createSettlement": "צור התחשבנות"
   },
   "labels": {
     "balance": "יתרה",
@@ -125,7 +126,26 @@
     "addTransactionTitle": "הוסף תנועה",
     "categoryName": "שם קטגוריה",
     "editCategoryTitle": "ערוך קטגוריה",
-    "addCategoryTitle": "הוסף קטגוריה"
+    "addCategoryTitle": "הוסף קטגוריה",
+    "balanceOverview": "סקירת איזון",
+    "finalSettlementAdjusted": "תוצאה סופית (לאחר התחשבנויות)",
+    "cashFlow": "תזרים מזומנים",
+    "fairSplitResult": "תוצאת חלוקה הוגנת",
+    "finalBalanceEquation": "יתרה סופית = פער הוצאות + התחשבנויות ששולמו - התחשבנויות שהתקבלו",
+    "outstandingObligations": "חיובים פתוחים",
+    "outstandingMonthScope": "חיובים פתוחים מהוצאות בחודש הנבחר",
+    "outstandingCumulativeScope": "חיובים פתוחים מהוצאות עד החודש הנבחר",
+    "owed": "חוב",
+    "linkedSettled": "שולם בקישור",
+    "remaining": "נותר",
+    "status": "סטטוס",
+    "reconciliationWarning": "אזהרת התאמה",
+    "netMismatch": "פער נטו",
+    "obligationStatus": {
+      "unlinked": "לא מקושר",
+      "partially_settled": "שולם חלקית",
+      "settled": "שולם במלואו"
+    }
   },
   "messages": {
     "searchBreadcrumb": "חיפוש",
@@ -163,7 +183,9 @@
     "perfectBalance": "איזון מושלם!",
     "allSettled": "כל ההוצאות מסודרות",
     "settlementRequired": "נדרשת התחשבנות",
-    "partnerOwes": "{{from}} חייב ל-{{to}}"
+    "partnerOwes": "{{from}} חייב ל-{{to}}",
+    "balanced": "מאוזן",
+    "noOutstandingObligations": "אין חיובים פתוחים בטווח זה"
   },
   "dialogs": {
     "bulkDeleteConfirm": "למחוק {{count}} נבחרים?",
@@ -277,7 +299,11 @@
     "saveChanges": "שמור שינויים",
     "deleteSettlement": "מחק התחשבנות",
     "emojiAlreadyUsed": "אמוג'י כבר בשימוש",
-    "selectEmoji": "בחר אמוג'י"
+    "selectEmoji": "בחר אמוג'י",
+    "cashFlow": "תזרים מזומנים = שולם + התחשבנויות ששולמו - התחשבנויות שהתקבלו",
+    "fairSplitResult": "תוצאת חלוקה הוגנת = שולם - חלק הוגן (לפני התחשבנויות)",
+    "expenseDelta": "פער הוצאות = שולם - חלק הוגן",
+    "settlementEffect": "התחשבנויות ששולמו מגדילות את היתרה הסופית של בן הזוג במשוואה זו"
   },
   "charts": {
     "others": "אחרים",
@@ -334,7 +360,10 @@
   },
   "settings": {
     "title": "הגדרות",
-    "tabs": { "settings": "הגדרות", "shortcuts": "קיצורים" },
+    "tabs": {
+      "settings": "הגדרות",
+      "shortcuts": "קיצורים"
+    },
     "searchPlaceholder": "חיפוש בהגדרות...",
     "sections": {
       "general": "כללי",
@@ -351,7 +380,10 @@
     "noResultsTitle": "אין תוצאות",
     "noResultsHint": "נסו לחפש מטבע, ייצוא, ערכת נושא או שפה.",
     "language": "שפה",
-    "languages": { "en": "אנגלית", "he": "עברית" },
+    "languages": {
+      "en": "אנגלית",
+      "he": "עברית"
+    },
     "languageHelp": "בחירת שפה (מקומי בלבד).",
     "partner1Name": "שם שותף 1",
     "partner2Name": "שם שותף 2",
@@ -362,7 +394,7 @@
     "splitEqual": "שווה (50/50)",
     "splitProportional": "פרופורציונלי",
     "shareRatioLabel": "חלק עבור {{name}}",
-    "ratioSummary": "{{name1}} {{ratio1}}% · {{name2}} {{ratio2}}%",
+    "ratioSummary": "???: {{name1}} {{ratio1}}% ? {{name2}} {{ratio2}}%",
     "ratioClamped": "היחס מוגבל בין 5% ל-95%",
     "appearance": "מראה",
     "theme": "ערכת נושא",

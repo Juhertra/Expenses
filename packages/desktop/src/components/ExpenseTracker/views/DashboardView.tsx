@@ -107,7 +107,6 @@ interface DashboardViewProps {
 
 export function DashboardView({
   filteredExpenses,
-  expenses: _expenses,
   recurring,
   categories,
   partnerNames,
@@ -130,7 +129,6 @@ export function DashboardView({
   months,
   MIN_BAR_PX,
   formatCurrency,
-  formatDateLocalized: _formatDateLocalized,
   formatSigned,
   formatPercent,
   withLtr,
@@ -146,7 +144,6 @@ export function DashboardView({
   onEditExpense,
   onDeleteRecurring,
   showToast,
-  savingTransaction: _savingTransaction,
 }: DashboardViewProps) {
   const { t, i18n } = useTranslation();
   const [chartTooltip, setChartTooltip] = useState<ChartTooltip | null>(null);

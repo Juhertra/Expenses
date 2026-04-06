@@ -36,6 +36,7 @@
     "help": "Help",
     "settings": "Settings",
     "recordPayment": "Record payment",
+    "createSettlement": "Create settlement",
     "update": "Update",
     "delete": "Delete",
     "deleteReassign": "Delete & reassign",
@@ -120,7 +121,26 @@
     "filteredBy": "Filtered by",
     "largeExpenses": "Large expenses",
     "categoryDistribution": "Category distribution",
+    "balanceOverview": "Balance overview",
     "balanceSettlement": "Balance & Settlement",
+    "finalSettlementAdjusted": "Final (settlement-adjusted) result",
+    "cashFlow": "Cash flow",
+    "fairSplitResult": "Fair split result",
+    "finalBalanceEquation": "final balance = expense delta + settlements paid - settlements received",
+    "outstandingObligations": "Outstanding obligations",
+    "outstandingMonthScope": "Open obligations from expenses in selected month",
+    "outstandingCumulativeScope": "Open obligations from expenses through selected month",
+    "owed": "Owed",
+    "linkedSettled": "Linked settled",
+    "remaining": "Remaining",
+    "status": "Status",
+    "reconciliationWarning": "Reconciliation warning",
+    "netMismatch": "Net mismatch",
+    "obligationStatus": {
+      "unlinked": "Unlinked",
+      "partially_settled": "Partially settled",
+      "settled": "Settled"
+    },
     "editTransaction": "Edit Transaction",
     "addTransactionTitle": "Add Transaction",
     "categoryName": "Category Name",
@@ -161,8 +181,10 @@
     "noRecurring": "No recurring transactions",
     "pageOf": "Page {{page}} of {{total}}",
     "perfectBalance": "Perfect Balance!",
+    "balanced": "Balanced",
     "allSettled": "All expenses are settled",
     "settlementRequired": "Settlement Required",
+    "noOutstandingObligations": "No open obligations in this scope",
     "partnerOwes": "{{from}} owes {{to}}"
   },
   "dialogs": {
@@ -276,6 +298,10 @@
     "clickToEdit": "Click to edit",
     "saveChanges": "Save changes",
     "deleteSettlement": "Delete settlement",
+    "cashFlow": "Cash flow = paid + settlements paid - settlements received",
+    "fairSplitResult": "Fair split result = paid - fair share (before settlements)",
+    "expenseDelta": "Expense delta = paid - fair share",
+    "settlementEffect": "Settlements paid increase this partner final balance in this equation",
     "emojiAlreadyUsed": "Emoji already used",
     "selectEmoji": "Select emoji"
   },
@@ -334,7 +360,10 @@
   },
   "settings": {
     "title": "Settings",
-    "tabs": { "settings": "Settings", "shortcuts": "Shortcuts" },
+    "tabs": {
+      "settings": "Settings",
+      "shortcuts": "Shortcuts"
+    },
     "searchPlaceholder": "Search settings...",
     "sections": {
       "general": "General",
@@ -351,7 +380,10 @@
     "noResultsTitle": "No results",
     "noResultsHint": "Try searching for currency, export, theme, or language.",
     "language": "Language",
-    "languages": { "en": "English", "he": "Hebrew" },
+    "languages": {
+      "en": "English",
+      "he": "Hebrew"
+    },
     "languageHelp": "Choose display language (local only).",
     "partner1Name": "Partner 1 Name",
     "partner2Name": "Partner 2 Name",

@@ -75,7 +75,6 @@ export function TransactionsView({
   categories,
   partnerNames,
   householdSettings,
-  theme: _theme,
   searchQuery,
   selectedCategory,
   bulkMode,

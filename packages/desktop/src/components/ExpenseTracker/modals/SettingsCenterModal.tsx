@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createScope, createTimeline, stagger } from "animejs";
 import { X, Search, Sliders, Keyboard, Users, Database, Palette, Info } from "lucide-react";
 import type { TFunction, i18n as I18nType } from "i18next";
@@ -83,11 +83,11 @@ export default function SettingsCenterModal(props: Props) {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isClosing, setIsClosing] = useState(false);
 
-  const dir = useMemo(() => i18n.dir(i18n.language), [i18n, i18n.language]);
+  const dir = useMemo(() => i18n.dir(i18n.language), [i18n]);
   const themeDef = themes[currentTheme] || { colors: { cardBg: "bg-slate-900/60", cardBorder: "border-slate-700" } };
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac');
 
-  const tt = (key: string, fallback: string) => (i18n.exists(key) ? t(key) : fallback);
+  const tt = useCallback((key: string, fallback: string) => (i18n.exists(key) ? t(key) : fallback), [i18n, t]);
 
   // Trap focus within modal for keyboard accessibility
   useFocusTrap(panelRef, isOpen);
@@ -103,7 +103,7 @@ export default function SettingsCenterModal(props: Props) {
         acc[s.id] = tt(s.labelKey, s.id);
         return acc;
       }, {} as Record<SectionId, string>),
-    [i18n.language]
+    [tt]
   );
 
   const allSections = useMemo(() => SECTIONS.map((s) => s.id), []);
@@ -131,7 +131,7 @@ export default function SettingsCenterModal(props: Props) {
   };
 
   // Handle close with exit animation
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (isClosing) return;
     setIsClosing(true);
 
@@ -161,7 +161,7 @@ export default function SettingsCenterModal(props: Props) {
       setIsClosing(false);
       onClose();
     }
-  };
+  }, [isClosing, onClose]);
 
   // Close on ESC
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function SettingsCenterModal(props: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, isClosing]);
+  }, [isOpen, handleClose]);
 
   // Keyboard support
   useEffect(() => {
@@ -364,7 +364,7 @@ export default function SettingsCenterModal(props: Props) {
   const sectionLabel = useMemo(() => {
     const found = SECTIONS.find((s) => s.id === section);
     return found ? tt(found.labelKey, found.id) : tt("settings.title", "Settings");
-  }, [section, i18n.language]);
+  }, [section, tt]);
 
   if (!isOpen) return null;
 

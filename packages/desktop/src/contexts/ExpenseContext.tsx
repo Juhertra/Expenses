@@ -111,8 +111,9 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
   }, [expenses, recurring]);
 
   // Save data function (placeholder - will be implemented with export logic)
-  const saveData = useCallback(async (_options?: { allowDownload?: boolean; showToast?: boolean; promptForDirectory?: boolean }) => {
+  const saveData = useCallback(async (options?: { allowDownload?: boolean; showToast?: boolean; promptForDirectory?: boolean }) => {
     // This will be implemented when integrating with ExpenseTracker's save logic
+    void options;
     console.log('saveData called - to be implemented');
   }, []);
 

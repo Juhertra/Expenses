@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PlusCircle,
@@ -49,6 +49,20 @@ import { parseISODateToLocalDate } from '../../lib/date';
 import { ViewRouter } from './ViewRouter';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
+
+const CATEGORY_LABELS_HE: Record<string, string> = {
+  Housing: '\u05d3\u05d9\u05d5\u05e8',
+  Food: '\u05de\u05d6\u05d5\u05df',
+  Transportation: '\u05ea\u05d7\u05d1\u05d5\u05e8\u05d4',
+  Utilities: '\u05d7\u05e9\u05d1\u05d5\u05e0\u05d5\u05ea',
+  Healthcare: '\u05d1\u05e8\u05d9\u05d0\u05d5\u05ea',
+  Entertainment: '\u05d1\u05d9\u05d3\u05d5\u05e8',
+  Shopping: '\u05e7\u05e0\u05d9\u05d5\u05ea',
+  Education: '\u05d7\u05d9\u05e0\u05d5\u05da',
+  Insurance: '\u05d1\u05d9\u05d8\u05d5\u05d7',
+  Savings: '\u05d7\u05e1\u05db\u05d5\u05e0\u05d5\u05ea',
+  Other: '\u05d0\u05d7\u05e8'
+};
 
 /**
  * A fully featured household expense tracker component for React.
@@ -190,23 +204,23 @@ const ExpenseTracker: React.FC = () => {
 
   // Curated emoji list for category picker
   const CURATED_EMOJIS = {
-    home: ['🏠', '🏡', '🏘️', '🏢', '🏚️', '🏗️', '🏛️', '⛪', '🏰', '🏯'],
-    food: ['🍔', '🍕', '🍜', '🍣', '🥗', '🍩', '🍝', '🍱', '🥘', '🍲', '🥙', '🌮', '🍛', '🥟', '🍦', '🧁', '☕', '🍷'],
-    transport: ['🚗', '🚌', '🚕', '🚙', '🚲', '✈️', '🚆', '🚂', '🚊', '🛴', '🛵', '🚤', '⛽', '🚏', '🛣️'],
-    shopping: ['🛍️', '🛒', '🎁', '👗', '👟', '👔', '👕', '🧥', '💄', '💍', '🎀', '🕶️', '👜', '🎒'],
-    entertainment: ['🎮', '🎬', '🎤', '🎧', '🎟️', '🎪', '🎨', '🎭', '🎹', '🎸', '🎺', '🎯', '🎳', '🎲', '🎰', '🎢'],
-    utilities: ['💡', '🔌', '🧯', '🚰', '🏷️', '🔧', '🔨', '⚡', '💧', '🚿', '🧹', '🧺', '🗑️', '📞'],
-    health: ['💊', '🩺', '💉', '🧴', '🍎', '⚕️', '🏥', '🧘', '💪', '🦷', '👓', '🩹', '🧬'],
-    finance: ['💰', '🏦', '💳', '📈', '🧾', '💵', '💴', '💶', '💷', '💸', '💹', '🪙', '📊', '💼'],
-    education: ['📚', '📝', '🎓', '✏️', '📖', '📕', '📗', '📘', '🖊️', '✒️', '🖍️', '📐', '📏', '🎒', '🧮'],
-    pets: ['🐕', '🐈', '🐩', '🐱', '🐶', '🐾', '🦴', '🐟', '🐠', '🐦', '🦜', '🐹', '🐰'],
-    sports: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🥊', '🥋', '⛳', '🏊', '🏋️', '🚴', '⛷️', '🏇'],
-    work: ['💼', '👔', '📱', '💻', '⌨️', '🖱️', '🖨️', '📧', '📞', '📠', '🗂️', '📋', '📌', '📎'],
-    travel: ['✈️', '🗺️', '🧳', '🏖️', '🗼', '🗽', '🎡', '🎢', '🏕️', '⛺', '🏔️', '🗻', '🌋', '🏝️'],
-    nature: ['🌳', '🌲', '🌴', '🌱', '🌿', '🍀', '🌺', '🌻', '🌼', '🌷', '🌹', '🌾', '🍃', '🍂'],
-    weather: ['☀️', '🌤️', '⛅', '🌥️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '❄️', '⭐', '🌙', '🌈'],
-    tech: ['💻', '📱', '⌨️', '🖥️', '🖨️', '📷', '📹', '🎮', '🕹️', '💾', '💿', '📀', '🔌', '🔋'],
-    other: ['📌', '📦', '🗂️', '📁', '🧩', '🎯', '🎲', '🎪', '🎭', '🏆', '🎖️', '🏅', '⚙️', '🔔']
+    home: ['ðŸ ', 'ðŸ¡', 'ðŸ˜ï¸', 'ðŸ¢', 'ðŸšï¸', 'ðŸ—ï¸', 'ðŸ›ï¸', 'â›ª', 'ðŸ°', 'ðŸ¯'],
+    food: ['ðŸ”', 'ðŸ•', 'ðŸœ', 'ðŸ£', 'ðŸ¥—', 'ðŸ©', 'ðŸ', 'ðŸ±', 'ðŸ¥˜', 'ðŸ²', 'ðŸ¥™', 'ðŸŒ®', 'ðŸ›', 'ðŸ¥Ÿ', 'ðŸ¦', 'ðŸ§', 'â˜•', 'ðŸ·'],
+    transport: ['ðŸš—', 'ðŸšŒ', 'ðŸš•', 'ðŸš™', 'ðŸš²', 'âœˆï¸', 'ðŸš†', 'ðŸš‚', 'ðŸšŠ', 'ðŸ›´', 'ðŸ›µ', 'ðŸš¤', 'â›½', 'ðŸš', 'ðŸ›£ï¸'],
+    shopping: ['ðŸ›ï¸', 'ðŸ›’', 'ðŸŽ', 'ðŸ‘—', 'ðŸ‘Ÿ', 'ðŸ‘”', 'ðŸ‘•', 'ðŸ§¥', 'ðŸ’„', 'ðŸ’', 'ðŸŽ€', 'ðŸ•¶ï¸', 'ðŸ‘œ', 'ðŸŽ’'],
+    entertainment: ['ðŸŽ®', 'ðŸŽ¬', 'ðŸŽ¤', 'ðŸŽ§', 'ðŸŽŸï¸', 'ðŸŽª', 'ðŸŽ¨', 'ðŸŽ­', 'ðŸŽ¹', 'ðŸŽ¸', 'ðŸŽº', 'ðŸŽ¯', 'ðŸŽ³', 'ðŸŽ²', 'ðŸŽ°', 'ðŸŽ¢'],
+    utilities: ['ðŸ’¡', 'ðŸ”Œ', 'ðŸ§¯', 'ðŸš°', 'ðŸ·ï¸', 'ðŸ”§', 'ðŸ”¨', 'âš¡', 'ðŸ’§', 'ðŸš¿', 'ðŸ§¹', 'ðŸ§º', 'ðŸ—‘ï¸', 'ðŸ“ž'],
+    health: ['ðŸ’Š', 'ðŸ©º', 'ðŸ’‰', 'ðŸ§´', 'ðŸŽ', 'âš•ï¸', 'ðŸ¥', 'ðŸ§˜', 'ðŸ’ª', 'ðŸ¦·', 'ðŸ‘“', 'ðŸ©¹', 'ðŸ§¬'],
+    finance: ['ðŸ’°', 'ðŸ¦', 'ðŸ’³', 'ðŸ“ˆ', 'ðŸ§¾', 'ðŸ’µ', 'ðŸ’´', 'ðŸ’¶', 'ðŸ’·', 'ðŸ’¸', 'ðŸ’¹', 'ðŸª™', 'ðŸ“Š', 'ðŸ’¼'],
+    education: ['ðŸ“š', 'ðŸ“', 'ðŸŽ“', 'âœï¸', 'ðŸ“–', 'ðŸ“•', 'ðŸ“—', 'ðŸ“˜', 'ðŸ–Šï¸', 'âœ’ï¸', 'ðŸ–ï¸', 'ðŸ“', 'ðŸ“', 'ðŸŽ’', 'ðŸ§®'],
+    pets: ['ðŸ•', 'ðŸˆ', 'ðŸ©', 'ðŸ±', 'ðŸ¶', 'ðŸ¾', 'ðŸ¦´', 'ðŸŸ', 'ðŸ ', 'ðŸ¦', 'ðŸ¦œ', 'ðŸ¹', 'ðŸ°'],
+    sports: ['âš½', 'ðŸ€', 'ðŸˆ', 'âš¾', 'ðŸŽ¾', 'ðŸ', 'ðŸ“', 'ðŸ¥Š', 'ðŸ¥‹', 'â›³', 'ðŸŠ', 'ðŸ‹ï¸', 'ðŸš´', 'â›·ï¸', 'ðŸ‡'],
+    work: ['ðŸ’¼', 'ðŸ‘”', 'ðŸ“±', 'ðŸ’»', 'âŒ¨ï¸', 'ðŸ–±ï¸', 'ðŸ–¨ï¸', 'ðŸ“§', 'ðŸ“ž', 'ðŸ“ ', 'ðŸ—‚ï¸', 'ðŸ“‹', 'ðŸ“Œ', 'ðŸ“Ž'],
+    travel: ['âœˆï¸', 'ðŸ—ºï¸', 'ðŸ§³', 'ðŸ–ï¸', 'ðŸ—¼', 'ðŸ—½', 'ðŸŽ¡', 'ðŸŽ¢', 'ðŸ•ï¸', 'â›º', 'ðŸ”ï¸', 'ðŸ—»', 'ðŸŒ‹', 'ðŸï¸'],
+    nature: ['ðŸŒ³', 'ðŸŒ²', 'ðŸŒ´', 'ðŸŒ±', 'ðŸŒ¿', 'ðŸ€', 'ðŸŒº', 'ðŸŒ»', 'ðŸŒ¼', 'ðŸŒ·', 'ðŸŒ¹', 'ðŸŒ¾', 'ðŸƒ', 'ðŸ‚'],
+    weather: ['â˜€ï¸', 'ðŸŒ¤ï¸', 'â›…', 'ðŸŒ¥ï¸', 'â˜ï¸', 'ðŸŒ¦ï¸', 'ðŸŒ§ï¸', 'â›ˆï¸', 'ðŸŒ©ï¸', 'â„ï¸', 'â­', 'ðŸŒ™', 'ðŸŒˆ'],
+    tech: ['ðŸ’»', 'ðŸ“±', 'âŒ¨ï¸', 'ðŸ–¥ï¸', 'ðŸ–¨ï¸', 'ðŸ“·', 'ðŸ“¹', 'ðŸŽ®', 'ðŸ•¹ï¸', 'ðŸ’¾', 'ðŸ’¿', 'ðŸ“€', 'ðŸ”Œ', 'ðŸ”‹'],
+    other: ['ðŸ“Œ', 'ðŸ“¦', 'ðŸ—‚ï¸', 'ðŸ“', 'ðŸ§©', 'ðŸŽ¯', 'ðŸŽ²', 'ðŸŽª', 'ðŸŽ­', 'ðŸ†', 'ðŸŽ–ï¸', 'ðŸ…', 'âš™ï¸', 'ðŸ””']
   };
 
   const resetSettingsDrafts = useCallback(() => {
@@ -294,14 +308,14 @@ const ExpenseTracker: React.FC = () => {
   useEffect(() => {
     setSearchQuery('');
     setTransactionPage(1);
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, setSearchQuery, setTransactionPage]);
 
   /**
    * Reset pagination when search or category filter changes (Phase 2 Feature #12)
    */
   useEffect(() => {
     setTransactionPage(1);
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, setTransactionPage]);
 
   /**
    * Comprehensive keyboard shortcuts (Phase 1 Feature #5)
@@ -382,7 +396,7 @@ const ExpenseTracker: React.FC = () => {
   ]);
 
   /**
-   * Electron menu action listener — maps native menu items / accelerators
+   * Electron menu action listener â€” maps native menu items / accelerators
    * to the same handlers used by keyboard shortcuts and the UI.
    */
   useEffect(() => {
@@ -398,7 +412,6 @@ const ExpenseTracker: React.FC = () => {
           openSettingsModal('shortcuts');
           break;
         case 'new-file': {
-          // eslint-disable-next-line no-restricted-globals
           if (confirm(t('confirmations.newFile', 'Start a new file? All unsaved data will be lost.'))) {
             setExpenses([]);
             setRecurring([]);
@@ -449,6 +462,8 @@ const ExpenseTracker: React.FC = () => {
     saveData,
     exportData,
     importData,
+    openSharedDataFile,
+    createSharedDataFile,
     setExpenses,
     setRecurring,
     setSettlements,
@@ -932,19 +947,22 @@ const ExpenseTracker: React.FC = () => {
   /**
    * Format currency using Intl.NumberFormat with household settings
    */
-  const formatCurrency = (amount: number): string => {
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: householdSettings.currencyCode,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount);
-    } catch (error) {
-      // Fallback if currencyCode is invalid
-      return `${householdSettings.currencySymbol}${amount.toFixed(2)}`;
-    }
-  };
+  const formatCurrency = useCallback(
+    (amount: number): string => {
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency: householdSettings.currencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(amount);
+      } catch (error) {
+        // Fallback if currencyCode is invalid
+        return `${householdSettings.currencySymbol}${amount.toFixed(2)}`;
+      }
+    },
+    [householdSettings.currencyCode, householdSettings.currencySymbol]
+  );
 
   const formatDateLocalized = useCallback(
     (dateStr: string) => parseISODateToLocalDate(dateStr).toLocaleDateString(i18n.language || undefined),
@@ -1070,51 +1088,6 @@ const ExpenseTracker: React.FC = () => {
 
   const balance = totalIncome - totalExpense;
 
-  const partner1Paid = useMemo(
-    () => filteredExpenses
-      .filter(exp => exp.paidBy === 'partner1' && exp.type === 'expense')
-      .reduce((sum, exp) => sum + exp.amount, 0),
-    [filteredExpenses]
-  );
-
-  const partner2Paid = useMemo(
-    () => filteredExpenses
-      .filter(exp => exp.paidBy === 'partner2' && exp.type === 'expense')
-      .reduce((sum, exp) => sum + exp.amount, 0),
-    [filteredExpenses]
-  );
-
-  // Split mode: Calculate fair share based on household settings
-  // For equal: 50/50 split; for proportional: use partner1Ratio
-  const splitRatio = householdSettings.splitMode === 'equal' 
-    ? 0.5 
-    : Math.max(0.05, Math.min(0.95, householdSettings.partner1Ratio)); // Clamp ratio to safe range
-  
-  // Balance calculation: Only count personal payments (partner1 and partner2)
-  // Joint expenses are excluded - they represent payments from a shared account/already settled
-  const totalSharedExpenses = partner1Paid + partner2Paid;
-  const partner1FairShare = totalSharedExpenses * splitRatio;
-  const partner2FairShare = totalSharedExpenses * (1 - splitRatio);
-  
-  // Balance calculation: What they paid minus what they should have paid
-  // Positive balance = partner is OWED money (overpaid)
-  // Negative balance = partner OWES money (underpaid)
-  let partner1Balance = partner1Paid - partner1FairShare;
-  let partner2Balance = partner2Paid - partner2FairShare;
-
-  // Adjust balances for settlements/repayments.
-  // Treat settlements as net transfers toward partner1 (positive = partner1 received).
-  const netSettlementToPartner1 = settlements.reduce((sum, settlement) => {
-    const amount = Number(settlement.amount);
-    if (!Number.isFinite(amount)) return sum;
-    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
-    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + amount;
-    return sum;
-  }, 0);
-
-  partner1Balance -= netSettlementToPartner1;
-  partner2Balance += netSettlementToPartner1;
-
   // Calculate totals per category for expenses.
   const categoryTotals = useMemo(
     () => filteredExpenses
@@ -1186,7 +1159,18 @@ const ExpenseTracker: React.FC = () => {
       action: () => { editExpense(exp); setShowCommandPalette(false); },
       keywords: [exp.category, exp.paidBy]
     }))
-  ], [filteredExpenses, currentView, t, formatCurrency, formatDateLocalized]);
+  ], [
+    filteredExpenses,
+    t,
+    formatCurrency,
+    formatDateLocalized,
+    editExpense,
+    exportData,
+    openQuickAdd,
+    openSettingsModal,
+    setShowAddModal,
+    setShowCommandPalette,
+  ]);
 
   const filteredCommands = useMemo(() => {
     if (!commandQuery) return commands;
@@ -1428,19 +1412,6 @@ const ExpenseTracker: React.FC = () => {
     [withLtr]
   );
 
-  const CATEGORY_LABELS_HE: Record<string, string> = {
-    Housing: 'דיור',
-    Food: 'מזון',
-    Transportation: 'תחבורה',
-    Utilities: 'חשבונות',
-    Healthcare: 'בריאות',
-    Entertainment: 'בידור',
-    Shopping: 'קניות',
-    Education: 'חינוך',
-    Insurance: 'ביטוח',
-    Savings: 'חסכונות',
-    Other: 'אחר'
-  };
 
   const getCategoryLabel = useCallback(
     (name: string) => {

@@ -255,7 +255,8 @@ export function useExpenseForm() {
     setLastExpenseCategory,
     setLastIncomeCategory,
     resetForm,
-    t
+    t,
+    showToast
   ]);
 
   /**
@@ -308,7 +309,8 @@ export function useExpenseForm() {
     saveExpenses,
     setDirty,
     resetForm,
-    t
+    t,
+    showToast
   ]);
 
   /**
