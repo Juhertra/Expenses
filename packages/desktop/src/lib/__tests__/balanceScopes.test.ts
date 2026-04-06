@@ -210,9 +210,190 @@ describe('calculateBalanceScopes', () => {
       2,
       0.5
     );
-    // Feb obligation is already settled; March now includes the unlinked remainder in payment month.
-    expect(throughMarch.cumulative.partner1Balance).toBeCloseTo(20, 8);
-    expect(throughMarch.cumulative.partner2Balance).toBeCloseTo(-20, 8);
+    // Feb obligation is already settled; remainder cannot flip direction when there is no open March debt.
+    expect(throughMarch.cumulative.partner1Balance).toBeCloseTo(0, 8);
+    expect(throughMarch.cumulative.partner2Balance).toBeCloseTo(0, 8);
+  });
+
+  it('applies specific-month remainder only to the chosen month and caps by open debt', () => {
+    const januaryExpense: Expense = {
+      id: 1,
+      description: 'Jan rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-01-10',
+      paidBy: 'partner2',
+    };
+    const februaryExpense: Expense = {
+      id: 2,
+      description: 'Feb rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-02-10',
+      paidBy: 'partner2',
+    };
+
+    const settlement: Settlement = {
+      id: 12,
+      date: '2026-03-05',
+      amount: 70,
+      from: 'partner1',
+      to: 'partner2',
+      note: '',
+      allocations: [{ expenseId: 2, amount: 50 }],
+      remainderMode: 'specific_month',
+      remainderMonth: '2026-01',
+    };
+
+    const januaryResult = calculateBalanceScopes(
+      [januaryExpense],
+      [januaryExpense],
+      [settlement],
+      2026,
+      0,
+      0.5
+    );
+    // Jan debt is 50; specific-month remainder contributes only 20 there.
+    expect(januaryResult.month.partner1Balance).toBeCloseTo(-30, 8);
+
+    const februaryResult = calculateBalanceScopes(
+      [februaryExpense],
+      [januaryExpense, februaryExpense],
+      [settlement],
+      2026,
+      1,
+      0.5
+    );
+    expect(februaryResult.month.partner1Balance).toBeCloseTo(0, 8);
+  });
+
+  it('applies oldest-open-debt remainder to earliest matching debt month', () => {
+    const januaryExpense: Expense = {
+      id: 1,
+      description: 'Jan rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-01-10',
+      paidBy: 'partner2',
+    };
+    const februaryExpense: Expense = {
+      id: 2,
+      description: 'Feb rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-02-10',
+      paidBy: 'partner2',
+    };
+
+    const settlement: Settlement = {
+      id: 13,
+      date: '2026-03-05',
+      amount: 110,
+      from: 'partner1',
+      to: 'partner2',
+      note: '',
+      allocations: [{ expenseId: 2, amount: 50 }],
+      remainderMode: 'oldest_open_debt',
+    };
+
+    const januaryResult = calculateBalanceScopes(
+      [januaryExpense],
+      [januaryExpense],
+      [settlement],
+      2026,
+      0,
+      0.5
+    );
+    // Oldest debt (Jan 50) is fully cleared first.
+    expect(januaryResult.month.partner1Balance).toBeCloseTo(0, 8);
+
+    const februaryResult = calculateBalanceScopes(
+      [februaryExpense],
+      [januaryExpense, februaryExpense],
+      [settlement],
+      2026,
+      1,
+      0.5
+    );
+    // Feb linked 50 clears Feb debt; leftover 10 is unapplied (cannot flip debt).
+    expect(februaryResult.month.partner1Balance).toBeCloseTo(0, 8);
+    expect(februaryResult.cumulative.partner1Balance).toBeCloseTo(0, 8);
+  });
+
+  it('does not apply payment-month remainder when same-direction debt is already zero', () => {
+    const marchExpense: Expense = {
+      id: 30,
+      description: 'March groceries',
+      amount: 100,
+      category: 'Food',
+      type: 'expense',
+      date: '2026-03-10',
+      paidBy: 'partner1',
+    };
+
+    const settlement: Settlement = {
+      id: 31,
+      date: '2026-03-20',
+      amount: 40,
+      from: 'partner1',
+      to: 'partner2',
+      note: 'Should remain unapplied',
+      remainderMode: 'payment_month',
+    };
+
+    const result = calculateBalanceScopes(
+      [marchExpense],
+      [marchExpense],
+      [settlement],
+      2026,
+      2,
+      0.5
+    );
+
+    // In March, partner2 owes partner1 (partner1Balance positive). A p1->p2 remainder must not flip direction.
+    expect(result.month.partner1Balance).toBeCloseTo(50, 8);
+    expect(result.cumulative.partner1Balance).toBeCloseTo(50, 8);
+    expect(result.settlementsAffectingMonth).toHaveLength(0);
+  });
+
+  it('falls back to payment month when specific-month value is invalid', () => {
+    const marchExpense: Expense = {
+      id: 40,
+      description: 'March rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-03-10',
+      paidBy: 'partner2',
+    };
+
+    const settlement: Settlement = {
+      id: 41,
+      date: '2026-03-15',
+      amount: 20,
+      from: 'partner1',
+      to: 'partner2',
+      note: '',
+      remainderMode: 'specific_month',
+      remainderMonth: 'invalid',
+    };
+
+    const result = calculateBalanceScopes(
+      [marchExpense],
+      [marchExpense],
+      [settlement],
+      2026,
+      2,
+      0.5
+    );
+
+    // Fallback applies in payment month (March), reducing debt from 50 to 30.
+    expect(result.month.partner1Balance).toBeCloseTo(-30, 8);
+    expect(result.settlementsAffectingMonth).toHaveLength(1);
   });
 
   it('keeps linked settlement off payment month when fully allocated to a prior expense month', () => {
@@ -475,8 +656,9 @@ describe('calculateBalanceScopes', () => {
     expect(result.month.partner1Paid).toBe(100);
     expect(result.month.partner2Paid).toBe(200);
     expect(result.month.totalSharedExpenses).toBe(300);
-    expect(result.month.partner1Balance).toBe(-100);
-    expect(result.month.partner2Balance).toBe(100);
+    // Settlement direction (partner2 -> partner1) is capped because partner2 has no open debt here.
+    expect(result.month.partner1Balance).toBe(-80);
+    expect(result.month.partner2Balance).toBe(80);
     expect(result.month.partner1Balance + result.month.partner2Balance).toBeCloseTo(0, 8);
   });
 });

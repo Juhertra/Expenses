@@ -81,10 +81,18 @@ export interface Settlement {
   to: 'partner1' | 'partner2';
   note?: string;
   allocations?: SettlementAllocation[];
+  remainderMode?: SettlementRemainderMode;
+  /** YYYY-MM, used when remainderMode === 'specific_month' */
+  remainderMonth?: string;
 }
 
 export interface SettlementAllocation {
   expenseId: number;
   amount: number;
 }
+
+export type SettlementRemainderMode =
+  | 'payment_month'
+  | 'specific_month'
+  | 'oldest_open_debt';
 

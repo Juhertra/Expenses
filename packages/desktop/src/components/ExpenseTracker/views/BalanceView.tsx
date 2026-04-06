@@ -5,6 +5,7 @@ import type {
   Expense,
   Settlement,
   SettlementAllocation,
+  SettlementRemainderMode,
   PartnerNames,
   HouseholdSettings,
 } from '@expenses/shared/types';
@@ -71,6 +72,10 @@ export function BalanceView({
     expenseId: '',
     amount: '',
   });
+  const toYearMonth = (isoDate: string): string => {
+    if (!isoDate || isoDate.length < 7) return getLocalISODate().slice(0, 7);
+    return isoDate.slice(0, 7);
+  };
 
   // Settlement modal state
   const [balanceMode, setBalanceMode] = useState<BalanceMode>('month');
@@ -82,6 +87,8 @@ export function BalanceView({
     from: 'partner1' as 'partner1' | 'partner2',
     to: 'partner2' as 'partner1' | 'partner2',
     note: '',
+    remainderMode: 'payment_month' as SettlementRemainderMode,
+    remainderMonth: toYearMonth(getLocalISODate()),
     allocationRows: [] as SettlementAllocationFormRow[],
   });
   const [settlementForm, setSettlementForm] = useState({
@@ -176,6 +183,43 @@ export function BalanceView({
 
   const partner1Balance = balanceMode === 'month' ? month.partner1Balance : cumulative.partner1Balance;
   const partner2Balance = balanceMode === 'month' ? month.partner2Balance : cumulative.partner2Balance;
+  const selectedScopeExpenses = balanceMode === 'month' ? monthExpenses : expenses;
+  const expenseShareBreakdown = useMemo(() => {
+    const partner1OwesItems: Array<{ expense: Expense; shareAmount: number }> = [];
+    const partner2OwesItems: Array<{ expense: Expense; shareAmount: number }> = [];
+
+    for (const expense of selectedScopeExpenses) {
+      if (expense.type !== 'expense') continue;
+      if (expense.paidBy === 'partner2') {
+        partner1OwesItems.push({
+          expense,
+          shareAmount: expense.amount * splitRatio,
+        });
+      } else if (expense.paidBy === 'partner1') {
+        partner2OwesItems.push({
+          expense,
+          shareAmount: expense.amount * (1 - splitRatio),
+        });
+      }
+    }
+
+    partner1OwesItems.sort((a, b) => b.shareAmount - a.shareAmount);
+    partner2OwesItems.sort((a, b) => b.shareAmount - a.shareAmount);
+
+    const partner1OwesTotal = partner1OwesItems.reduce((sum, item) => sum + item.shareAmount, 0);
+    const partner2OwesTotal = partner2OwesItems.reduce((sum, item) => sum + item.shareAmount, 0);
+
+    return {
+      partner1OwesItems,
+      partner2OwesItems,
+      partner1OwesTotal,
+      partner2OwesTotal,
+    };
+  }, [selectedScopeExpenses, splitRatio]);
+  const activeScope = balanceMode === 'month' ? month : cumulative;
+  const partner1ExpenseDelta = activeScope.partner1Paid - activeScope.partner1FairShare;
+  const partner1EquationResult =
+    partner1ExpenseDelta + partner1SettlementPaid - partner1SettlementReceived;
 
   const getDirectionForExpenseId = (expenseIdRaw: string) => {
     const expense = expenseLookup.get(Number(expenseIdRaw));
@@ -215,6 +259,18 @@ export function BalanceView({
     return labels.join(', ');
   };
 
+  const getRemainderModeLabel = (settlement: Settlement): string => {
+    if (settlement.remainderMode === 'specific_month') {
+      return settlement.remainderMonth
+        ? t('labels.remainderSpecificMonthValue', 'Remainder -> {{month}}', { month: settlement.remainderMonth })
+        : t('labels.remainderSpecificMonth', 'Apply to selected month');
+    }
+    if (settlement.remainderMode === 'oldest_open_debt') {
+      return t('labels.remainderOldestDebt', 'Apply to oldest open debt');
+    }
+    return t('labels.remainderPaymentMonth', 'Apply to payment month');
+  };
+
   const displayedSettlements = balanceMode === 'month'
     ? settlementsAffectingMonth.map(entry => ({
       settlement: entry.settlement,
@@ -242,6 +298,7 @@ export function BalanceView({
   const unlinkedRemainderDraft = Number.isFinite(settlementAmountDraft)
     ? settlementAmountDraft - linkedDraftTotal
     : 0;
+  const hasPositiveRemainderDraft = Number.isFinite(unlinkedRemainderDraft) && unlinkedRemainderDraft > 0.000001;
 
   const syncFormDirectionFromRows = (rows: SettlementAllocationFormRow[]) => {
     const direction = resolveLinkedDirection(rows);
@@ -318,12 +375,15 @@ export function BalanceView({
       : [];
 
     setEditingSettlementId(settlement.id);
+    const settlementDate = settlement.date || getLocalISODate();
     setSettlementForm({
-      date: settlement.date || getLocalISODate(),
+      date: settlementDate,
       amount: String(settlement.amount ?? ''),
       from: settlement.from,
       to: settlement.to,
       note: settlement.note || '',
+      remainderMode: settlement.remainderMode || 'payment_month',
+      remainderMonth: settlement.remainderMonth || toYearMonth(settlementDate),
       allocationRows,
     });
     setShowSettlementModal(true);
@@ -404,6 +464,14 @@ export function BalanceView({
       alert(t('errors.linkedAmountTooHigh', 'Linked amount cannot exceed settlement amount'));
       return;
     }
+    const hasRemainder = amount - totalLinked > 0.000001;
+    const remainderMode = settlementForm.remainderMode;
+    const remainderMonthValue =
+      remainderMode === 'specific_month' ? settlementForm.remainderMonth.trim() : '';
+    if (hasRemainder && remainderMode === 'specific_month' && !/^\d{4}-\d{2}$/.test(remainderMonthValue)) {
+      alert(t('errors.invalidSelection', 'Please select a valid month for remainder allocation'));
+      return;
+    }
 
     const from = linkedDirectionCandidate ? linkedDirectionCandidate.from : settlementForm.from;
     const to = linkedDirectionCandidate ? linkedDirectionCandidate.to : settlementForm.to;
@@ -422,6 +490,8 @@ export function BalanceView({
       to,
       note: settlementForm.note,
       allocations,
+      remainderMode,
+      remainderMonth: remainderMode === 'specific_month' ? remainderMonthValue : undefined,
     };
 
     if (editingSettlementId !== null) {
@@ -607,6 +677,110 @@ export function BalanceView({
           )}
         </div>
 
+        {/* Balance explanation */}
+        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
+          <h3 className="text-lg sm:text-xl font-bold mb-1">
+            {t('labels.balanceExplanation', 'Why this balance')}
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">
+            {balanceMode === 'month'
+              ? t('labels.monthOnlyScope', 'Selected month (including that month settlements)')
+              : t('labels.cumulativeBalance', 'Running total through selected month')}
+          </p>
+
+          <div className="space-y-2 text-xs sm:text-sm mb-5">
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-400">
+                {t('labels.owedFromPartner2Expenses', '{{name}} share from {{other}}-paid expenses', {
+                  name: partnerNames.partner1,
+                  other: partnerNames.partner2,
+                })}
+              </span>
+              <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner1OwesTotal))}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-400">
+                {t('labels.creditFromPartner1Expenses', '{{name}} credit from own-paid shared expenses', {
+                  name: partnerNames.partner1,
+                })}
+              </span>
+              <span className="font-medium">{withLtr(formatCurrency(expenseShareBreakdown.partner2OwesTotal))}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-400">{t('labels.expenseDelta', 'Expense delta (paid - fair share)')}</span>
+              <span className={`font-medium ${partner1ExpenseDelta >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                {withLtr(formatCurrency(partner1ExpenseDelta))}
+              </span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-400">
+                {t('labels.settlementsPaidBy', 'Settlements paid by {{name}}', { name: partnerNames.partner1 })}
+              </span>
+              <span className="font-medium">{withLtr(formatCurrency(partner1SettlementPaid))}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-400">
+                {t('labels.settlementsReceivedBy', 'Settlements received by {{name}}', { name: partnerNames.partner1 })}
+              </span>
+              <span className="font-medium">{withLtr(formatCurrency(partner1SettlementReceived))}</span>
+            </div>
+            <div className="border-t border-slate-700 pt-2 flex justify-between gap-2">
+              <span className="text-slate-300 font-semibold">
+                {t('labels.finalBalanceFor', 'Final balance for {{name}}', { name: partnerNames.partner1 })}
+              </span>
+              <span className={`font-semibold ${partner1EquationResult >= 0 ? 'text-green-300' : 'text-amber-300'}`}>
+                {withLtr(formatCurrency(partner1EquationResult))}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3">
+              <div className="text-xs text-slate-400 mb-2">
+                {t('labels.expensesPaidBy', 'Expenses paid by {{name}}', { name: partnerNames.partner2 })}
+              </div>
+              {expenseShareBreakdown.partner1OwesItems.length === 0 ? (
+                <p className="text-xs text-slate-500">{t('messages.noExpensesFound', 'No expenses in this scope')}</p>
+              ) : (
+                <div className="space-y-1">
+                  {expenseShareBreakdown.partner1OwesItems.slice(0, 6).map(({ expense, shareAmount }) => (
+                    <div key={expense.id} className="flex justify-between gap-2 text-xs">
+                      <span className="truncate text-slate-300">
+                        {formatDateLocalized(expense.date)} - {expense.description}
+                      </span>
+                      <span className="whitespace-nowrap text-amber-300">
+                        {withLtr(formatCurrency(shareAmount))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3">
+              <div className="text-xs text-slate-400 mb-2">
+                {t('labels.expensesPaidBy', 'Expenses paid by {{name}}', { name: partnerNames.partner1 })}
+              </div>
+              {expenseShareBreakdown.partner2OwesItems.length === 0 ? (
+                <p className="text-xs text-slate-500">{t('messages.noExpensesFound', 'No expenses in this scope')}</p>
+              ) : (
+                <div className="space-y-1">
+                  {expenseShareBreakdown.partner2OwesItems.slice(0, 6).map(({ expense, shareAmount }) => (
+                    <div key={expense.id} className="flex justify-between gap-2 text-xs">
+                      <span className="truncate text-slate-300">
+                        {formatDateLocalized(expense.date)} - {expense.description}
+                      </span>
+                      <span className="whitespace-nowrap text-green-300">
+                        {withLtr(formatCurrency(shareAmount))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Payment breakdown */}
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
           <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">{t('labels.paymentBreakdown')}</h3>
@@ -712,6 +886,11 @@ export function BalanceView({
                           {t('labels.linkedToExpense', 'Linked to expense')}: {getLinkedExpenseSummary(linkedExpenseIds)}
                         </div>
                       )}
+                      {settlement.remainderMode && (
+                        <div className="text-xs text-slate-500 mt-1 truncate">
+                          {getRemainderModeLabel(settlement)}
+                        </div>
+                      )}
                       {balanceMode === 'month' && isPartialForScope && (
                         <div className="text-xs text-slate-500 mt-1">
                           {t('labels.appliedInSelectedMonth', 'Applied in selected month')}:{' '}
@@ -779,7 +958,14 @@ export function BalanceView({
                 <input
                   type="date"
                   value={settlementForm.date}
-                  onChange={(e) => setSettlementForm({ ...settlementForm, date: e.target.value })}
+                  onChange={(e) => setSettlementForm({
+                    ...settlementForm,
+                    date: e.target.value,
+                    remainderMonth:
+                      settlementForm.remainderMode === 'payment_month'
+                        ? toYearMonth(e.target.value)
+                        : settlementForm.remainderMonth,
+                  })}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
                 />
               </div>
@@ -904,8 +1090,63 @@ export function BalanceView({
                       {withLtr(formatCurrency(linkedDraftTotal))}
                     </p>
                     <p>
-                      {t('labels.unlinkedRemainder', 'Unlinked remainder (payment month)')}:{' '}
+                      {t('labels.unlinkedRemainder', 'Unlinked remainder')}:{' '}
                       {withLtr(formatCurrency(Math.max(0, unlinkedRemainderDraft)))}
+                    </p>
+                  </div>
+                )}
+
+                {hasPositiveRemainderDraft && (
+                  <div className="space-y-2 rounded-lg border border-slate-700 p-3">
+                    <label className="block text-xs text-slate-400">
+                      {t('labels.remainderAllocationMode', 'Remainder allocation')}
+                    </label>
+                    <select
+                      value={settlementForm.remainderMode}
+                      onChange={(e) => {
+                        const nextMode = e.target.value as SettlementRemainderMode;
+                        setSettlementForm(prev => ({
+                          ...prev,
+                          remainderMode: nextMode,
+                          remainderMonth:
+                            nextMode === 'payment_month'
+                              ? toYearMonth(prev.date)
+                              : prev.remainderMonth,
+                        }));
+                      }}
+                      dir={dir}
+                      className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${
+                        isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'
+                      } py-2 ${getFocusClasses()} outline-none transition-all`}
+                    >
+                      <option value="payment_month">
+                        {t('labels.remainderPaymentMonth', 'Apply to payment month')}
+                      </option>
+                      <option value="specific_month">
+                        {t('labels.remainderSpecificMonth', 'Apply to selected month')}
+                      </option>
+                      <option value="oldest_open_debt">
+                        {t('labels.remainderOldestDebt', 'Apply to oldest open debt')}
+                      </option>
+                    </select>
+
+                    {settlementForm.remainderMode === 'specific_month' && (
+                      <input
+                        type="month"
+                        value={settlementForm.remainderMonth}
+                        onChange={(e) => setSettlementForm({
+                          ...settlementForm,
+                          remainderMonth: e.target.value,
+                        })}
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
+                      />
+                    )}
+
+                    <p className="text-xs text-slate-500">
+                      {t(
+                        'labels.remainderCapHint',
+                        'Remainder is capped to open debt in the same direction. Any extra stays unapplied.'
+                      )}
                     </p>
                   </div>
                 )}

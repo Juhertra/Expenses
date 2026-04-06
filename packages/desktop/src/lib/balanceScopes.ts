@@ -1,5 +1,5 @@
 import { parseDateParts } from '@expenses/shared/calculations';
-import type { Expense, Settlement } from '@expenses/shared/types';
+import type { Expense, Settlement, SettlementRemainderMode } from '@expenses/shared/types';
 
 export interface ScopedBalanceResult {
   partner1Paid: number;
@@ -38,6 +38,31 @@ function isOnOrBeforeMonth(dateStr: string, year: number, month: number): boolea
   return parts.year < year || (parts.year === year && parts.month <= month);
 }
 
+function toMonthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+function monthKeyFromDate(dateStr: string): string {
+  const parts = parseDateParts(dateStr);
+  return toMonthKey(parts.year, parts.month);
+}
+
+function parseMonthKey(key: string): { year: number; month: number } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(key);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthOneBased = Number(match[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(monthOneBased)) return null;
+  if (monthOneBased < 1 || monthOneBased > 12) return null;
+
+  return { year, month: monthOneBased - 1 };
+}
+
+function compareMonthKeys(a: string, b: string): number {
+  return a.localeCompare(b);
+}
+
 interface SettlementTransfer {
   amount: number;
   from: Settlement['from'];
@@ -52,6 +77,17 @@ function parsePositiveAmount(value: unknown): number | null {
 
 function isPersonalSharedExpense(expense: Expense): boolean {
   return expense.type === 'expense' && (expense.paidBy === 'partner1' || expense.paidBy === 'partner2');
+}
+
+function getRemainderMode(settlement: Settlement): SettlementRemainderMode {
+  if (
+    settlement.remainderMode === 'payment_month' ||
+    settlement.remainderMode === 'specific_month' ||
+    settlement.remainderMode === 'oldest_open_debt'
+  ) {
+    return settlement.remainderMode;
+  }
+  return 'payment_month';
 }
 
 function toSettlementTransfer(settlement: Settlement, amount: number): SettlementTransfer | null {
@@ -70,6 +106,227 @@ function calculateNetSettlementToPartner1(settlements: SettlementTransfer[]): nu
     if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + settlement.amount;
     return sum;
   }, 0);
+}
+
+interface MonthState {
+  key: string;
+  year: number;
+  month: number;
+  partner1Paid: number;
+  partner2Paid: number;
+  partner1FairShare: number;
+  partner2FairShare: number;
+  partner1BalanceBase: number;
+  partner1BalanceCurrent: number;
+}
+
+interface SettlementMonthApplication {
+  amount: number;
+  linkedExpenseIds: Set<number>;
+  includesPaymentMonthRemainder: boolean;
+}
+
+interface SettlementAccumulator {
+  settlement: Settlement;
+  amount: number;
+  remainder: number;
+  paymentMonthKey: string;
+  remainderMode: SettlementRemainderMode;
+  remainderTargetMonthKey: string | null;
+  applicationsByMonth: Map<string, SettlementMonthApplication>;
+}
+
+function settlementEffectOnPartner1(settlement: Settlement, amount: number): number {
+  if (settlement.from === 'partner1' && settlement.to === 'partner2') return amount;
+  if (settlement.from === 'partner2' && settlement.to === 'partner1') return -amount;
+  return 0;
+}
+
+function openDebtForDirection(partner1BalanceCurrent: number, settlement: Settlement): number {
+  if (settlement.from === 'partner1' && settlement.to === 'partner2') {
+    return Math.max(0, -partner1BalanceCurrent);
+  }
+  if (settlement.from === 'partner2' && settlement.to === 'partner1') {
+    return Math.max(0, partner1BalanceCurrent);
+  }
+  return 0;
+}
+
+function ensureMonthState(
+  statesByMonth: Map<string, MonthState>,
+  year: number,
+  month: number
+): MonthState {
+  const key = toMonthKey(year, month);
+  const existing = statesByMonth.get(key);
+  if (existing) return existing;
+
+  const state: MonthState = {
+    key,
+    year,
+    month,
+    partner1Paid: 0,
+    partner2Paid: 0,
+    partner1FairShare: 0,
+    partner2FairShare: 0,
+    partner1BalanceBase: 0,
+    partner1BalanceCurrent: 0,
+  };
+  statesByMonth.set(key, state);
+  return state;
+}
+
+function applySettlementToMonth(
+  accumulator: SettlementAccumulator,
+  monthState: MonthState,
+  amount: number,
+  linkedExpenseId: number | null,
+  includesPaymentMonthRemainder: boolean
+): number {
+  const parsedAmount = parsePositiveAmount(amount);
+  if (parsedAmount === null) return 0;
+
+  const effect = settlementEffectOnPartner1(accumulator.settlement, parsedAmount);
+  monthState.partner1BalanceCurrent += effect;
+
+  const existing = accumulator.applicationsByMonth.get(monthState.key) ?? {
+    amount: 0,
+    linkedExpenseIds: new Set<number>(),
+    includesPaymentMonthRemainder: false,
+  };
+  existing.amount += parsedAmount;
+  if (linkedExpenseId !== null) existing.linkedExpenseIds.add(linkedExpenseId);
+  if (includesPaymentMonthRemainder) existing.includesPaymentMonthRemainder = true;
+  accumulator.applicationsByMonth.set(monthState.key, existing);
+
+  return parsedAmount;
+}
+
+function buildSettlementApplications(
+  expensesForScope: Expense[],
+  settlements: Settlement[],
+  splitRatio: number
+): SettlementAccumulator[] {
+  const statesByMonth = new Map<string, MonthState>();
+  const expenseById = new Map<number, Expense>();
+
+  for (const expense of expensesForScope) {
+    expenseById.set(expense.id, expense);
+    if (!isPersonalSharedExpense(expense)) continue;
+
+    const parts = parseDateParts(expense.date);
+    const state = ensureMonthState(statesByMonth, parts.year, parts.month);
+    if (expense.paidBy === 'partner1') state.partner1Paid += expense.amount;
+    if (expense.paidBy === 'partner2') state.partner2Paid += expense.amount;
+  }
+
+  for (const state of statesByMonth.values()) {
+    const total = state.partner1Paid + state.partner2Paid;
+    state.partner1FairShare = total * splitRatio;
+    state.partner2FairShare = total * (1 - splitRatio);
+    state.partner1BalanceBase = state.partner1Paid - state.partner1FairShare;
+    state.partner1BalanceCurrent = state.partner1BalanceBase;
+  }
+
+  const accumulators: SettlementAccumulator[] = settlements
+    .map(settlement => {
+      const amount = parsePositiveAmount(settlement.amount);
+      if (amount === null) return null;
+
+      const paymentMonthKey = monthKeyFromDate(settlement.date);
+      const remainderMode = getRemainderMode(settlement);
+      let remainderTargetMonthKey: string | null = null;
+      if (remainderMode === 'specific_month' && settlement.remainderMonth) {
+        const parsed = parseMonthKey(settlement.remainderMonth);
+        if (parsed) remainderTargetMonthKey = toMonthKey(parsed.year, parsed.month);
+      }
+
+      return {
+        settlement,
+        amount,
+        remainder: amount,
+        paymentMonthKey,
+        remainderMode,
+        remainderTargetMonthKey,
+        applicationsByMonth: new Map<string, SettlementMonthApplication>(),
+      } satisfies SettlementAccumulator;
+    })
+    .filter((value): value is SettlementAccumulator => value !== null)
+    .sort((a, b) => {
+      const byDate = a.settlement.date.localeCompare(b.settlement.date);
+      if (byDate !== 0) return byDate;
+      return a.settlement.id - b.settlement.id;
+    });
+
+  // Apply linked allocations first (no capping; link validation handles upper bounds).
+  for (const accumulator of accumulators) {
+    const allocations = Array.isArray(accumulator.settlement.allocations)
+      ? accumulator.settlement.allocations
+      : [];
+    for (const allocation of allocations) {
+      if (accumulator.remainder <= 0) break;
+
+      const expenseId = Number(allocation?.expenseId);
+      const allocationAmount = parsePositiveAmount(allocation?.amount);
+      if (!Number.isFinite(expenseId) || allocationAmount === null) continue;
+
+      const consumed = Math.min(allocationAmount, accumulator.remainder);
+      accumulator.remainder -= consumed;
+
+      const linkedExpense = expenseById.get(expenseId);
+      if (!linkedExpense || !isPersonalSharedExpense(linkedExpense)) continue;
+
+      const linkedParts = parseDateParts(linkedExpense.date);
+      const monthState = statesByMonth.get(toMonthKey(linkedParts.year, linkedParts.month));
+      if (!monthState) continue;
+
+      applySettlementToMonth(accumulator, monthState, consumed, expenseId, false);
+    }
+  }
+
+  // Apply remainder according to selected strategy with same-direction debt cap.
+  const sortedMonthKeys = [...statesByMonth.keys()].sort(compareMonthKeys);
+  for (const accumulator of accumulators) {
+    if (accumulator.remainder <= 0) continue;
+
+    const tryApplyToMonth = (targetMonthKey: string, includesPaymentRemainder: boolean): number => {
+      const state = statesByMonth.get(targetMonthKey);
+      if (!state) return 0;
+
+      const openDebt = openDebtForDirection(state.partner1BalanceCurrent, accumulator.settlement);
+      const applied = Math.min(accumulator.remainder, openDebt);
+      if (applied <= 0) return 0;
+
+      accumulator.remainder -= applySettlementToMonth(
+        accumulator,
+        state,
+        applied,
+        null,
+        includesPaymentRemainder
+      );
+      return applied;
+    };
+
+    if (accumulator.remainderMode === 'oldest_open_debt') {
+      for (const monthKey of sortedMonthKeys) {
+        if (accumulator.remainder <= 0) break;
+        if (compareMonthKeys(monthKey, accumulator.paymentMonthKey) > 0) break;
+
+        const includesPaymentRemainder = monthKey === accumulator.paymentMonthKey;
+        tryApplyToMonth(monthKey, includesPaymentRemainder);
+      }
+      continue;
+    }
+
+    const targetMonthKey =
+      accumulator.remainderMode === 'specific_month' && accumulator.remainderTargetMonthKey
+        ? accumulator.remainderTargetMonthKey
+        : accumulator.paymentMonthKey;
+    const includesPaymentRemainder = targetMonthKey === accumulator.paymentMonthKey;
+    tryApplyToMonth(targetMonthKey, includesPaymentRemainder);
+  }
+
+  return accumulators;
 }
 
 function calculateScopedBalance(
@@ -105,63 +362,6 @@ function calculateScopedBalance(
   };
 }
 
-function buildScopedSettlementEntries(
-  settlements: Settlement[],
-  expenseById: Map<number, Expense>,
-  shouldApplyLinkedExpense: (expenseDate: string) => boolean,
-  shouldApplyPaymentRemainder: (settlementDate: string) => boolean
-): ScopedSettlementEntry[] {
-  const entries: ScopedSettlementEntry[] = [];
-
-  for (const settlement of settlements) {
-    const settlementAmount = parsePositiveAmount(settlement.amount);
-    if (settlementAmount === null) continue;
-
-    let remaining = settlementAmount;
-    let appliedAmount = 0;
-    let includesPaymentMonthRemainder = false;
-    const linkedExpenseIds: number[] = [];
-
-    const allocations = Array.isArray(settlement.allocations) ? settlement.allocations : [];
-    for (const allocation of allocations) {
-      if (remaining <= 0) break;
-
-      const expenseId = Number(allocation?.expenseId);
-      const allocationAmount = parsePositiveAmount(allocation?.amount);
-      if (!Number.isFinite(expenseId) || allocationAmount === null) continue;
-
-      const consumedAmount = Math.min(allocationAmount, remaining);
-      remaining -= consumedAmount;
-
-      const linkedExpense = expenseById.get(expenseId);
-      if (!linkedExpense || !isPersonalSharedExpense(linkedExpense)) {
-        continue;
-      }
-
-      if (shouldApplyLinkedExpense(linkedExpense.date)) {
-        appliedAmount += consumedAmount;
-        linkedExpenseIds.push(expenseId);
-      }
-    }
-
-    if (remaining > 0 && shouldApplyPaymentRemainder(settlement.date)) {
-      appliedAmount += remaining;
-      includesPaymentMonthRemainder = true;
-    }
-
-    if (appliedAmount > 0) {
-      entries.push({
-        settlement,
-        appliedAmount,
-        linkedExpenseIds: [...new Set(linkedExpenseIds)],
-        includesPaymentMonthRemainder,
-      });
-    }
-  }
-
-  return entries;
-}
-
 export function calculateBalanceScopes(
   monthExpenses: Expense[],
   cumulativeExpensesThroughMonth: Expense[],
@@ -170,26 +370,49 @@ export function calculateBalanceScopes(
   selectedMonth: number,
   splitRatio: number
 ): BalanceScopesResult {
-  const expenseById = new Map<number, Expense>();
+  const selectedMonthKey = toMonthKey(selectedYear, selectedMonth);
+  const expensesForScopeById = new Map<number, Expense>();
   for (const expense of cumulativeExpensesThroughMonth) {
-    expenseById.set(expense.id, expense);
+    expensesForScopeById.set(expense.id, expense);
   }
   for (const expense of monthExpenses) {
-    expenseById.set(expense.id, expense);
+    expensesForScopeById.set(expense.id, expense);
+  }
+  const expensesForScope = [...expensesForScopeById.values()];
+  const settlementApplications = buildSettlementApplications(expensesForScope, settlements, splitRatio);
+
+  const settlementsAffectingMonth: ScopedSettlementEntry[] = [];
+  const settlementsAffectingThroughMonth: ScopedSettlementEntry[] = [];
+  for (const accumulator of settlementApplications) {
+    const monthApp = accumulator.applicationsByMonth.get(selectedMonthKey);
+    if (monthApp && monthApp.amount > 0) {
+      settlementsAffectingMonth.push({
+        settlement: accumulator.settlement,
+        appliedAmount: monthApp.amount,
+        linkedExpenseIds: [...monthApp.linkedExpenseIds],
+        includesPaymentMonthRemainder: monthApp.includesPaymentMonthRemainder,
+      });
+    }
+
+    let throughAmount = 0;
+    const throughLinkedIds = new Set<number>();
+    let throughIncludesPaymentRemainder = false;
+    for (const [monthKey, app] of accumulator.applicationsByMonth.entries()) {
+      if (compareMonthKeys(monthKey, selectedMonthKey) > 0) continue;
+      throughAmount += app.amount;
+      for (const id of app.linkedExpenseIds) throughLinkedIds.add(id);
+      throughIncludesPaymentRemainder ||= app.includesPaymentMonthRemainder;
+    }
+    if (throughAmount > 0) {
+      settlementsAffectingThroughMonth.push({
+        settlement: accumulator.settlement,
+        appliedAmount: throughAmount,
+        linkedExpenseIds: [...throughLinkedIds],
+        includesPaymentMonthRemainder: throughIncludesPaymentRemainder,
+      });
+    }
   }
 
-  const settlementsAffectingMonth = buildScopedSettlementEntries(
-    settlements,
-    expenseById,
-    expenseDate => isInMonth(expenseDate, selectedYear, selectedMonth),
-    settlementDate => isInMonth(settlementDate, selectedYear, selectedMonth)
-  );
-  const settlementsAffectingThroughMonth = buildScopedSettlementEntries(
-    settlements,
-    expenseById,
-    expenseDate => isOnOrBeforeMonth(expenseDate, selectedYear, selectedMonth),
-    settlementDate => isOnOrBeforeMonth(settlementDate, selectedYear, selectedMonth)
-  );
   const monthSettlementTransfers = settlementsAffectingMonth
     .map(entry => toSettlementTransfer(entry.settlement, entry.appliedAmount))
     .filter((transfer): transfer is SettlementTransfer => transfer !== null);
