@@ -691,7 +691,7 @@ export function BalanceView({
               : t('labels.cumulativeBalance', 'Running total through selected month')}
           </p>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5 text-xs sm:text-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5 text-xs sm:text-sm">
             <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 space-y-2">
               <div className="text-sm font-semibold text-slate-100">{partnerNames.partner1}</div>
               <div className="flex justify-between gap-2">
