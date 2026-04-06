@@ -51,27 +51,43 @@ export function getReimbursementDirectionForExpense(
   return null;
 }
 
+export function getCappedLinkedAmountsByExpenseId(
+  settlements: Settlement[],
+  excludeSettlementId: number | null = null
+): Map<number, number> {
+  const linkedByExpense = new Map<number, number>();
+
+  for (const settlement of settlements) {
+    if (excludeSettlementId !== null && settlement.id === excludeSettlementId) continue;
+
+    let settlementRemaining = parsePositiveAmount(settlement.amount);
+    if (settlementRemaining === null) continue;
+
+    const allocations = Array.isArray(settlement.allocations) ? settlement.allocations : [];
+    for (const allocation of allocations) {
+      if (settlementRemaining <= 0) break;
+
+      const expenseId = Number(allocation?.expenseId);
+      const requested = parsePositiveAmount(allocation?.amount);
+      if (!Number.isFinite(expenseId) || requested === null) continue;
+
+      const consumed = Math.min(requested, settlementRemaining);
+      settlementRemaining -= consumed;
+
+      linkedByExpense.set(expenseId, (linkedByExpense.get(expenseId) ?? 0) + consumed);
+    }
+  }
+
+  return linkedByExpense;
+}
+
 export function getLinkableExpenseAvailabilities(
   expenses: Expense[],
   settlements: Settlement[],
   splitRatio: number,
   excludeSettlementId: number | null = null
 ): LinkableExpenseAvailability[] {
-  const allocatedByExpense = new Map<number, number>();
-
-  for (const settlement of settlements) {
-    if (excludeSettlementId !== null && settlement.id === excludeSettlementId) continue;
-    const allocations = Array.isArray(settlement.allocations) ? settlement.allocations : [];
-
-    for (const allocation of allocations) {
-      const expenseId = Number(allocation?.expenseId);
-      const amount = parsePositiveAmount(allocation?.amount);
-      if (!Number.isFinite(expenseId) || amount === null) continue;
-
-      const previous = allocatedByExpense.get(expenseId) ?? 0;
-      allocatedByExpense.set(expenseId, previous + amount);
-    }
-  }
+  const allocatedByExpense = getCappedLinkedAmountsByExpenseId(settlements, excludeSettlementId);
 
   return expenses
     .filter(isPersonalSharedExpense)

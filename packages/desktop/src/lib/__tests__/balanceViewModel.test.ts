@@ -191,10 +191,16 @@ describe('buildBalanceViewModel', () => {
     expect(model.topSummary.partner1Balance + model.topSummary.partner2Balance).toBeCloseTo(0, 8);
   });
 
-  it('derives obligation owed/linked/remaining and status transitions', () => {
-    const rent = makeExpense({ id: 1, description: 'Rent', amount: 700, paidBy: 'partner2', date: '2026-03-05' });
-    const food = makeExpense({ id: 2, description: 'Food', amount: 100, paidBy: 'partner1', date: '2026-03-07' });
-    const electric = makeExpense({ id: 3, description: 'Electric', amount: 40, paidBy: 'partner2', date: '2026-03-08' });
+  it('derives obligation fields and splits rows into open-to-settle vs needs-linking buckets', () => {
+    const rent = makeExpense({ id: 1, description: 'Rent', amount: 200, paidBy: 'partner2', date: '2026-04-01' });
+    const groceries = makeExpense({
+      id: 2,
+      description: 'Groceries',
+      amount: 100,
+      paidBy: 'partner2',
+      date: '2026-04-02',
+    });
+    const repairs = makeExpense({ id: 3, description: 'Repairs', amount: 100, paidBy: 'partner1', date: '2026-04-03' });
 
     const settlements: Settlement[] = [
       makeSettlement({
@@ -202,58 +208,94 @@ describe('buildBalanceViewModel', () => {
         date: '2026-04-10',
         from: 'partner1',
         to: 'partner2',
-        amount: 200,
-        allocations: [{ expenseId: 1, amount: 200 }],
+        amount: 70,
+        allocations: [{ expenseId: 1, amount: 20 }],
       }),
       makeSettlement({
         id: 21,
         date: '2026-04-11',
-        from: 'partner1',
-        to: 'partner2',
-        amount: 100,
-      }),
-      makeSettlement({
-        id: 22,
-        date: '2026-04-12',
-        from: 'partner1',
-        to: 'partner2',
-        amount: 20,
-        allocations: [{ expenseId: 3, amount: 20 }],
+        from: 'partner2',
+        to: 'partner1',
+        amount: 50,
+        allocations: [{ expenseId: 3, amount: 30 }],
       }),
     ];
 
     const model = buildBalanceViewModel({
-      monthExpenses: [rent, food, electric],
-      expenses: [rent, food, electric],
+      monthExpenses: [rent, groceries, repairs],
+      expenses: [rent, groceries, repairs],
       settlements,
       selectedYear: 2026,
-      selectedMonth: 2,
+      selectedMonth: 3,
       splitRatio: 0.5,
       balanceMode: 'month',
     });
 
-    const all = model.obligations.allRows;
-    const rentRow = all.find(row => row.expenseId === 1)!;
-    const foodRow = all.find(row => row.expenseId === 2)!;
-    const electricRow = all.find(row => row.expenseId === 3)!;
+    const rentRow = model.obligations.allRows.find(row => row.expenseId === 1)!;
+    const groceriesRow = model.obligations.allRows.find(row => row.expenseId === 2)!;
+    const repairsRow = model.obligations.allRows.find(row => row.expenseId === 3)!;
+    const partner1ToPartner2Budget = Math.max(-model.activeScope.partner1Balance, 0);
 
-    expect(rentRow.owed).toBeCloseTo(350, 8);
-    expect(rentRow.linkedSettled).toBeCloseTo(200, 8);
-    expect(rentRow.remaining).toBeCloseTo(150, 8);
+    expect(rentRow.owed).toBeCloseTo(100, 8);
+    expect(rentRow.linkedSettled).toBeCloseTo(20, 8);
+    expect(rentRow.expenseRemainingUnlinked).toBeCloseTo(80, 8);
+    expect(rentRow.actionableRemaining).toBeCloseTo(
+      Math.min(rentRow.expenseRemainingUnlinked, partner1ToPartner2Budget),
+      8
+    );
+    expect(rentRow.bucket).toBe('open_to_settle');
     expect(rentRow.status).toBe('partially_settled');
 
-    expect(foodRow.owed).toBeCloseTo(50, 8);
-    expect(foodRow.linkedSettled).toBeCloseTo(0, 8);
-    expect(foodRow.remaining).toBeCloseTo(50, 8);
-    expect(foodRow.status).toBe('unlinked');
+    expect(groceriesRow.owed).toBeCloseTo(50, 8);
+    expect(groceriesRow.linkedSettled).toBeCloseTo(0, 8);
+    expect(groceriesRow.expenseRemainingUnlinked).toBeCloseTo(50, 8);
+    expect(groceriesRow.actionableRemaining).toBeCloseTo(0, 8);
+    expect(groceriesRow.bucket).toBe('needs_linking');
+    expect(groceriesRow.status).toBe('unlinked');
 
-    expect(electricRow.owed).toBeCloseTo(20, 8);
-    expect(electricRow.linkedSettled).toBeCloseTo(20, 8);
-    expect(electricRow.remaining).toBeCloseTo(0, 8);
-    expect(electricRow.status).toBe('settled');
+    expect(repairsRow.owed).toBeCloseTo(50, 8);
+    expect(repairsRow.linkedSettled).toBeCloseTo(30, 8);
+    expect(repairsRow.expenseRemainingUnlinked).toBeCloseTo(20, 8);
+    expect(repairsRow.actionableRemaining).toBeCloseTo(0, 8);
+    expect(repairsRow.bucket).toBe('needs_linking');
+    expect(repairsRow.status).toBe('partially_settled');
 
-    // Outstanding obligations section should omit fully settled rows.
-    expect(model.obligations.openRows.some(row => row.expenseId === 3)).toBe(false);
+    expect(model.obligations.openToSettleRows.map(row => row.expenseId)).toEqual([1]);
+    expect(model.obligations.needsLinkingRows.map(row => row.expenseId)).toEqual([3, 2]);
+    expect(model.obligations.showBalancedNoActionState).toBe(false);
+    expect(model.obligations.showTraceabilityOnlyNote).toBe(false);
+  });
+
+  it('moves unlinked rows to needs-linking when scope is balanced', () => {
+    const expense = makeExpense({ id: 1, description: 'Rent', amount: 100, paidBy: 'partner2', date: '2026-04-10' });
+    const settlement = makeSettlement({
+      id: 22,
+      date: '2026-04-11',
+      amount: 50,
+      from: 'partner1',
+      to: 'partner2',
+      allocations: [],
+    });
+
+    const model = buildBalanceViewModel({
+      monthExpenses: [expense],
+      expenses: [expense],
+      settlements: [settlement],
+      selectedYear: 2026,
+      selectedMonth: 3,
+      splitRatio: 0.5,
+      balanceMode: 'month',
+    });
+    const row = model.obligations.allRows[0];
+
+    expect(model.topSummary.isBalanced).toBe(true);
+    expect(row.expenseRemainingUnlinked).toBeCloseTo(50, 8);
+    expect(row.actionableRemaining).toBeCloseTo(0, 8);
+    expect(row.bucket).toBe('needs_linking');
+    expect(model.obligations.openToSettleRows).toHaveLength(0);
+    expect(model.obligations.needsLinkingRows).toHaveLength(1);
+    expect(model.obligations.showBalancedNoActionState).toBe(false);
+    expect(model.obligations.showTraceabilityOnlyNote).toBe(true);
   });
 
   it('filters obligation row universe by month vs cumulative scope', () => {
@@ -286,6 +328,134 @@ describe('buildBalanceViewModel', () => {
     expect(cumulativeModel.obligations.allRows.map(row => row.expenseId)).toEqual([2, 1]);
   });
 
+  it('allocates actionable remaining oldest-first within a direction', () => {
+    const olderExpense = makeExpense({ id: 1, description: 'Older', amount: 40, paidBy: 'partner2', date: '2026-04-01' });
+    const newerExpense = makeExpense({ id: 2, description: 'Newer', amount: 60, paidBy: 'partner2', date: '2026-04-02' });
+    const balancingSettlement = makeSettlement({
+      id: 23,
+      date: '2026-04-05',
+      amount: 35,
+      from: 'partner1',
+      to: 'partner2',
+    });
+
+    const model = buildBalanceViewModel({
+      monthExpenses: [olderExpense, newerExpense],
+      expenses: [olderExpense, newerExpense],
+      settlements: [balancingSettlement],
+      selectedYear: 2026,
+      selectedMonth: 3,
+      splitRatio: 0.5,
+      balanceMode: 'month',
+    });
+    const olderRow = model.obligations.allRows.find(row => row.expenseId === 1)!;
+    const newerRow = model.obligations.allRows.find(row => row.expenseId === 2)!;
+
+    expect(olderRow.expenseRemainingUnlinked).toBeCloseTo(20, 8);
+    expect(newerRow.expenseRemainingUnlinked).toBeCloseTo(30, 8);
+    expect(olderRow.actionableRemaining).toBeCloseTo(15, 8);
+    expect(newerRow.actionableRemaining).toBeCloseTo(0, 8);
+    expect(model.obligations.openToSettleRows.map(row => row.expenseId)).toEqual([1]);
+    expect(model.obligations.needsLinkingRows.map(row => row.expenseId)).toEqual([2]);
+  });
+
+  it('keeps opposite reimbursement directions on separate directional budgets', () => {
+    const paidByPartner1 = makeExpense({
+      id: 1,
+      description: 'Partner1 paid',
+      amount: 200,
+      paidBy: 'partner1',
+      date: '2026-04-01',
+    });
+    const paidByPartner2 = makeExpense({
+      id: 2,
+      description: 'Partner2 paid',
+      amount: 100,
+      paidBy: 'partner2',
+      date: '2026-04-02',
+    });
+
+    const model = buildBalanceViewModel({
+      monthExpenses: [paidByPartner1, paidByPartner2],
+      expenses: [paidByPartner1, paidByPartner2],
+      settlements: [],
+      selectedYear: 2026,
+      selectedMonth: 3,
+      splitRatio: 0.5,
+      balanceMode: 'month',
+    });
+    const partner2OwesRow = model.obligations.allRows.find(row => row.expenseId === 1)!;
+    const partner1OwesRow = model.obligations.allRows.find(row => row.expenseId === 2)!;
+
+    expect(model.activeScope.partner1Balance).toBeGreaterThan(0);
+    expect(partner2OwesRow.actionableRemaining).toBeCloseTo(50, 8);
+    expect(partner2OwesRow.bucket).toBe('open_to_settle');
+    expect(partner1OwesRow.actionableRemaining).toBeCloseTo(0, 8);
+    expect(partner1OwesRow.bucket).toBe('needs_linking');
+  });
+
+  it('filters row buckets using epsilon and shows balanced-no-action state when all rows are below threshold', () => {
+    const tinyExpense = makeExpense({
+      id: 1,
+      description: 'Tiny',
+      amount: 0.01,
+      paidBy: 'partner2',
+      date: '2026-04-10',
+    });
+
+    const model = buildBalanceViewModel({
+      monthExpenses: [tinyExpense],
+      expenses: [tinyExpense],
+      settlements: [],
+      selectedYear: 2026,
+      selectedMonth: 3,
+      splitRatio: 0.5,
+      balanceMode: 'month',
+    });
+    const row = model.obligations.allRows[0];
+
+    expect(row.expenseRemainingUnlinked).toBeLessThan(0.01);
+    expect(row.bucket).toBeNull();
+    expect(model.obligations.openToSettleRows).toHaveLength(0);
+    expect(model.obligations.needsLinkingRows).toHaveLength(0);
+    expect(model.obligations.showBalancedNoActionState).toBe(true);
+    expect(model.obligations.showNoRowsNeedsReviewState).toBe(false);
+  });
+
+  it('does not show balanced-no-action state when sub-epsilon rows aggregate to non-zero balance', () => {
+    const tinyExpenseA = makeExpense({
+      id: 1,
+      description: 'Tiny A',
+      amount: 0.01,
+      paidBy: 'partner2',
+      date: '2026-04-10',
+    });
+    const tinyExpenseB = makeExpense({
+      id: 2,
+      description: 'Tiny B',
+      amount: 0.01,
+      paidBy: 'partner2',
+      date: '2026-04-11',
+    });
+
+    const model = buildBalanceViewModel({
+      monthExpenses: [tinyExpenseA, tinyExpenseB],
+      expenses: [tinyExpenseA, tinyExpenseB],
+      settlements: [],
+      selectedYear: 2026,
+      selectedMonth: 3,
+      splitRatio: 0.5,
+      balanceMode: 'month',
+    });
+
+    expect(model.topSummary.isBalanced).toBe(false);
+    expect(Math.abs(model.topSummary.amount)).toBeCloseTo(0.01, 8);
+    expect(model.obligations.openToSettleRows).toHaveLength(0);
+    expect(model.obligations.needsLinkingRows).toHaveLength(0);
+    expect(model.obligations.showBalancedNoActionState).toBe(false);
+    expect(model.obligations.showNoRowsNeedsReviewState).toBe(true);
+  });
+
   it('caps linked settled at owed and never returns negative remaining', () => {
     const expense = makeExpense({ id: 1, description: 'Rent', amount: 100, paidBy: 'partner2', date: '2026-04-10' });
     const settlement = makeSettlement({
@@ -309,11 +479,11 @@ describe('buildBalanceViewModel', () => {
 
     expect(row.owed).toBeCloseTo(50, 8);
     expect(row.linkedSettled).toBeCloseTo(50, 8);
-    expect(row.remaining).toBeCloseTo(0, 8);
-    expect(row.remaining).toBeGreaterThanOrEqual(0);
+    expect(row.expenseRemainingUnlinked).toBeCloseTo(0, 8);
+    expect(row.expenseRemainingUnlinked).toBeGreaterThanOrEqual(0);
   });
 
-  it('caps linked obligation allocations by settlement amount', () => {
+  it('prevents malformed over-allocation from over-crediting obligations', () => {
     const expenseA = makeExpense({ id: 1, description: 'Rent', amount: 200, paidBy: 'partner2', date: '2026-04-10' });
     const expenseB = makeExpense({ id: 2, description: 'Bills', amount: 100, paidBy: 'partner2', date: '2026-04-12' });
     const settlement = makeSettlement({
@@ -344,7 +514,8 @@ describe('buildBalanceViewModel', () => {
     // Allocation semantics consume settlement amount in-order: 50 to expenseA, 10 to expenseB.
     expect(rowA.linkedSettled).toBeCloseTo(50, 8);
     expect(rowB.linkedSettled).toBeCloseTo(10, 8);
-    expect(rowA.remaining).toBeCloseTo(50, 8);
-    expect(rowB.remaining).toBeCloseTo(40, 8);
+    expect(rowA.expenseRemainingUnlinked).toBeCloseTo(50, 8);
+    expect(rowB.expenseRemainingUnlinked).toBeCloseTo(40, 8);
+    expect(model.obligations.openToSettleRows.map(row => row.expenseId)).toEqual([1, 2]);
   });
 });

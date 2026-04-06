@@ -54,7 +54,10 @@
     "reload": "טען מחדש",
     "dismiss": "התעלם",
     "revealInFolder": "הצג בתיקייה",
-    "createSettlement": "צור התחשבנות"
+    "createSettlement": "צור התחשבנות",
+    "reviewSettlements": "סקור התחשבנויות",
+    "expand": "הרחב",
+    "collapse": "כווץ"
   },
   "labels": {
     "balance": "יתרה",
@@ -145,7 +148,14 @@
       "unlinked": "לא מקושר",
       "partially_settled": "שולם חלקית",
       "settled": "שולם במלואו"
-    }
+    },
+    "reimbursementStatus": "סטטוס החזרים",
+    "reimbursementStatusMonthScope": "סטטוס החזרים בחודש הנבחר",
+    "reimbursementStatusCumulativeScope": "סטטוס החזרים עד החודש הנבחר",
+    "openToSettle": "פתוח לתשלום",
+    "needsLinking": "דורש קישור",
+    "unlinkedRemainder": "יתרה לא מקושרת",
+    "actionableNow": "ניתן להסדרה כעת"
   },
   "messages": {
     "searchBreadcrumb": "חיפוש",
@@ -185,7 +195,12 @@
     "settlementRequired": "נדרשת התחשבנות",
     "partnerOwes": "{{from}} חייב ל-{{to}}",
     "balanced": "מאוזן",
-    "noOutstandingObligations": "אין חיובים פתוחים בטווח זה"
+    "noOutstandingObligations": "אין חיובים פתוחים בטווח זה",
+    "reimbursementMonthNoAction": "החודש מאוזן. אין צורך בפעולת התחשבנות.",
+    "reimbursementCumulativeNoAction": "היתרה סגורה עד החודש הנבחר. אין צורך בפעולת התחשבנות.",
+    "reimbursementNoRowsNeedsReview": "אין שורות החזר זמינות בטווח הזה. בדקו את היתרה העליונה עבור שארית אפשרית.",
+    "reimbursementTraceabilityNote": "חלק מההוצאות עדיין לא מקושרות לצורכי מעקב.",
+    "reimbursementNeedsLinkingHint": "הטווח הזה כבר מאוזן לכיוון הזה. קשרו להתחשבנות קיימת לצורכי מעקב."
   },
   "dialogs": {
     "bulkDeleteConfirm": "למחוק {{count}} נבחרים?",

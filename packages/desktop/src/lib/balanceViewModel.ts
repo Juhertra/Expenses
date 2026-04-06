@@ -1,6 +1,9 @@
 import type { Expense, Settlement } from '@expenses/shared/types';
 import { calculateBalanceScopes, type ScopedBalanceResult, type ScopedSettlementEntry } from './balanceScopes';
-import { getReimbursementDirectionForExpense } from './settlementAllocation';
+import {
+  getCappedLinkedAmountsByExpenseId,
+  getReimbursementDirectionForExpense,
+} from './settlementAllocation';
 
 export type BalanceMode = 'month' | 'cumulative';
 
@@ -56,6 +59,7 @@ export interface DisplayedSettlementModel {
 }
 
 export type ObligationStatus = 'unlinked' | 'partially_settled' | 'settled';
+export type ReimbursementBucket = 'open_to_settle' | 'needs_linking';
 
 export interface ObligationRowModel {
   expenseId: number;
@@ -66,8 +70,20 @@ export interface ObligationRowModel {
   to: PartnerKey;
   owed: number;
   linkedSettled: number;
+  expenseRemainingUnlinked: number;
   remaining: number;
+  actionableRemaining: number;
+  bucket: ReimbursementBucket | null;
   status: ObligationStatus;
+}
+
+export interface ReimbursementStatusModel {
+  allRows: ObligationRowModel[];
+  openToSettleRows: ObligationRowModel[];
+  needsLinkingRows: ObligationRowModel[];
+  showBalancedNoActionState: boolean;
+  showNoRowsNeedsReviewState: boolean;
+  showTraceabilityOnlyNote: boolean;
 }
 
 export interface ReconciliationModel {
@@ -91,10 +107,7 @@ export interface BalanceViewModel {
   };
   paymentBreakdown: PaymentBreakdownModel;
   displayedSettlements: DisplayedSettlementModel[];
-  obligations: {
-    allRows: ObligationRowModel[];
-    openRows: ObligationRowModel[];
-  };
+  obligations: ReimbursementStatusModel;
   reconciliation: ReconciliationModel;
 }
 
@@ -142,44 +155,22 @@ function toDisplayedSettlements(entries: ScopedSettlementEntry[]): DisplayedSett
   }));
 }
 
-function parsePositiveAmount(value: unknown): number | null {
-  const amount = Number(value);
-  return Number.isFinite(amount) && amount > 0 ? amount : null;
-}
-
-function calculateLinkedSettledByExpenseId(settlements: Settlement[]): Map<number, number> {
-  const linkedByExpenseId = new Map<number, number>();
-
-  for (const settlement of settlements) {
-    let remainder = parsePositiveAmount(settlement.amount);
-    if (remainder === null) continue;
-
-    const allocations = Array.isArray(settlement.allocations) ? settlement.allocations : [];
-    for (const allocation of allocations) {
-      if (remainder <= 0) break;
-
-      const allocationAmount = parsePositiveAmount(allocation?.amount);
-      if (allocationAmount === null) continue;
-
-      const consumed = Math.min(allocationAmount, remainder);
-      remainder -= consumed;
-
-      const expenseId = Number(allocation?.expenseId);
-      if (!Number.isFinite(expenseId)) continue;
-
-      linkedByExpenseId.set(expenseId, (linkedByExpenseId.get(expenseId) ?? 0) + consumed);
-    }
-  }
-
-  return linkedByExpenseId;
-}
-
 function calculateObligations(
   selectedScopeExpenses: Expense[],
   settlements: Settlement[],
-  splitRatio: number
-): { allRows: ObligationRowModel[]; openRows: ObligationRowModel[] } {
-  const linkedByExpenseId = calculateLinkedSettledByExpenseId(settlements);
+  splitRatio: number,
+  activeScope: ScopedBalanceResult
+): ReimbursementStatusModel {
+  const linkedByExpenseId = getCappedLinkedAmountsByExpenseId(settlements);
+
+  const sortNewestFirst = (a: ObligationRowModel, b: ObligationRowModel) => {
+    if (a.expenseDate === b.expenseDate) return b.expenseId - a.expenseId;
+    return b.expenseDate.localeCompare(a.expenseDate);
+  };
+  const sortOldestFirst = (a: ObligationRowModel, b: ObligationRowModel) => {
+    if (a.expenseDate === b.expenseDate) return a.expenseId - b.expenseId;
+    return a.expenseDate.localeCompare(b.expenseDate);
+  };
 
   const rows = selectedScopeExpenses
     .filter(isPersonalSharedExpense)
@@ -189,16 +180,16 @@ function calculateObligations(
 
       const owed = Math.max(0, direction.recommendedAmount);
       const linkedSettled = Math.min(owed, Math.max(0, linkedByExpenseId.get(expense.id) ?? 0));
-      const remaining = Math.max(0, owed - linkedSettled);
+      const expenseRemainingUnlinked = Math.max(0, owed - linkedSettled);
 
       let status: ObligationStatus = 'unlinked';
-      if (remaining < UI_ZERO_EPSILON) {
+      if (expenseRemainingUnlinked < UI_ZERO_EPSILON) {
         status = 'settled';
       } else if (linkedSettled >= UI_ZERO_EPSILON) {
         status = 'partially_settled';
       }
 
-      return {
+      const row: ObligationRowModel = {
         expenseId: expense.id,
         expenseDate: expense.date,
         expenseDescription: expense.description,
@@ -207,19 +198,80 @@ function calculateObligations(
         to: direction.to,
         owed,
         linkedSettled,
-        remaining,
+        expenseRemainingUnlinked,
+        remaining: expenseRemainingUnlinked,
+        actionableRemaining: 0,
+        bucket: null,
         status,
-      } satisfies ObligationRowModel;
+      };
+      return row;
     })
-    .filter((row): row is ObligationRowModel => row !== null)
-    .sort((a, b) => {
-      if (a.expenseDate === b.expenseDate) return b.expenseId - a.expenseId;
-      return b.expenseDate.localeCompare(a.expenseDate);
-    });
+    .filter((row): row is ObligationRowModel => row !== null);
+
+  const rowsById = new Map<number, ObligationRowModel>();
+  for (const row of rows) {
+    rowsById.set(row.expenseId, row);
+  }
+
+  const directionalBudgets = [
+    {
+      from: 'partner1' as const,
+      to: 'partner2' as const,
+      budget: Math.max(-activeScope.partner1Balance, 0),
+    },
+    {
+      from: 'partner2' as const,
+      to: 'partner1' as const,
+      budget: Math.max(activeScope.partner1Balance, 0),
+    },
+  ];
+
+  for (const direction of directionalBudgets) {
+    let remainingBudget = direction.budget;
+    const directionalRows = [...rowsById.values()]
+      .filter(
+        row =>
+          row.from === direction.from &&
+          row.to === direction.to &&
+          row.expenseRemainingUnlinked >= UI_ZERO_EPSILON
+      )
+      .sort(sortOldestFirst);
+
+    for (const row of directionalRows) {
+      if (remainingBudget <= 0) break;
+      const actionable = Math.min(row.expenseRemainingUnlinked, remainingBudget);
+      row.actionableRemaining = actionable;
+      remainingBudget -= actionable;
+    }
+  }
+
+  for (const row of rowsById.values()) {
+    if (row.expenseRemainingUnlinked < UI_ZERO_EPSILON) {
+      row.bucket = null;
+      continue;
+    }
+    row.bucket = row.actionableRemaining >= UI_ZERO_EPSILON ? 'open_to_settle' : 'needs_linking';
+  }
+
+  const allRows = [...rowsById.values()].sort(sortNewestFirst);
+  const openToSettleRows = allRows
+    .filter(row => row.bucket === 'open_to_settle')
+    .sort(sortOldestFirst);
+  const needsLinkingRows = allRows
+    .filter(row => row.bucket === 'needs_linking')
+    .sort(sortNewestFirst);
+  const hasDisplayRows = openToSettleRows.length > 0 || needsLinkingRows.length > 0;
+  const isScopeBalanced =
+    Math.abs(activeScope.partner1Balance) < UI_ZERO_EPSILON &&
+    Math.abs(activeScope.partner2Balance) < UI_ZERO_EPSILON;
 
   return {
-    allRows: rows,
-    openRows: rows.filter(row => row.remaining >= UI_ZERO_EPSILON),
+    allRows,
+    openToSettleRows,
+    needsLinkingRows,
+    showBalancedNoActionState: !hasDisplayRows && isScopeBalanced,
+    showNoRowsNeedsReviewState: !hasDisplayRows && !isScopeBalanced,
+    showTraceabilityOnlyNote: openToSettleRows.length === 0 && needsLinkingRows.length > 0,
   };
 }
 
@@ -337,7 +389,7 @@ export function buildBalanceViewModel({
     .filter(expense => expense.type === 'expense' && expense.paidBy === 'joint')
     .reduce((sum, expense) => sum + expense.amount, 0);
 
-  const obligations = calculateObligations(selectedScopeExpenses, settlements, splitRatio);
+  const obligations = calculateObligations(selectedScopeExpenses, settlements, splitRatio, activeScope);
   const expenseShareBreakdown = calculateExpenseShareBreakdown(selectedScopeExpenses, splitRatio);
 
   const reconciliationMismatch = activeScope.partner1Balance + activeScope.partner2Balance;

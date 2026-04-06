@@ -54,7 +54,10 @@
     "close": "Close",
     "reload": "Reload",
     "dismiss": "Dismiss",
-    "revealInFolder": "Reveal in folder"
+    "revealInFolder": "Reveal in folder",
+    "reviewSettlements": "Review settlements",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "labels": {
     "balance": "Balance",
@@ -145,7 +148,14 @@
     "addTransactionTitle": "Add Transaction",
     "categoryName": "Category Name",
     "editCategoryTitle": "Edit Category",
-    "addCategoryTitle": "Add Category"
+    "addCategoryTitle": "Add Category",
+    "reimbursementStatus": "Reimbursement status",
+    "reimbursementStatusMonthScope": "Selected month reimbursement status",
+    "reimbursementStatusCumulativeScope": "Reimbursement status through selected month",
+    "openToSettle": "Open to settle",
+    "needsLinking": "Needs linking",
+    "unlinkedRemainder": "Unlinked remainder",
+    "actionableNow": "Actionable now"
   },
   "messages": {
     "searchBreadcrumb": "Search",
@@ -185,7 +195,12 @@
     "allSettled": "All expenses are settled",
     "settlementRequired": "Settlement Required",
     "noOutstandingObligations": "No open obligations in this scope",
-    "partnerOwes": "{{from}} owes {{to}}"
+    "partnerOwes": "{{from}} owes {{to}}",
+    "reimbursementMonthNoAction": "This month is balanced. No settlement action needed.",
+    "reimbursementCumulativeNoAction": "This balance is settled through the selected month. No settlement action needed.",
+    "reimbursementNoRowsNeedsReview": "No reimbursement rows are available in this scope. Check the top balance for any residual amount.",
+    "reimbursementTraceabilityNote": "Some expenses are still unlinked for traceability.",
+    "reimbursementNeedsLinkingHint": "This scope is already balanced for this direction. Link to an existing settlement for traceability."
   },
   "dialogs": {
     "bulkDeleteConfirm": "Delete {{count}} selected?",

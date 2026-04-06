@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, HelpCircle, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
 import type {
@@ -82,6 +82,9 @@ export function BalanceView({
   const [balanceMode, setBalanceMode] = useState<BalanceMode>('month');
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [editingSettlementId, setEditingSettlementId] = useState<number | null>(null);
+  const [showNeedsLinkingRows, setShowNeedsLinkingRows] = useState(false);
+  const [highlightSettlementsSection, setHighlightSettlementsSection] = useState(false);
+  const settlementsSectionRef = useRef<HTMLDivElement | null>(null);
   const createDefaultSettlementForm = () => ({
     date: getLocalISODate(),
     amount: '',
@@ -218,6 +221,17 @@ export function BalanceView({
   };
 
   const displayedSettlements = viewModel.displayedSettlements;
+  const reimbursementStatus = viewModel.obligations;
+  const openToSettleRows = reimbursementStatus.openToSettleRows;
+  const needsLinkingRows = reimbursementStatus.needsLinkingRows;
+
+  useEffect(() => {
+    if (!highlightSettlementsSection) return;
+    const timer = setTimeout(() => {
+      setHighlightSettlementsSection(false);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [highlightSettlementsSection]);
 
   const linkedDirection = resolveLinkedDirection(settlementForm.allocationRows);
   const hasLinkedRows = settlementForm.allocationRows.some(row => row.expenseId);
@@ -300,7 +314,7 @@ export function BalanceView({
   };
 
   const openSettlementFromObligation = (obligation: ObligationRowModel) => {
-    const amount = toAmountInput(obligation.remaining);
+    const amount = toAmountInput(obligation.actionableRemaining);
     const nextForm = {
       ...createDefaultSettlementForm(),
       amount,
@@ -317,6 +331,11 @@ export function BalanceView({
     setEditingSettlementId(null);
     setSettlementForm(nextForm);
     setShowSettlementModal(true);
+  };
+
+  const reviewSettlements = () => {
+    settlementsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setHighlightSettlementsSection(true);
   };
 
   const openEditSettlementModal = (settlement: Settlement) => {
@@ -819,74 +838,199 @@ export function BalanceView({
           </div>
         </div>
 
-        {/* Outstanding obligations */}
+        {/* Reimbursement status */}
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
+          <div data-testid="reimbursement-status-section">
           <h3 className="text-lg sm:text-xl font-bold mb-1">
-            {t('labels.outstandingObligations', 'Outstanding obligations')}
+            {t('labels.reimbursementStatus', 'Reimbursement status')}
           </h3>
           <p className="text-xs text-slate-400 mb-4">
             {balanceMode === 'month'
-              ? t('labels.outstandingMonthScope', 'Open obligations from expenses in selected month')
-              : t('labels.outstandingCumulativeScope', 'Open obligations from expenses through selected month')}
+              ? t('labels.reimbursementStatusMonthScope', 'Selected month reimbursement status')
+              : t('labels.reimbursementStatusCumulativeScope', 'Reimbursement status through selected month')}
           </p>
 
-          {viewModel.obligations.openRows.length === 0 ? (
-            <p className="text-xs text-slate-500">{t('messages.noOutstandingObligations', 'No open obligations in this scope')}</p>
+          {reimbursementStatus.showBalancedNoActionState ? (
+            <p className="text-xs text-slate-500">
+              {balanceMode === 'month'
+                ? t('messages.reimbursementMonthNoAction', 'This month is balanced. No settlement action needed.')
+                : t(
+                    'messages.reimbursementCumulativeNoAction',
+                    'This balance is settled through the selected month. No settlement action needed.'
+                  )}
+            </p>
+          ) : reimbursementStatus.showNoRowsNeedsReviewState ? (
+            <p className="text-xs text-slate-500">
+              {t(
+                'messages.reimbursementNoRowsNeedsReview',
+                'No reimbursement rows are available in this scope. Check the top balance for any residual amount.'
+              )}
+            </p>
           ) : (
-            <div className="space-y-2">
-              {viewModel.obligations.openRows.map((row) => (
-                <div
-                  key={row.expenseId}
-                  className="rounded-xl border border-slate-700 bg-slate-800/50 p-3"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-100 truncate">
-                        {formatDateLocalized(row.expenseDate)} - {row.expenseDescription}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {t('labels.paidBy', 'Paid by')}: {row.paidBy === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {t('messages.partnerOwes', {
-                          from: row.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
-                          to: row.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
-                        })}
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => openSettlementFromObligation(row)}
-                      variant="secondary"
-                      className="w-full sm:w-auto"
+            <div className="space-y-4">
+              {openToSettleRows.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+                    {t('labels.openToSettle', 'Open to settle')}
+                  </div>
+                  {openToSettleRows.map((row) => (
+                    <div
+                      key={`open-${row.expenseId}`}
+                      data-testid="reimbursement-open-row"
+                      className="rounded-xl border border-slate-700 bg-slate-800/50 p-3"
                     >
-                      {t('buttons.createSettlement', 'Create settlement')}
-                    </Button>
-                  </div>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-100 truncate">
+                            {formatDateLocalized(row.expenseDate)} - {row.expenseDescription}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {t('labels.paidBy', 'Paid by')}:{' '}
+                            {row.paidBy === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {t('messages.partnerOwes', {
+                              from: row.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
+                              to: row.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2,
+                            })}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => openSettlementFromObligation(row)}
+                          variant="secondary"
+                          className="w-full sm:w-auto"
+                        >
+                          {t('buttons.createSettlement', 'Create settlement')}
+                        </Button>
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mt-3 text-xs">
-                    <div className="rounded-lg bg-slate-900/60 p-2">
-                      <div className="text-slate-500">{t('labels.owed', 'Owed')}</div>
-                      <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.owed))}</div>
-                    </div>
-                    <div className="rounded-lg bg-slate-900/60 p-2">
-                      <div className="text-slate-500">{t('labels.linkedSettled', 'Linked settled')}</div>
-                      <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.linkedSettled))}</div>
-                    </div>
-                    <div className="rounded-lg bg-slate-900/60 p-2">
-                      <div className="text-slate-500">{t('labels.remaining', 'Remaining')}</div>
-                      <div className="font-medium text-amber-300">{withLtr(formatCurrency(row.remaining))}</div>
-                    </div>
-                    <div className="rounded-lg bg-slate-900/60 p-2">
-                      <div className="text-slate-500">{t('labels.status', 'Status')}</div>
-                      <div className="font-medium text-slate-100">
-                        {t(`labels.obligationStatus.${row.status}`, row.status)}
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mt-3 text-xs">
+                        <div className="rounded-lg bg-slate-900/60 p-2">
+                          <div className="text-slate-500">{t('labels.owed', 'Owed')}</div>
+                          <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.owed))}</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-900/60 p-2">
+                          <div className="text-slate-500">{t('labels.linkedSettled', 'Linked settled')}</div>
+                          <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.linkedSettled))}</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-900/60 p-2">
+                          <div className="text-slate-500">{t('labels.unlinkedRemainder', 'Unlinked remainder')}</div>
+                          <div className="font-medium text-amber-300">
+                            {withLtr(formatCurrency(row.expenseRemainingUnlinked))}
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-900/60 p-2">
+                          <div className="text-slate-500">{t('labels.actionableNow', 'Actionable now')}</div>
+                          <div className="font-medium text-yellow-300">
+                            {withLtr(formatCurrency(row.actionableRemaining))}
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-900/60 p-2">
+                          <div className="text-slate-500">{t('labels.status', 'Status')}</div>
+                          <div className="font-medium text-slate-100">
+                            {t(`labels.obligationStatus.${row.status}`, row.status)}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {reimbursementStatus.showTraceabilityOnlyNote && (
+                <p className="text-xs text-slate-400">
+                  {t(
+                    'messages.reimbursementTraceabilityNote',
+                    'Some expenses are still unlinked for traceability.'
+                  )}
+                </p>
+              )}
+
+              {needsLinkingRows.length > 0 && (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNeedsLinkingRows(prev => !prev)}
+                    data-testid="needs-linking-toggle"
+                    className="w-full flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 text-left hover:bg-slate-800/70 transition-colors"
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-300">
+                      {t('labels.needsLinking', 'Needs linking')}
+                    </span>
+                    <span className="inline-flex items-center gap-2 text-xs text-slate-300">
+                      <span className="rounded-full border border-slate-600 px-2 py-0.5">
+                        {needsLinkingRows.length}
+                      </span>
+                      {showNeedsLinkingRows
+                        ? t('buttons.collapse', 'Collapse')
+                        : t('buttons.expand', 'Expand')}
+                    </span>
+                  </button>
+
+                  {showNeedsLinkingRows && (
+                    <div className="space-y-2">
+                      {needsLinkingRows.map((row) => (
+                        <div
+                          key={`needs-${row.expenseId}`}
+                          data-testid="reimbursement-needs-linking-row"
+                          className="rounded-xl border border-slate-700 bg-slate-800/30 p-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-slate-100 truncate">
+                                {formatDateLocalized(row.expenseDate)} - {row.expenseDescription}
+                              </div>
+                              <div className="text-xs text-slate-400">
+                                {t('labels.paidBy', 'Paid by')}:{' '}
+                                {row.paidBy === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {t(
+                                  'messages.reimbursementNeedsLinkingHint',
+                                  'This scope is already balanced for this direction. Link to an existing settlement for traceability.'
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              onClick={reviewSettlements}
+                              variant="ghost"
+                              className="w-full sm:w-auto"
+                            >
+                              {t('buttons.reviewSettlements', 'Review settlements')}
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mt-3 text-xs">
+                            <div className="rounded-lg bg-slate-900/60 p-2">
+                              <div className="text-slate-500">{t('labels.owed', 'Owed')}</div>
+                              <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.owed))}</div>
+                            </div>
+                            <div className="rounded-lg bg-slate-900/60 p-2">
+                              <div className="text-slate-500">{t('labels.linkedSettled', 'Linked settled')}</div>
+                              <div className="font-medium text-slate-100">{withLtr(formatCurrency(row.linkedSettled))}</div>
+                            </div>
+                            <div className="rounded-lg bg-slate-900/60 p-2">
+                              <div className="text-slate-500">{t('labels.unlinkedRemainder', 'Unlinked remainder')}</div>
+                              <div className="font-medium text-blue-300">
+                                {withLtr(formatCurrency(row.expenseRemainingUnlinked))}
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-slate-900/60 p-2">
+                              <div className="text-slate-500">{t('labels.status', 'Status')}</div>
+                              <div className="font-medium text-slate-100">
+                                {t(`labels.obligationStatus.${row.status}`, row.status)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
+          </div>
         </div>
 
         {/* Payment breakdown */}
@@ -939,7 +1083,13 @@ export function BalanceView({
         </div>
 
         {/* Settlements section */}
-        <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-4 sm:p-6">
+        <div
+          ref={settlementsSectionRef}
+          data-testid="settlements-section"
+          className={`bg-slate-800/50 backdrop-blur border rounded-2xl p-4 sm:p-6 transition-colors ${
+            highlightSettlementsSection ? 'border-amber-400/80 shadow-[0_0_0_1px_rgba(251,191,36,0.45)]' : 'border-slate-700'
+          }`}
+        >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
             <div>
               <h3 className="text-lg sm:text-xl font-bold">{t('labels.settlements')}</h3>
