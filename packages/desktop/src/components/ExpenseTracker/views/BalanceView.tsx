@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusCircle, Trash2, X } from 'lucide-react';
-import type { Expense, Settlement, PartnerNames, HouseholdSettings } from '@expenses/shared/types';
+import type {
+  Expense,
+  Settlement,
+  SettlementAllocation,
+  PartnerNames,
+  HouseholdSettings,
+} from '@expenses/shared/types';
 import type { Theme } from '../../../lib/theme';
 import { getLocalISODate } from '../../../lib/date';
 import { calculateBalanceScopes } from '../../../lib/balanceScopes';
@@ -57,12 +63,48 @@ export function BalanceView({
     from: 'partner1' as 'partner1' | 'partner2',
     to: 'partner2' as 'partner1' | 'partner2',
     note: '',
+    linkedExpenseId: '',
+    linkedAmount: '',
   });
 
   // Split mode: Calculate fair share based on household settings
   const splitRatio = householdSettings.splitMode === 'equal'
     ? 0.5
     : Math.max(0.05, Math.min(0.95, householdSettings.partner1Ratio));
+
+  const linkableExpenses = useMemo(
+    () =>
+      [...expenses]
+        .filter(exp => exp.type === 'expense' && (exp.paidBy === 'partner1' || exp.paidBy === 'partner2'))
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [expenses]
+  );
+
+  const expenseLookup = useMemo(() => {
+    const map = new Map<number, Expense>();
+    for (const expense of linkableExpenses) {
+      map.set(expense.id, expense);
+    }
+    return map;
+  }, [linkableExpenses]);
+
+  const getReimbursementDirection = (expense: Expense) => {
+    if (expense.paidBy === 'partner1') {
+      return {
+        from: 'partner2' as const,
+        to: 'partner1' as const,
+        recommendedAmount: expense.amount * (1 - splitRatio),
+      };
+    }
+    if (expense.paidBy === 'partner2') {
+      return {
+        from: 'partner1' as const,
+        to: 'partner2' as const,
+        recommendedAmount: expense.amount * splitRatio,
+      };
+    }
+    return null;
+  };
 
   const scopes = calculateBalanceScopes(
     monthExpenses,
@@ -72,17 +114,17 @@ export function BalanceView({
     selectedMonth,
     splitRatio
   );
-  const { month, cumulative, settlementsInMonth, settlementsThroughMonth } = scopes;
+  const { month, cumulative, settlementsAffectingMonth, settlementsThroughMonth } = scopes;
 
   const partner1Paid = month.partner1Paid;
   const partner2Paid = month.partner2Paid;
 
-  const partner1SettlementPaid = settlementsInMonth
-    .filter(settlement => settlement.from === 'partner1' && settlement.to === 'partner2')
-    .reduce((sum, settlement) => sum + Number(settlement.amount || 0), 0);
-  const partner1SettlementReceived = settlementsInMonth
-    .filter(settlement => settlement.from === 'partner2' && settlement.to === 'partner1')
-    .reduce((sum, settlement) => sum + Number(settlement.amount || 0), 0);
+  const partner1SettlementPaid = settlementsAffectingMonth
+    .filter(entry => entry.settlement.from === 'partner1' && entry.settlement.to === 'partner2')
+    .reduce((sum, entry) => sum + entry.appliedAmount, 0);
+  const partner1SettlementReceived = settlementsAffectingMonth
+    .filter(entry => entry.settlement.from === 'partner2' && entry.settlement.to === 'partner1')
+    .reduce((sum, entry) => sum + entry.appliedAmount, 0);
   const partner2SettlementPaid = partner1SettlementReceived;
   const partner2SettlementReceived = partner1SettlementPaid;
   const partner1NetOutflow = partner1Paid + partner1SettlementPaid - partner1SettlementReceived;
@@ -101,10 +143,82 @@ export function BalanceView({
   const partner1Balance = balanceMode === 'month' ? month.partner1Balance : cumulative.partner1Balance;
   const partner2Balance = balanceMode === 'month' ? month.partner2Balance : cumulative.partner2Balance;
 
-  const displayedSettlements =
-    balanceMode === 'month'
-      ? settlementsInMonth
-      : settlementsThroughMonth;
+  const selectedLinkedExpense = settlementForm.linkedExpenseId
+    ? expenseLookup.get(Number(settlementForm.linkedExpenseId))
+    : undefined;
+  const selectedLinkedDirection = selectedLinkedExpense
+    ? getReimbursementDirection(selectedLinkedExpense)
+    : null;
+
+  const getLinkedExpenseIds = (settlement: Settlement): number[] => {
+    if (!Array.isArray(settlement.allocations)) return [];
+    return settlement.allocations
+      .map(allocation => Number(allocation.expenseId))
+      .filter(id => Number.isFinite(id));
+  };
+
+  const getLinkedExpenseSummary = (linkedExpenseIds: number[]): string | null => {
+    const uniqueIds = [...new Set(linkedExpenseIds)];
+    if (uniqueIds.length === 0) return null;
+    const labels = uniqueIds.slice(0, 2).map(id => {
+      const expense = expenseLookup.get(id);
+      if (!expense) return `#${id}`;
+      return `${expense.description} (${formatDateLocalized(expense.date)})`;
+    });
+    const extraCount = uniqueIds.length - labels.length;
+    if (extraCount > 0) {
+      labels.push(`+${extraCount}`);
+    }
+    return labels.join(', ');
+  };
+
+  const displayedSettlements = balanceMode === 'month'
+    ? settlementsAffectingMonth.map(entry => ({
+      settlement: entry.settlement,
+      amountToShow: entry.appliedAmount,
+      linkedExpenseIds: entry.linkedExpenseIds,
+      isPartialForScope: Math.abs(entry.appliedAmount - Number(entry.settlement.amount || 0)) > 0.01,
+    }))
+    : settlementsThroughMonth.map(settlement => ({
+      settlement,
+      amountToShow: Number(settlement.amount || 0),
+      linkedExpenseIds: getLinkedExpenseIds(settlement),
+      isPartialForScope: false,
+    }));
+
+  const handleLinkedExpenseChange = (linkedExpenseId: string) => {
+    if (!linkedExpenseId) {
+      setSettlementForm(prev => ({
+        ...prev,
+        linkedExpenseId: '',
+        linkedAmount: '',
+      }));
+      return;
+    }
+
+    const linkedExpense = expenseLookup.get(Number(linkedExpenseId));
+    if (!linkedExpense) {
+      setSettlementForm(prev => ({
+        ...prev,
+        linkedExpenseId: '',
+        linkedAmount: '',
+      }));
+      return;
+    }
+
+    const direction = getReimbursementDirection(linkedExpense);
+    const suggestedAmount = direction?.recommendedAmount ?? 0;
+    const suggestedAmountText = suggestedAmount > 0 ? suggestedAmount.toFixed(2) : '';
+
+    setSettlementForm(prev => ({
+      ...prev,
+      linkedExpenseId,
+      linkedAmount: prev.linkedAmount || prev.amount || suggestedAmountText,
+      amount: prev.amount || suggestedAmountText,
+      from: direction?.from ?? prev.from,
+      to: direction?.to ?? prev.to,
+    }));
+  };
 
   const handleRecordSettlement = async () => {
     const amount = parseFloat(settlementForm.amount);
@@ -117,6 +231,25 @@ export function BalanceView({
       return;
     }
 
+    let allocations: SettlementAllocation[] | undefined;
+    if (settlementForm.linkedExpenseId) {
+      const linkedExpenseId = Number(settlementForm.linkedExpenseId);
+      const linkedAmount = parseFloat(settlementForm.linkedAmount || settlementForm.amount);
+      if (!Number.isFinite(linkedExpenseId) || !expenseLookup.has(linkedExpenseId)) {
+        alert(t('errors.invalidSelection', 'Please select a valid expense to link'));
+        return;
+      }
+      if (!Number.isFinite(linkedAmount) || linkedAmount <= 0) {
+        alert(t('errors.invalidAmount', 'Please enter a valid linked amount'));
+        return;
+      }
+      if (linkedAmount > amount) {
+        alert(t('errors.linkedAmountTooHigh', 'Linked amount cannot exceed settlement amount'));
+        return;
+      }
+      allocations = [{ expenseId: linkedExpenseId, amount: linkedAmount }];
+    }
+
     const newSettlement: Settlement = {
       id: Date.now(),
       date: settlementForm.date,
@@ -124,6 +257,7 @@ export function BalanceView({
       from: settlementForm.from,
       to: settlementForm.to,
       note: settlementForm.note,
+      allocations,
     };
 
     await onRecordSettlement(newSettlement);
@@ -134,6 +268,8 @@ export function BalanceView({
       from: 'partner1',
       to: 'partner2',
       note: '',
+      linkedExpenseId: '',
+      linkedAmount: '',
     });
   };
 
@@ -386,8 +522,8 @@ export function BalanceView({
           ) : (
             <div className="space-y-2 sm:space-y-3">
               {[...displayedSettlements]
-                .sort((a, b) => b.date.localeCompare(a.date))
-                .map((settlement) => (
+                .sort((a, b) => b.settlement.date.localeCompare(a.settlement.date))
+                .map(({ settlement, amountToShow, linkedExpenseIds, isPartialForScope }) => (
                   <div
                     key={settlement.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-slate-700/50 rounded-lg"
@@ -411,10 +547,23 @@ export function BalanceView({
                           </>
                         )}
                       </div>
+                      {linkedExpenseIds.length > 0 && (
+                        <div className="text-xs text-slate-400 mt-1 truncate">
+                          {t('labels.linkedToExpense', 'Linked to expense')}: {getLinkedExpenseSummary(linkedExpenseIds)}
+                        </div>
+                      )}
+                      {balanceMode === 'month' && isPartialForScope && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          {t('labels.appliedInSelectedMonth', 'Applied in selected month')}:{' '}
+                          {withLtr(
+                            `${formatCurrency(amountToShow)} / ${formatCurrency(Number(settlement.amount || 0))}`
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-3">
                       <span className="text-xl font-bold text-green-400">
-                        {withLtr(formatCurrency(settlement.amount))}
+                        {withLtr(formatCurrency(amountToShow))}
                       </span>
                       <IconButton
                         onClick={() => onDeleteSettlement(settlement.id)}
@@ -476,10 +625,55 @@ export function BalanceView({
               </div>
 
               <div>
+                <label className="block text-sm text-slate-400 mb-2">
+                  {t('labels.linkExpenseOptional', 'Link to expense (optional)')}
+                </label>
+                <select
+                  value={settlementForm.linkedExpenseId}
+                  onChange={(e) => handleLinkedExpenseChange(e.target.value)}
+                  dir={dir}
+                  className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
+                >
+                  <option value="">{t('labels.noLinkedExpense', 'No linked expense')}</option>
+                  {linkableExpenses.map(expense => (
+                    <option key={expense.id} value={expense.id}>
+                      {`${formatDateLocalized(expense.date)} - ${expense.description} - ${formatCurrency(expense.amount)}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {settlementForm.linkedExpenseId && (
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    {t('labels.linkedAmount', 'Amount applied to linked expense')}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={settlementForm.linkedAmount}
+                    onChange={(e) => setSettlementForm({ ...settlementForm, linkedAmount: e.target.value })}
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2"
+                    placeholder={t('placeholders.amountApplied', '0.00')}
+                  />
+                  {selectedLinkedExpense && selectedLinkedDirection && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      {t('labels.recommendedSettlement', 'Recommended for this expense')}:{' '}
+                      {withLtr(formatCurrency(selectedLinkedDirection.recommendedAmount))}{' '}
+                      ({selectedLinkedDirection.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}{' '}
+                      {'->'}{' '}
+                      {selectedLinkedDirection.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2})
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div>
                 <label className="block text-sm text-slate-400 mb-2">{t('labels.from')}</label>
                 <select
                   value={settlementForm.from}
                   onChange={(e) => setSettlementForm({ ...settlementForm, from: e.target.value as 'partner1' | 'partner2' })}
+                  disabled={Boolean(settlementForm.linkedExpenseId)}
                   dir={dir}
                   className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                 >
@@ -493,12 +687,18 @@ export function BalanceView({
                 <select
                   value={settlementForm.to}
                   onChange={(e) => setSettlementForm({ ...settlementForm, to: e.target.value as 'partner1' | 'partner2' })}
+                  disabled={Boolean(settlementForm.linkedExpenseId)}
                   dir={dir}
                   className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                 >
                   <option value="partner1">{partnerNames.partner1}</option>
                   <option value="partner2">{partnerNames.partner2}</option>
                 </select>
+                {settlementForm.linkedExpenseId && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    {t('labels.directionLockedByLink', 'Direction is set by the linked expense')}
+                  </p>
+                )}
               </div>
 
               <div>

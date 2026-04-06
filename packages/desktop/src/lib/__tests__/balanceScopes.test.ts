@@ -124,6 +124,85 @@ describe('calculateBalanceScopes', () => {
     expect(result.settlementsThroughMonth).toHaveLength(1);
   });
 
+  it('applies a future-dated linked settlement to the linked expense month', () => {
+    const februaryExpense: Expense = {
+      id: 1,
+      description: 'Feb rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-02-10',
+      paidBy: 'partner2',
+    };
+
+    const settlements: Settlement[] = [
+      {
+        id: 10,
+        date: '2026-03-05',
+        amount: 50,
+        from: 'partner1',
+        to: 'partner2',
+        note: 'Paid in March for February rent',
+        allocations: [{ expenseId: 1, amount: 50 }],
+      },
+    ];
+
+    const result = calculateBalanceScopes(
+      [februaryExpense],
+      [februaryExpense],
+      settlements,
+      2026,
+      1,
+      0.5
+    );
+
+    // Month-only should include linked settlement for Feb, even though payment date is in Mar.
+    expect(result.month.partner1Balance).toBeCloseTo(0, 8);
+    expect(result.month.partner2Balance).toBeCloseTo(0, 8);
+    expect(result.settlementsAffectingMonth).toHaveLength(1);
+
+    // Cumulative through Feb is date-based, so March payment is still excluded there.
+    expect(result.cumulative.partner1Balance).toBe(-50);
+    expect(result.cumulative.partner2Balance).toBe(50);
+  });
+
+  it('keeps linked settlement off payment month when fully allocated to a prior expense month', () => {
+    const februaryExpense: Expense = {
+      id: 1,
+      description: 'Feb rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-02-10',
+      paidBy: 'partner2',
+    };
+
+    const settlements: Settlement[] = [
+      {
+        id: 10,
+        date: '2026-03-05',
+        amount: 50,
+        from: 'partner1',
+        to: 'partner2',
+        note: '',
+        allocations: [{ expenseId: 1, amount: 50 }],
+      },
+    ];
+
+    const result = calculateBalanceScopes(
+      [],
+      [februaryExpense],
+      settlements,
+      2026,
+      2,
+      0.5
+    );
+
+    expect(result.settlementsAffectingMonth).toHaveLength(0);
+    expect(result.month.partner1Balance).toBe(0);
+    expect(result.month.partner2Balance).toBe(0);
+  });
+
   it('does not leak next-month settlement into selected month', () => {
     const januaryExpenses: Expense[] = [
       {

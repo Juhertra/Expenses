@@ -12,9 +12,17 @@ export interface ScopedBalanceResult {
   partner2Balance: number;
 }
 
+export interface ScopedSettlementEntry {
+  settlement: Settlement;
+  appliedAmount: number;
+  linkedExpenseIds: number[];
+  includesPaymentMonthRemainder: boolean;
+}
+
 export interface BalanceScopesResult {
   month: ScopedBalanceResult;
   cumulative: ScopedBalanceResult;
+  settlementsAffectingMonth: ScopedSettlementEntry[];
   settlementsInMonth: Settlement[];
   settlementsThroughMonth: Settlement[];
 }
@@ -29,12 +37,36 @@ function isOnOrBeforeMonth(dateStr: string, year: number, month: number): boolea
   return parts.year < year || (parts.year === year && parts.month <= month);
 }
 
-function calculateNetSettlementToPartner1(settlements: Settlement[]): number {
+interface SettlementTransfer {
+  amount: number;
+  from: Settlement['from'];
+  to: Settlement['to'];
+}
+
+function parsePositiveAmount(value: unknown): number | null {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return amount;
+}
+
+function isPersonalSharedExpense(expense: Expense): boolean {
+  return expense.type === 'expense' && (expense.paidBy === 'partner1' || expense.paidBy === 'partner2');
+}
+
+function toSettlementTransfer(settlement: Settlement, amount: number): SettlementTransfer | null {
+  const parsedAmount = parsePositiveAmount(amount);
+  if (parsedAmount === null) return null;
+  return {
+    amount: parsedAmount,
+    from: settlement.from,
+    to: settlement.to,
+  };
+}
+
+function calculateNetSettlementToPartner1(settlements: SettlementTransfer[]): number {
   return settlements.reduce((sum, settlement) => {
-    const amount = Number(settlement.amount);
-    if (!Number.isFinite(amount)) return sum;
-    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - amount;
-    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + amount;
+    if (settlement.from === 'partner1' && settlement.to === 'partner2') return sum - settlement.amount;
+    if (settlement.from === 'partner2' && settlement.to === 'partner1') return sum + settlement.amount;
     return sum;
   }, 0);
 }
@@ -42,7 +74,7 @@ function calculateNetSettlementToPartner1(settlements: Settlement[]): number {
 function calculateScopedBalance(
   expenses: Expense[],
   splitRatio: number,
-  settlements: Settlement[]
+  settlements: SettlementTransfer[]
 ): ScopedBalanceResult {
   const partner1Paid = expenses
     .filter(exp => exp.type === 'expense' && exp.paidBy === 'partner1')
@@ -72,6 +104,63 @@ function calculateScopedBalance(
   };
 }
 
+function buildMonthSettlementEntries(
+  settlements: Settlement[],
+  expenseById: Map<number, Expense>,
+  selectedYear: number,
+  selectedMonth: number
+): ScopedSettlementEntry[] {
+  const entries: ScopedSettlementEntry[] = [];
+
+  for (const settlement of settlements) {
+    const settlementAmount = parsePositiveAmount(settlement.amount);
+    if (settlementAmount === null) continue;
+
+    let remaining = settlementAmount;
+    let appliedAmount = 0;
+    let includesPaymentMonthRemainder = false;
+    const linkedExpenseIds: number[] = [];
+
+    const allocations = Array.isArray(settlement.allocations) ? settlement.allocations : [];
+    for (const allocation of allocations) {
+      if (remaining <= 0) break;
+
+      const expenseId = Number(allocation?.expenseId);
+      const allocationAmount = parsePositiveAmount(allocation?.amount);
+      if (!Number.isFinite(expenseId) || allocationAmount === null) continue;
+
+      const consumedAmount = Math.min(allocationAmount, remaining);
+      remaining -= consumedAmount;
+
+      const linkedExpense = expenseById.get(expenseId);
+      if (!linkedExpense || !isPersonalSharedExpense(linkedExpense)) {
+        continue;
+      }
+
+      if (isInMonth(linkedExpense.date, selectedYear, selectedMonth)) {
+        appliedAmount += consumedAmount;
+        linkedExpenseIds.push(expenseId);
+      }
+    }
+
+    if (remaining > 0 && isInMonth(settlement.date, selectedYear, selectedMonth)) {
+      appliedAmount += remaining;
+      includesPaymentMonthRemainder = true;
+    }
+
+    if (appliedAmount > 0) {
+      entries.push({
+        settlement,
+        appliedAmount,
+        linkedExpenseIds: [...new Set(linkedExpenseIds)],
+        includesPaymentMonthRemainder,
+      });
+    }
+  }
+
+  return entries;
+}
+
 export function calculateBalanceScopes(
   monthExpenses: Expense[],
   cumulativeExpensesThroughMonth: Expense[],
@@ -80,20 +169,42 @@ export function calculateBalanceScopes(
   selectedMonth: number,
   splitRatio: number
 ): BalanceScopesResult {
+  const expenseById = new Map<number, Expense>();
+  for (const expense of cumulativeExpensesThroughMonth) {
+    expenseById.set(expense.id, expense);
+  }
+  for (const expense of monthExpenses) {
+    expenseById.set(expense.id, expense);
+  }
+
+  const settlementsAffectingMonth = buildMonthSettlementEntries(
+    settlements,
+    expenseById,
+    selectedYear,
+    selectedMonth
+  );
+  const monthSettlementTransfers = settlementsAffectingMonth
+    .map(entry => toSettlementTransfer(entry.settlement, entry.appliedAmount))
+    .filter((transfer): transfer is SettlementTransfer => transfer !== null);
+
   const settlementsThroughMonth = settlements.filter(settlement =>
     isOnOrBeforeMonth(settlement.date, selectedYear, selectedMonth)
   );
   const settlementsInMonth = settlementsThroughMonth.filter(settlement =>
     isInMonth(settlement.date, selectedYear, selectedMonth)
   );
+  const cumulativeSettlementTransfers = settlementsThroughMonth
+    .map(settlement => toSettlementTransfer(settlement, settlement.amount))
+    .filter((transfer): transfer is SettlementTransfer => transfer !== null);
 
   return {
-    month: calculateScopedBalance(monthExpenses, splitRatio, settlementsInMonth),
+    month: calculateScopedBalance(monthExpenses, splitRatio, monthSettlementTransfers),
     cumulative: calculateScopedBalance(
       cumulativeExpensesThroughMonth,
       splitRatio,
-      settlementsThroughMonth
+      cumulativeSettlementTransfers
     ),
+    settlementsAffectingMonth,
     settlementsInMonth,
     settlementsThroughMonth,
   };

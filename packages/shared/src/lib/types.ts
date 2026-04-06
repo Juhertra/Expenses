@@ -80,5 +80,11 @@ export interface Settlement {
   from: 'partner1' | 'partner2';
   to: 'partner1' | 'partner2';
   note?: string;
+  allocations?: SettlementAllocation[];
+}
+
+export interface SettlementAllocation {
+  expenseId: number;
+  amount: number;
 }
 
