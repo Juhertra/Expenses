@@ -23,6 +23,7 @@ export interface BalanceScopesResult {
   month: ScopedBalanceResult;
   cumulative: ScopedBalanceResult;
   settlementsAffectingMonth: ScopedSettlementEntry[];
+  settlementsAffectingThroughMonth: ScopedSettlementEntry[];
   settlementsInMonth: Settlement[];
   settlementsThroughMonth: Settlement[];
 }
@@ -104,11 +105,11 @@ function calculateScopedBalance(
   };
 }
 
-function buildMonthSettlementEntries(
+function buildScopedSettlementEntries(
   settlements: Settlement[],
   expenseById: Map<number, Expense>,
-  selectedYear: number,
-  selectedMonth: number
+  shouldApplyLinkedExpense: (expenseDate: string) => boolean,
+  shouldApplyPaymentRemainder: (settlementDate: string) => boolean
 ): ScopedSettlementEntry[] {
   const entries: ScopedSettlementEntry[] = [];
 
@@ -137,13 +138,13 @@ function buildMonthSettlementEntries(
         continue;
       }
 
-      if (isInMonth(linkedExpense.date, selectedYear, selectedMonth)) {
+      if (shouldApplyLinkedExpense(linkedExpense.date)) {
         appliedAmount += consumedAmount;
         linkedExpenseIds.push(expenseId);
       }
     }
 
-    if (remaining > 0 && isInMonth(settlement.date, selectedYear, selectedMonth)) {
+    if (remaining > 0 && shouldApplyPaymentRemainder(settlement.date)) {
       appliedAmount += remaining;
       includesPaymentMonthRemainder = true;
     }
@@ -177,11 +178,17 @@ export function calculateBalanceScopes(
     expenseById.set(expense.id, expense);
   }
 
-  const settlementsAffectingMonth = buildMonthSettlementEntries(
+  const settlementsAffectingMonth = buildScopedSettlementEntries(
     settlements,
     expenseById,
-    selectedYear,
-    selectedMonth
+    expenseDate => isInMonth(expenseDate, selectedYear, selectedMonth),
+    settlementDate => isInMonth(settlementDate, selectedYear, selectedMonth)
+  );
+  const settlementsAffectingThroughMonth = buildScopedSettlementEntries(
+    settlements,
+    expenseById,
+    expenseDate => isOnOrBeforeMonth(expenseDate, selectedYear, selectedMonth),
+    settlementDate => isOnOrBeforeMonth(settlementDate, selectedYear, selectedMonth)
   );
   const monthSettlementTransfers = settlementsAffectingMonth
     .map(entry => toSettlementTransfer(entry.settlement, entry.appliedAmount))
@@ -193,8 +200,8 @@ export function calculateBalanceScopes(
   const settlementsInMonth = settlementsThroughMonth.filter(settlement =>
     isInMonth(settlement.date, selectedYear, selectedMonth)
   );
-  const cumulativeSettlementTransfers = settlementsThroughMonth
-    .map(settlement => toSettlementTransfer(settlement, settlement.amount))
+  const cumulativeSettlementTransfers = settlementsAffectingThroughMonth
+    .map(entry => toSettlementTransfer(entry.settlement, entry.appliedAmount))
     .filter((transfer): transfer is SettlementTransfer => transfer !== null);
 
   return {
@@ -205,6 +212,7 @@ export function calculateBalanceScopes(
       cumulativeSettlementTransfers
     ),
     settlementsAffectingMonth,
+    settlementsAffectingThroughMonth,
     settlementsInMonth,
     settlementsThroughMonth,
   };

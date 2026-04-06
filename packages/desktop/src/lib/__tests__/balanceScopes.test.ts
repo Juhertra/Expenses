@@ -161,9 +161,58 @@ describe('calculateBalanceScopes', () => {
     expect(result.month.partner2Balance).toBeCloseTo(0, 8);
     expect(result.settlementsAffectingMonth).toHaveLength(1);
 
-    // Cumulative through Feb is date-based, so March payment is still excluded there.
-    expect(result.cumulative.partner1Balance).toBe(-50);
-    expect(result.cumulative.partner2Balance).toBe(50);
+    // Cumulative through Feb should include linked settlement amount for Feb expense,
+    // even though payment date is in March.
+    expect(result.cumulative.partner1Balance).toBeCloseTo(0, 8);
+    expect(result.cumulative.partner2Balance).toBeCloseTo(0, 8);
+    expect(result.settlementsThroughMonth).toHaveLength(0);
+    expect(result.settlementsAffectingThroughMonth).toHaveLength(1);
+  });
+
+  it('keeps future payment-month remainder out of cumulative scope until payment month', () => {
+    const februaryExpense: Expense = {
+      id: 1,
+      description: 'Feb rent',
+      amount: 100,
+      category: 'Housing',
+      type: 'expense',
+      date: '2026-02-10',
+      paidBy: 'partner2',
+    };
+
+    const settlements: Settlement[] = [
+      {
+        id: 11,
+        date: '2026-03-05',
+        amount: 70,
+        from: 'partner1',
+        to: 'partner2',
+        note: 'Partial link to Feb',
+        allocations: [{ expenseId: 1, amount: 50 }],
+      },
+    ];
+
+    const throughFebruary = calculateBalanceScopes(
+      [februaryExpense],
+      [februaryExpense],
+      settlements,
+      2026,
+      1,
+      0.5
+    );
+    expect(throughFebruary.cumulative.partner1Balance).toBeCloseTo(0, 8);
+
+    const throughMarch = calculateBalanceScopes(
+      [],
+      [februaryExpense],
+      settlements,
+      2026,
+      2,
+      0.5
+    );
+    // Feb obligation is already settled; March now includes the unlinked remainder in payment month.
+    expect(throughMarch.cumulative.partner1Balance).toBeCloseTo(20, 8);
+    expect(throughMarch.cumulative.partner2Balance).toBeCloseTo(-20, 8);
   });
 
   it('keeps linked settlement off payment month when fully allocated to a prior expense month', () => {

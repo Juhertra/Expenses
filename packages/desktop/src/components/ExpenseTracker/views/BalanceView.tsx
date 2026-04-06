@@ -11,6 +11,10 @@ import type {
 import type { Theme } from '../../../lib/theme';
 import { getLocalISODate } from '../../../lib/date';
 import { calculateBalanceScopes } from '../../../lib/balanceScopes';
+import {
+  getLinkableExpenseAvailabilities,
+  getReimbursementDirectionForExpense,
+} from '../../../lib/settlementAllocation';
 import { Button, IconButton } from '../../ui';
 
 type BalanceMode = 'month' | 'cumulative';
@@ -89,7 +93,7 @@ export function BalanceView({
     ? 0.5
     : Math.max(0.05, Math.min(0.95, householdSettings.partner1Ratio));
 
-  const linkableExpenses = useMemo(
+  const allLinkableExpenses = useMemo(
     () =>
       [...expenses]
         .filter(exp => exp.type === 'expense' && (exp.paidBy === 'partner1' || exp.paidBy === 'partner2'))
@@ -97,31 +101,35 @@ export function BalanceView({
     [expenses]
   );
 
+  const linkableExpenseAvailabilities = useMemo(
+    () =>
+      getLinkableExpenseAvailabilities(
+        allLinkableExpenses,
+        settlements,
+        splitRatio,
+        editingSettlementId
+      ),
+    [allLinkableExpenses, settlements, splitRatio, editingSettlementId]
+  );
+
+  const linkableExpenseAvailabilityById = useMemo(() => {
+    const map = new Map<number, (typeof linkableExpenseAvailabilities)[number]>();
+    for (const availability of linkableExpenseAvailabilities) {
+      map.set(availability.expense.id, availability);
+    }
+    return map;
+  }, [linkableExpenseAvailabilities]);
+
   const expenseLookup = useMemo(() => {
     const map = new Map<number, Expense>();
-    for (const expense of linkableExpenses) {
+    for (const expense of allLinkableExpenses) {
       map.set(expense.id, expense);
     }
     return map;
-  }, [linkableExpenses]);
+  }, [allLinkableExpenses]);
 
-  const getReimbursementDirection = (expense: Expense) => {
-    if (expense.paidBy === 'partner1') {
-      return {
-        from: 'partner2' as const,
-        to: 'partner1' as const,
-        recommendedAmount: expense.amount * (1 - splitRatio),
-      };
-    }
-    if (expense.paidBy === 'partner2') {
-      return {
-        from: 'partner1' as const,
-        to: 'partner2' as const,
-        recommendedAmount: expense.amount * splitRatio,
-      };
-    }
-    return null;
-  };
+  const getReimbursementDirection = (expense: Expense) =>
+    getReimbursementDirectionForExpense(expense, splitRatio);
 
   const scopes = calculateBalanceScopes(
     monthExpenses,
@@ -131,15 +139,24 @@ export function BalanceView({
     selectedMonth,
     splitRatio
   );
-  const { month, cumulative, settlementsAffectingMonth, settlementsThroughMonth } = scopes;
+  const {
+    month,
+    cumulative,
+    settlementsAffectingMonth,
+    settlementsAffectingThroughMonth,
+  } = scopes;
 
   const partner1Paid = month.partner1Paid;
   const partner2Paid = month.partner2Paid;
 
-  const partner1SettlementPaid = settlementsAffectingMonth
+  const settlementsForSelectedMode = balanceMode === 'month'
+    ? settlementsAffectingMonth
+    : settlementsAffectingThroughMonth;
+
+  const partner1SettlementPaid = settlementsForSelectedMode
     .filter(entry => entry.settlement.from === 'partner1' && entry.settlement.to === 'partner2')
     .reduce((sum, entry) => sum + entry.appliedAmount, 0);
-  const partner1SettlementReceived = settlementsAffectingMonth
+  const partner1SettlementReceived = settlementsForSelectedMode
     .filter(entry => entry.settlement.from === 'partner2' && entry.settlement.to === 'partner1')
     .reduce((sum, entry) => sum + entry.appliedAmount, 0);
   const partner2SettlementPaid = partner1SettlementReceived;
@@ -183,13 +200,6 @@ export function BalanceView({
     return resolved;
   };
 
-  const getLinkedExpenseIds = (settlement: Settlement): number[] => {
-    if (!Array.isArray(settlement.allocations)) return [];
-    return settlement.allocations
-      .map(allocation => Number(allocation.expenseId))
-      .filter(id => Number.isFinite(id));
-  };
-
   const getLinkedExpenseSummary = (linkedExpenseIds: number[]): string | null => {
     const uniqueIds = [...new Set(linkedExpenseIds)];
     if (uniqueIds.length === 0) return null;
@@ -212,11 +222,11 @@ export function BalanceView({
       linkedExpenseIds: entry.linkedExpenseIds,
       isPartialForScope: Math.abs(entry.appliedAmount - Number(entry.settlement.amount || 0)) > 0.01,
     }))
-    : settlementsThroughMonth.map(settlement => ({
-      settlement,
-      amountToShow: Number(settlement.amount || 0),
-      linkedExpenseIds: getLinkedExpenseIds(settlement),
-      isPartialForScope: false,
+    : settlementsAffectingThroughMonth.map(entry => ({
+      settlement: entry.settlement,
+      amountToShow: entry.appliedAmount,
+      linkedExpenseIds: entry.linkedExpenseIds,
+      isPartialForScope: Math.abs(entry.appliedAmount - Number(entry.settlement.amount || 0)) > 0.01,
     }));
 
   const linkedDirection = resolveLinkedDirection(settlementForm.allocationRows);
@@ -225,6 +235,9 @@ export function BalanceView({
     const rowAmount = Number(row.amount);
     return Number.isFinite(rowAmount) && rowAmount > 0 ? sum + rowAmount : sum;
   }, 0);
+  const hasAvailableLinkableExpenses = linkableExpenseAvailabilities.some(
+    availability => !availability.isFullyLinked
+  );
   const settlementAmountDraft = Number(settlementForm.amount);
   const unlinkedRemainderDraft = Number.isFinite(settlementAmountDraft)
     ? settlementAmountDraft - linkedDraftTotal
@@ -262,9 +275,17 @@ export function BalanceView({
 
       const nextRow = { ...row, ...patch };
       if (patch.expenseId !== undefined && patch.expenseId) {
-        const expense = expenseLookup.get(Number(patch.expenseId));
+        const expenseId = Number(patch.expenseId);
+        const expense = expenseLookup.get(expenseId);
         const direction = expense ? getReimbursementDirection(expense) : null;
-        const suggestedAmount = direction?.recommendedAmount ?? 0;
+        const availability = linkableExpenseAvailabilityById.get(expenseId);
+        const suggestedAmount = Math.max(
+          0,
+          Math.min(
+            direction?.recommendedAmount ?? 0,
+            availability?.remaining ?? 0
+          )
+        );
         if (!nextRow.amount && suggestedAmount > 0) {
           nextRow.amount = suggestedAmount.toFixed(2);
         }
@@ -333,6 +354,20 @@ export function BalanceView({
       }
       if (!Number.isFinite(linkedAmount) || linkedAmount <= 0) {
         alert(t('errors.invalidAmount', 'Please enter a valid linked amount'));
+        return;
+      }
+      const linkedAvailability = linkableExpenseAvailabilityById.get(linkedExpenseId);
+      if (!linkedAvailability || linkedAvailability.isFullyLinked) {
+        alert(t('errors.invalidSelection', 'Please select a valid expense to link'));
+        return;
+      }
+      if (linkedAmount - linkedAvailability.remaining > 0.000001) {
+        alert(
+          t(
+            'errors.linkedAmountExceedsRemaining',
+            'Linked amount exceeds the remaining amount available for this expense'
+          )
+        );
         return;
       }
       if (parsedAllocations.some(allocation => allocation.expenseId === linkedExpenseId)) {
@@ -625,7 +660,7 @@ export function BalanceView({
               <p className="text-xs text-slate-400 mt-1">
                 {balanceMode === 'month'
                   ? t('labels.selectedMonthSettlements', 'Showing settlements from selected month')
-                  : t('labels.allSettlements', 'Showing settlements through selected month')}
+                  : t('labels.cumulativeAffectingSettlements', 'Showing settlements affecting months through selected month')}
               </p>
             </div>
             <Button
@@ -769,11 +804,21 @@ export function BalanceView({
                   <button
                     type="button"
                     onClick={addAllocationRow}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-700"
+                    disabled={!hasAvailableLinkableExpenses}
+                    className={`text-xs px-3 py-1.5 rounded-lg border border-slate-600 ${
+                      hasAvailableLinkableExpenses
+                        ? 'text-slate-200 hover:bg-slate-700'
+                        : 'text-slate-500 cursor-not-allowed'
+                    }`}
                   >
                     {t('buttons.addLink', 'Add link')}
                   </button>
                 </div>
+                {!hasAvailableLinkableExpenses && (
+                  <p className="text-xs text-slate-500">
+                    {t('labels.allExpensesFullyLinked', 'All expenses are already fully linked')}
+                  </p>
+                )}
 
                 {settlementForm.allocationRows.length === 0 ? (
                   <p className="text-xs text-slate-500">
@@ -782,12 +827,21 @@ export function BalanceView({
                 ) : (
                   <div className="space-y-2">
                     {settlementForm.allocationRows.map(row => {
+                      const selectedExpenseId = Number(row.expenseId);
+                      const selectableAvailabilities = linkableExpenseAvailabilities.filter(
+                        availability =>
+                          !availability.isFullyLinked ||
+                          availability.expense.id === selectedExpenseId
+                      );
                       const selectedExpense = row.expenseId
-                        ? expenseLookup.get(Number(row.expenseId))
+                        ? expenseLookup.get(selectedExpenseId)
                         : undefined;
                       const selectedDirection = selectedExpense
                         ? getReimbursementDirection(selectedExpense)
                         : null;
+                      const selectedAvailability = row.expenseId
+                        ? linkableExpenseAvailabilityById.get(selectedExpenseId)
+                        : undefined;
                       return (
                         <div key={row.id} className="rounded-lg border border-slate-700 p-2 space-y-2">
                           <select
@@ -797,9 +851,9 @@ export function BalanceView({
                             className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                           >
                             <option value="">{t('labels.selectExpense', 'Select expense')}</option>
-                            {linkableExpenses.map(expense => (
+                            {selectableAvailabilities.map(({ expense, remaining }) => (
                               <option key={expense.id} value={expense.id}>
-                                {`${formatDateLocalized(expense.date)} - ${expense.description} - ${formatCurrency(expense.amount)}`}
+                                {`${formatDateLocalized(expense.date)} - ${expense.description} - ${formatCurrency(expense.amount)} (${t('labels.remainingToLink', 'remaining')}: ${formatCurrency(remaining)})`}
                               </option>
                             ))}
                           </select>
@@ -829,6 +883,12 @@ export function BalanceView({
                               ({selectedDirection.from === 'partner1' ? partnerNames.partner1 : partnerNames.partner2}{' '}
                               {'->'}{' '}
                               {selectedDirection.to === 'partner1' ? partnerNames.partner1 : partnerNames.partner2})
+                              {selectedAvailability && (
+                                <>
+                                  {' | '}
+                                  {t('labels.remainingToLink', 'remaining')}: {withLtr(formatCurrency(selectedAvailability.remaining))}
+                                </>
+                              )}
                             </p>
                           )}
                         </div>
