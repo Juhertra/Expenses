@@ -230,6 +230,120 @@ describe('BalanceView', () => {
     expect(screen.getByRole('option', { name: /March rent/i })).toBeTruthy();
   });
 
+  it('filters manual allocation candidates by the settlement direction and refilters when from/to changes', () => {
+    const partner2Expense = makeExpense({ id: 1, description: 'Sivan rent', paidBy: 'partner2' });
+    const partner1Expense = makeExpense({ id: 2, description: 'Hernan groceries', paidBy: 'partner1' });
+
+    renderBalanceView({
+      monthExpenses: [partner2Expense, partner1Expense],
+      expenses: [partner2Expense, partner1Expense],
+      settlements: [],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Record payment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add allocation/i }));
+
+    let expenseSelect = screen.getByLabelText('Select expense');
+    expect(within(expenseSelect).getByRole('option', { name: /Sivan rent/i })).toBeTruthy();
+    expect(within(expenseSelect).queryByRole('option', { name: /Hernan groceries/i })).toBeNull();
+
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: 'partner2' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: 'partner1' } });
+
+    expenseSelect = screen.getByLabelText('Select expense');
+    expect(within(expenseSelect).getByRole('option', { name: /Hernan groceries/i })).toBeTruthy();
+    expect(within(expenseSelect).queryByRole('option', { name: /Sivan rent/i })).toBeNull();
+  });
+
+  it('keeps selected allocation rows authoritative for direction until they are cleared', () => {
+    const firstPartner2Expense = makeExpense({ id: 1, description: 'Sivan rent', amount: 100, paidBy: 'partner2', date: '2026-04-01' });
+    const secondPartner2Expense = makeExpense({ id: 2, description: 'Sivan water', amount: 100, paidBy: 'partner2', date: '2026-04-02' });
+    const partner1Expense = makeExpense({ id: 3, description: 'Hernan groceries', amount: 100, paidBy: 'partner1', date: '2026-04-03' });
+
+    renderBalanceView({
+      monthExpenses: [firstPartner2Expense, secondPartner2Expense, partner1Expense],
+      expenses: [firstPartner2Expense, secondPartner2Expense, partner1Expense],
+      settlements: [],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Record payment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add allocation/i }));
+    fireEvent.change(screen.getByLabelText('Select expense'), { target: { value: '1' } });
+
+    expect(
+      screen.getAllByText('Selected allocations currently determine the effective settlement direction until they are cleared.').length
+    ).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: 'partner2' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: 'partner1' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add allocation/i }));
+
+    const expenseSelects = screen.getAllByLabelText('Select expense');
+    const secondSelect = expenseSelects[1];
+    expect(within(secondSelect).getByRole('option', { name: /Sivan water/i })).toBeTruthy();
+    expect(within(secondSelect).queryByRole('option', { name: /Hernan groceries/i })).toBeNull();
+  });
+
+  it('keeps selected historical allocations visible in edit mode', () => {
+    const marchExpense = makeExpense({ id: 1, description: 'March rent', paidBy: 'partner2', date: '2026-03-10' });
+    const aprilExpense = makeExpense({ id: 2, description: 'April rent', paidBy: 'partner2', date: '2026-04-10' });
+    const settlements = [
+      makeSettlement({
+        id: 16,
+        amount: 50,
+        from: 'partner1',
+        to: 'partner2',
+        allocations: [{ expenseId: 1, amount: 50 }],
+      }),
+    ];
+
+    renderBalanceView({
+      monthExpenses: [aprilExpense],
+      expenses: [marchExpense, aprilExpense],
+      settlements,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Cumulative \+ settlements/i }));
+    fireEvent.click(within(screen.getByTestId('settlements-section')).getByTitle(/Edit settlement/i));
+
+    const expenseSelect = screen.getByLabelText('Select expense');
+    expect(within(expenseSelect).getByRole('option', { name: /March rent/i })).toBeTruthy();
+    expect(within(expenseSelect).getByRole('option', { name: /April rent/i })).toBeTruthy();
+  });
+
+  it('guards mixed-direction legacy allocations in edit mode', () => {
+    const partner2Expense = makeExpense({ id: 1, description: 'Sivan rent', paidBy: 'partner2' });
+    const partner1Expense = makeExpense({ id: 2, description: 'Hernan groceries', paidBy: 'partner1' });
+    const settlements = [
+      makeSettlement({
+        id: 17,
+        amount: 70,
+        from: 'partner1',
+        to: 'partner2',
+        allocations: [
+          { expenseId: 1, amount: 50 },
+          { expenseId: 2, amount: 20 },
+        ],
+      }),
+    ];
+
+    renderBalanceView({
+      monthExpenses: [partner2Expense, partner1Expense],
+      expenses: [partner2Expense, partner1Expense],
+      settlements,
+    });
+
+    fireEvent.click(within(screen.getByTestId('settlements-section')).getByTitle(/Edit settlement/i));
+
+    expect(
+      screen.getByText(
+        'This settlement contains allocations with opposite reimbursement directions. Remove conflicting rows before adding new allocations.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Add allocation/i }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: /Auto-allocate oldest first/i }).hasAttribute('disabled')).toBe(true);
+  });
+
   it('auto-allocates current-scope expenses oldest first', () => {
     const olderExpense = makeExpense({ id: 1, description: 'Older', amount: 40, paidBy: 'partner2', date: '2026-04-01' });
     const newerExpense = makeExpense({ id: 2, description: 'Newer', amount: 60, paidBy: 'partner2', date: '2026-04-02' });
@@ -290,6 +404,25 @@ describe('BalanceView', () => {
     expect(
       within(screen.getByTestId('settlements-section')).getAllByText(/April settlement/i).length
     ).toBeGreaterThan(0);
+  });
+
+  it('keeps the lower Why this balance cards in the same partner order as the upper cards', () => {
+    const partner1Expense = makeExpense({ id: 1, description: 'Groceries', amount: 100, paidBy: 'partner1' });
+    const partner2Expense = makeExpense({ id: 2, description: 'Rent', amount: 100, paidBy: 'partner2' });
+
+    renderBalanceView({
+      monthExpenses: [partner1Expense, partner2Expense],
+      expenses: [partner1Expense, partner2Expense],
+      settlements: [],
+    });
+
+    const partner1Card = screen.getByTestId('why-balance-expenses-partner1');
+    const partner2Card = screen.getByTestId('why-balance-expenses-partner2');
+
+    expect(within(partner1Card).getByText('Expenses paid by Hernan')).toBeTruthy();
+    expect(within(partner1Card).getByText(/Groceries/i)).toBeTruthy();
+    expect(within(partner2Card).getByText('Expenses paid by Sivan')).toBeTruthy();
+    expect(within(partner2Card).getByText(/Rent/i)).toBeTruthy();
   });
 
   it('renders the new settlement/allocation copy in Hebrew', async () => {

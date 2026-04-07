@@ -154,6 +154,9 @@
     "unallocatedRemainder": "Unallocated remainder",
     "scopeFirstAllocationHint": "Showing current-scope expenses first. Reveal older eligible expenses when needed.",
     "showingAllEligibleExpenses": "Showing eligible expenses from the full visible history.",
+    "allocationDirectionHint": "Only expenses paid by {{name}} can be allocated for this direction.",
+    "allocationDirectionControlledByRows": "Selected allocations currently determine the effective settlement direction until they are cleared.",
+    "allocationDirectionConflict": "This settlement contains allocations with opposite reimbursement directions. Remove conflicting rows before adding new allocations.",
     "settlementAllocationStatus": {
       "fully_allocated": "Fully allocated",
       "partially_allocated": "Partially allocated",

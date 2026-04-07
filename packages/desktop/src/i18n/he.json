@@ -154,6 +154,9 @@
     "unallocatedRemainder": "יתרה לא מוקצית",
     "scopeFirstAllocationHint": "מציג תחילה הוצאות מהטווח הנוכחי. ניתן לחשוף הוצאות זכאיות ישנות יותר לפי הצורך.",
     "showingAllEligibleExpenses": "מוצגות הוצאות זכאיות מכל ההיסטוריה הזמינה.",
+    "allocationDirectionHint": "בכיוון הזה אפשר להקצות רק הוצאות ששולמו על ידי {{name}}.",
+    "allocationDirectionControlledByRows": "ההקצאות שנבחרו קובעות כרגע את כיוון ההתחשבנות בפועל עד שמנקים אותן.",
+    "allocationDirectionConflict": "ההתחשבנות הזאת כוללת הקצאות עם כיווני החזר מנוגדים. צריך להסיר שורות מתנגשות לפני שמוסיפים הקצאות חדשות.",
     "settlementAllocationStatus": {
       "fully_allocated": "מוקצה במלואו",
       "partially_allocated": "מוקצה חלקית",

@@ -28,6 +28,11 @@ interface SettlementAllocationFormRow {
   amount: string;
 }
 
+type SettlementDirection = {
+  from: 'partner1' | 'partner2';
+  to: 'partner1' | 'partner2';
+};
+
 interface BalanceViewProps {
   /** All expenses up to (and including) the selected month — used for cumulative settlement balance. */
   expenses: Expense[];
@@ -206,7 +211,7 @@ export function BalanceView({
   };
 
   const resolveLinkedDirection = (rows: SettlementAllocationFormRow[]) => {
-    let resolved: { from: 'partner1' | 'partner2'; to: 'partner1' | 'partner2' } | null = null;
+    let resolved: SettlementDirection | null = null;
     for (const row of rows) {
       if (!row.expenseId) continue;
       const direction = getDirectionForExpenseId(row.expenseId);
@@ -220,6 +225,18 @@ export function BalanceView({
       }
     }
     return resolved;
+  };
+
+  const availabilityMatchesDirection = (
+    expense: Expense,
+    direction: SettlementDirection | null
+  ) => {
+    if (!direction) return true;
+    const reimbursementDirection = getReimbursementDirection(expense);
+    return (
+      reimbursementDirection?.from === direction.from &&
+      reimbursementDirection?.to === direction.to
+    );
   };
 
   const getAllocatedExpenseSummary = (linkedExpenseIds: number[]): string | null => {
@@ -252,6 +269,19 @@ export function BalanceView({
   const displayedSettlements = viewModel.displayedSettlements;
   const unallocatedSettlements = viewModel.unallocatedSettlements;
 
+  const linkedDirection = resolveLinkedDirection(settlementForm.allocationRows);
+  const hasLinkedRows = settlementForm.allocationRows.some(row => row.expenseId);
+  const hasAllocationDirectionConflict = linkedDirection === 'mixed';
+  const effectiveAllocationDirection: SettlementDirection | null =
+    linkedDirection && linkedDirection !== 'mixed'
+      ? linkedDirection
+      : {
+          from: settlementForm.from,
+          to: settlementForm.to,
+        };
+  const isAllocationDirectionControlledByRows =
+    hasLinkedRows && linkedDirection !== 'mixed' && linkedDirection !== null;
+
   const getSelectableAvailabilities = (selectedExpenseId: number | null) => {
     const selectedAvailability =
       selectedExpenseId !== null ? linkableExpenseAvailabilityById.get(selectedExpenseId) : undefined;
@@ -261,6 +291,15 @@ export function BalanceView({
       for (const availability of availabilities) {
         const isSelected = availability.expense.id === selectedExpenseId;
         if (availability.isFullyLinked && !isSelected) continue;
+        if (hasAllocationDirectionConflict) {
+          if (isSelected) {
+            items.set(availability.expense.id, availability);
+          }
+          continue;
+        }
+        if (!isSelected && !availabilityMatchesDirection(availability.expense, effectiveAllocationDirection)) {
+          continue;
+        }
         items.set(availability.expense.id, availability);
       }
     };
@@ -275,15 +314,13 @@ export function BalanceView({
     return [...items.values()];
   };
 
-  const linkedDirection = resolveLinkedDirection(settlementForm.allocationRows);
-  const hasLinkedRows = settlementForm.allocationRows.some(row => row.expenseId);
+  const availableDirectionalAvailabilities = getSelectableAvailabilities(null);
   const linkedDraftTotal = settlementForm.allocationRows.reduce((sum, row) => {
     const rowAmount = Number(row.amount);
     return Number.isFinite(rowAmount) && rowAmount > 0 ? sum + rowAmount : sum;
   }, 0);
-  const hasAvailableLinkableExpenses = scopeFirstLinkableExpenseAvailabilities.some(
-    availability => !availability.isFullyLinked
-  ) || historicalLinkableExpenseAvailabilities.some(availability => !availability.isFullyLinked);
+  const hasAvailableLinkableExpenses =
+    !hasAllocationDirectionConflict && availableDirectionalAvailabilities.length > 0;
   const settlementAmountDraft = Number(settlementForm.amount);
   const unallocatedRemainderDraft = Number.isFinite(settlementAmountDraft)
     ? settlementAmountDraft - linkedDraftTotal
@@ -305,31 +342,23 @@ export function BalanceView({
   };
 
   const getAutoAllocationCandidates = () => {
-    if (linkedDirection === 'mixed') return [];
+    if (hasAllocationDirectionConflict) return [];
     const direction =
-      linkedDirection ?? {
+      effectiveAllocationDirection ?? {
         from: settlementForm.from,
         to: settlementForm.to,
       };
 
     const scopedCandidates = scopeFirstLinkableExpenseAvailabilities.filter(availability => {
       if (availability.isFullyLinked) return false;
-      const reimbursementDirection = getReimbursementDirection(availability.expense);
-      return (
-        reimbursementDirection?.from === direction.from &&
-        reimbursementDirection?.to === direction.to
-      );
+      return availabilityMatchesDirection(availability.expense, direction);
     });
 
     if (!showAllEligibleExpenses) return scopedCandidates;
 
     const historicalCandidates = historicalLinkableExpenseAvailabilities.filter(availability => {
       if (availability.isFullyLinked) return false;
-      const reimbursementDirection = getReimbursementDirection(availability.expense);
-      return (
-        reimbursementDirection?.from === direction.from &&
-        reimbursementDirection?.to === direction.to
-      );
+      return availabilityMatchesDirection(availability.expense, direction);
     });
 
     return [...scopedCandidates, ...historicalCandidates];
@@ -884,29 +913,10 @@ export function BalanceView({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3">
-              <div className="text-xs text-slate-400 mb-2">
-                {t('labels.expensesPaidBy', 'Expenses paid by {{name}}', { name: partnerNames.partner2 })}
-              </div>
-              {expenseShareBreakdown.partner1OwesItems.length === 0 ? (
-                <p className="text-xs text-slate-500">{t('messages.noExpensesFound', 'No expenses in this scope')}</p>
-              ) : (
-                <div className="space-y-1">
-                  {expenseShareBreakdown.partner1OwesItems.slice(0, 6).map(({ expense, shareAmount }) => (
-                    <div key={expense.id} className="flex justify-between gap-2 text-xs">
-                      <span className="truncate text-slate-300">
-                        {formatDateLocalized(expense.date)} - {expense.description}
-                      </span>
-                      <span className="whitespace-nowrap text-amber-300">
-                        {withLtr(formatCurrency(shareAmount))}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3">
+            <div
+              data-testid="why-balance-expenses-partner1"
+              className="rounded-xl border border-slate-700 bg-slate-800/50 p-3"
+            >
               <div className="text-xs text-slate-400 mb-2">
                 {t('labels.expensesPaidBy', 'Expenses paid by {{name}}', { name: partnerNames.partner1 })}
               </div>
@@ -920,6 +930,31 @@ export function BalanceView({
                         {formatDateLocalized(expense.date)} - {expense.description}
                       </span>
                       <span className="whitespace-nowrap text-green-300">
+                        {withLtr(formatCurrency(shareAmount))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div
+              data-testid="why-balance-expenses-partner2"
+              className="rounded-xl border border-slate-700 bg-slate-800/50 p-3"
+            >
+              <div className="text-xs text-slate-400 mb-2">
+                {t('labels.expensesPaidBy', 'Expenses paid by {{name}}', { name: partnerNames.partner2 })}
+              </div>
+              {expenseShareBreakdown.partner1OwesItems.length === 0 ? (
+                <p className="text-xs text-slate-500">{t('messages.noExpensesFound', 'No expenses in this scope')}</p>
+              ) : (
+                <div className="space-y-1">
+                  {expenseShareBreakdown.partner1OwesItems.slice(0, 6).map(({ expense, shareAmount }) => (
+                    <div key={expense.id} className="flex justify-between gap-2 text-xs">
+                      <span className="truncate text-slate-300">
+                        {formatDateLocalized(expense.date)} - {expense.description}
+                      </span>
+                      <span className="whitespace-nowrap text-amber-300">
                         {withLtr(formatCurrency(shareAmount))}
                       </span>
                     </div>
@@ -1252,6 +1287,7 @@ export function BalanceView({
                         type="button"
                         onClick={autoAllocateOldestFirst}
                         disabled={
+                          hasAllocationDirectionConflict ||
                           !Number.isFinite(settlementAmountDraft) ||
                           settlementAmountDraft <= 0 ||
                           autoAllocationCandidates.length === 0
@@ -1285,8 +1321,38 @@ export function BalanceView({
                       ? t('labels.showingAllEligibleExpenses', 'Showing eligible expenses from the full visible history.')
                       : t('labels.scopeFirstAllocationHint', 'Showing current-scope expenses first. Reveal older eligible expenses when needed.')}
                   </p>
+                  {!hasAllocationDirectionConflict && effectiveAllocationDirection && (
+                    <p className="text-xs text-slate-500">
+                      {t(
+                        'labels.allocationDirectionHint',
+                        'Only expenses paid by {{name}} can be allocated for this direction.',
+                        {
+                          name:
+                            effectiveAllocationDirection.to === 'partner1'
+                              ? partnerNames.partner1
+                              : partnerNames.partner2,
+                        }
+                      )}
+                    </p>
+                  )}
+                  {isAllocationDirectionControlledByRows && (
+                    <p className="text-xs text-slate-500">
+                      {t(
+                        'labels.allocationDirectionControlledByRows',
+                        'Selected allocations currently determine the effective settlement direction until they are cleared.'
+                      )}
+                    </p>
+                  )}
+                  {hasAllocationDirectionConflict && (
+                    <p className="text-xs text-rose-300">
+                      {t(
+                        'labels.allocationDirectionConflict',
+                        'This settlement contains allocations with opposite reimbursement directions. Remove conflicting rows before adding new allocations.'
+                      )}
+                    </p>
+                  )}
                 </div>
-                {!hasAvailableLinkableExpenses && (
+                {!hasAvailableLinkableExpenses && !hasAllocationDirectionConflict && (
                   <p className="text-xs text-slate-500">
                     {t('labels.allExpensesFullyAllocated', 'All eligible expenses are already fully allocated')}
                   </p>
@@ -1317,6 +1383,7 @@ export function BalanceView({
                           <select
                             value={row.expenseId}
                             onChange={(e) => updateAllocationRow(row.id, { expenseId: e.target.value })}
+                            aria-label={t('labels.selectExpense', 'Select expense')}
                             dir={dir}
                             className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                           >
@@ -1451,7 +1518,7 @@ export function BalanceView({
                 <select
                   value={settlementForm.from}
                   onChange={(e) => setSettlementForm({ ...settlementForm, from: e.target.value as 'partner1' | 'partner2' })}
-                  disabled={hasLinkedRows}
+                  aria-label={t('labels.from')}
                   dir={dir}
                   className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                 >
@@ -1465,16 +1532,19 @@ export function BalanceView({
                 <select
                   value={settlementForm.to}
                   onChange={(e) => setSettlementForm({ ...settlementForm, to: e.target.value as 'partner1' | 'partner2' })}
-                  disabled={hasLinkedRows}
+                  aria-label={t('labels.to')}
                   dir={dir}
                   className={`w-full bg-slate-700 border border-slate-600 rounded-lg ${isRTL ? 'pr-10 pl-4' : 'pl-4 pr-10'} py-2 ${getFocusClasses()} outline-none transition-all`}
                 >
                   <option value="partner1">{partnerNames.partner1}</option>
                   <option value="partner2">{partnerNames.partner2}</option>
                 </select>
-                {hasLinkedRows && linkedDirection !== 'mixed' && (
+                {isAllocationDirectionControlledByRows && (
                   <p className="text-xs text-slate-500 mt-2">
-                    {t('labels.directionLockedByLink', 'Direction is set by the linked expense')}
+                    {t(
+                      'labels.allocationDirectionControlledByRows',
+                      'Selected allocations currently determine the effective settlement direction until they are cleared.'
+                    )}
                   </p>
                 )}
               </div>
