@@ -145,7 +145,9 @@ interface ViewRouterProps {
   bulkCategorize: () => void;
   bulkDelete: () => void;
   saveInlineEdit: (id: number) => void;
-  editExpense: (expense: Expense) => void;
+  openCreateRecurringRule: () => void;
+  openEditRecurringRule: (rule: RecurringTransaction) => void;
+  openExpenseAction: (expense: Expense) => void;
   confirmDeleteExpense: (id: number, description: string) => void;
   confirmDeleteRecurring: (id: number, description: string) => void;
   deleteSettlement: (id: number) => Promise<void>;
@@ -228,7 +230,9 @@ export function ViewRouter({
   bulkCategorize,
   bulkDelete,
   saveInlineEdit,
-  editExpense,
+  openCreateRecurringRule,
+  openEditRecurringRule,
+  openExpenseAction,
   confirmDeleteExpense,
   confirmDeleteRecurring,
   deleteSettlement,
@@ -320,7 +324,9 @@ export function ViewRouter({
             setSearchQuery(dateStr);
             setCurrentView('transactions');
           }}
-          onEditExpense={editExpense}
+          onEditExpense={openExpenseAction}
+          onCreateRecurringRule={openCreateRecurringRule}
+          onEditRecurringRule={openEditRecurringRule}
           onDeleteRecurring={confirmDeleteRecurring}
           showToast={showToast}
           savingTransaction={savingTransaction}
@@ -371,7 +377,7 @@ export function ViewRouter({
           bulkCategorize={bulkCategorize}
           bulkDelete={bulkDelete}
           saveInlineEdit={saveInlineEdit}
-          editExpense={editExpense}
+          editExpense={openExpenseAction}
           confirmDeleteExpense={confirmDeleteExpense}
         />
       );

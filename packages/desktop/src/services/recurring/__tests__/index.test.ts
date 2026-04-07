@@ -1,4 +1,4 @@
-import { processRecurringTransactions } from '@expenses/shared/recurring';
+import { processRecurringTransactions } from '../../../../../shared/src/services/recurring/index';
 import type { RecurringTransaction, Expense } from '@expenses/shared/types';
 
 describe('processRecurringTransactions', () => {
@@ -26,6 +26,7 @@ describe('processRecurringTransactions', () => {
     expect(result.updatedExpenses[0].amount).toBe(1500);
     expect(result.updatedExpenses[0].date).toBe('2026-01-01');
     expect(result.updatedExpenses[0].isAuto).toBe(true);
+    expect(result.updatedExpenses[0].recurringId).toBe(1);
     expect(result.updatedRecurring[0].lastProcessed).toBeDefined();
   });
 

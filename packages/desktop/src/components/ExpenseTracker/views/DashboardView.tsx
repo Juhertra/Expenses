@@ -6,6 +6,7 @@ import {
   PlusCircle,
   TrendingDown,
   TrendingUp,
+  Edit2,
   Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -100,6 +101,8 @@ interface DashboardViewProps {
   onViewMonth: (month: number, year: number) => void;
   onFilterByDay: (dateStr: string) => void;
   onEditExpense: (expense: Expense) => void;
+  onCreateRecurringRule: () => void;
+  onEditRecurringRule: (rule: RecurringTransaction) => void;
   onDeleteRecurring: (id: number, description: string) => void;
   showToast: (message: string, type: 'success' | 'error') => void;
   savingTransaction: boolean;
@@ -142,6 +145,8 @@ export function DashboardView({
   onViewMonth,
   onFilterByDay,
   onEditExpense,
+  onCreateRecurringRule,
+  onEditRecurringRule,
   onDeleteRecurring,
   showToast,
 }: DashboardViewProps) {
@@ -714,7 +719,11 @@ export function DashboardView({
                       key={exp.id}
                       className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/50 transition-all cursor-pointer"
                       onClick={() => onEditExpense(exp)}
-                      title={t('tooltips.clickToEdit')}
+                      title={
+                        exp.isAuto || exp.recurringId != null
+                          ? t('tooltips.manageRecurringOccurrence')
+                          : t('tooltips.clickToEdit')
+                      }
                     >
                       <div
                         className={`w-10 h-10 ${categories[exp.category]?.color} rounded-xl flex items-center justify-center text-xl flex-shrink-0`}
@@ -722,8 +731,13 @@ export function DashboardView({
                         {categories[exp.category]?.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">
+                        <div className="font-medium text-sm truncate flex items-center gap-2">
                           {exp.description}
+                          {(exp.isAuto || exp.recurringId != null) && (
+                            <span className="inline-flex items-center rounded-full bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] uppercase tracking-wide text-purple-200">
+                              {t('labels.recurringRuleBadge')}
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-slate-400">
                           {exp.paidBy === 'joint'
@@ -755,10 +769,12 @@ export function DashboardView({
             {/* Upcoming recurring items */}
             <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">{t('labels.upcoming')}</h3>
+                <h3 className="text-lg font-bold">{t('labels.recurringRules')}</h3>
                 <button
+                  onClick={onCreateRecurringRule}
                   className="text-purple-400 text-sm hover:text-purple-300"
                   title={t('buttons.addRecurring')}
+                  aria-label={t('buttons.addRecurring')}
                 >
                   +
                 </button>
@@ -795,6 +811,14 @@ export function DashboardView({
                           {withLtr(`${rec.type === 'income' ? '+' : '-'}${formatCurrency(rec.amount)}`)}
                         </div>
                       </div>
+                      <IconButton
+                        onClick={() => onEditRecurringRule(rec)}
+                        variant="ghost"
+                        size="sm"
+                        title={t('buttons.editRecurringRule')}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </IconButton>
                       <IconButton
                         onClick={() => onDeleteRecurring(rec.id, rec.description)}
                         variant="danger"

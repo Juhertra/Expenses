@@ -9,6 +9,12 @@ import {
   setRecurring as persistRecurring,
 } from '../services/storage';
 import { getLocalISODate } from '../lib/date';
+import {
+  buildRecurringDraftFromForm,
+  buildRecurringRuleFromDraft,
+  createNumericId,
+  getRecurringProcessedMonthIso,
+} from '../lib/recurringRules';
 
 /**
  * Hook for managing expense form state and operations (add, edit, validate)
@@ -190,14 +196,16 @@ export function useExpenseForm() {
 
     setSavingTransaction(true);
     try {
+      const recurringId = formData.isRecurring ? createNumericId() : undefined;
       const newExpense: Expense = {
-        id: Date.now(),
+        id: createNumericId(),
         description: userDescription, // Store original user-entered description
         amount: parseFloat(formData.amount),
         category: formData.category,
         type: formData.type,
         date: formData.date,
         paidBy: formData.paidBy,
+        recurringId,
       };
 
       const newExpenses = [...expenses, newExpense];
@@ -217,19 +225,14 @@ export function useExpenseForm() {
       }
 
       if (formData.isRecurring) {
-        // Clamp recurring day to 1-31 range
-        const clampedDay = Math.max(1, Math.min(31, formData.recurringDay));
-
-        const newRecurringItem: RecurringTransaction = {
-          id: Date.now() + 1,
-          description: userDescription, // Store original user-entered description
-          amount: parseFloat(formData.amount),
-          category: formData.category,
-          type: formData.type,
-          paidBy: formData.paidBy,
-          recurringDay: clampedDay,
-          lastProcessed: new Date().toISOString()
-        };
+        const newRecurringItem: RecurringTransaction = buildRecurringRuleFromDraft(
+          buildRecurringDraftFromForm({
+            ...formData,
+            description: userDescription,
+          }),
+          recurringId!,
+          getRecurringProcessedMonthIso(formData.date)
+        );
         const recurringSaved = await saveRecurring([...recurring, newRecurringItem]);
 
         if (!recurringSaved) {

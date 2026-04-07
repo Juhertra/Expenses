@@ -49,6 +49,7 @@ export function processRecurringTransactions(
       )}`,
       paidBy: rec.paidBy,
       isAuto: true,
+      recurringId: rec.id,
     };
 
     updatedExpenses.push(newExpense);

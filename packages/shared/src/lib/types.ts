@@ -15,6 +15,7 @@ export interface Expense {
   date: string;
   paidBy: 'partner1' | 'partner2' | 'joint';
   isAuto?: boolean;
+  recurringId?: number;
 }
 
 export interface RecurringTransaction {

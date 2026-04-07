@@ -81,6 +81,9 @@ function validateExpenseItem(item: unknown, index: number): string[] {
   if (typeof e.type !== 'string' || !VALID_TYPES.includes(e.type as 'expense' | 'income')) errors.push(`Expense[${index}]: invalid type`);
   if (!VALID_PAID_BY.includes(e.paidBy as 'partner1' | 'partner2' | 'joint')) errors.push(`Expense[${index}]: invalid paidBy`);
   if (typeof e.date !== 'string') errors.push(`Expense[${index}]: date must be a string`);
+  if (e.recurringId !== undefined && typeof e.recurringId !== 'number') {
+    errors.push(`Expense[${index}]: recurringId must be a number`);
+  }
   return errors;
 }
 

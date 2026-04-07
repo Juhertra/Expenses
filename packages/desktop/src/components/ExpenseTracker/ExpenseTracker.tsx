@@ -17,6 +17,7 @@ import {
 import { Button } from '../ui/Button';
 import type {
   Expense,
+  FormData,
   RecurringTransaction,
   PartnerNames,
   ChartDataPoint,
@@ -35,6 +36,7 @@ import {
 import { useTheme } from '../../lib/theme';
 import { SettingsCenterModal } from './modals';
 import { WelcomeModal, FolderSelectionModal, AddCategoryModal } from '../modals';
+import { RecurringOccurrenceModal, RecurringRuleModal } from './modals';
 import { SaveStatusIndicator } from '../shared/SaveStatusIndicator';
 import { ExternalChangeBanner } from '../shared/ExternalChangeBanner';
 import { useExpenseForm } from '../../hooks/useExpenseForm';
@@ -45,7 +47,17 @@ import { useDataContext } from '../../contexts/ExpenseContext';
 import { useModalContext } from '../../contexts/ModalContext';
 import { getSuggestedCloudPaths, type CloudDriveInfo } from '../../lib/cloudDriveDetection';
 import { isFirstLaunch, markWelcomeSeen } from '../../lib/firstLaunch';
-import { parseISODateToLocalDate } from '../../lib/date';
+import { getLocalISODate, parseISODateToLocalDate } from '../../lib/date';
+import {
+  buildRecurringDraftFromExpense,
+  buildRecurringRuleFromDraft,
+  createNumericId,
+  createRecurringDraft,
+  getCurrentMonthProcessedIso,
+  getRecurringProcessedMonthIso,
+  resolveRecurringRuleLink,
+  type RecurringRuleDraft,
+} from '../../lib/recurringRules';
 import { ViewRouter } from './ViewRouter';
 
 type ViewType = 'dashboard' | 'transactions' | 'categories' | 'balance';
@@ -105,6 +117,7 @@ const ExpenseTracker: React.FC = () => {
     selectedIds, setSelectedIds,
     bulkMode, setBulkMode,
     transactionPage, setTransactionPage,
+    lastExpenseCategory,
     toast, showToast,
   } = useUIContext();
 
@@ -118,6 +131,7 @@ const ExpenseTracker: React.FC = () => {
     showWelcomeModal, setShowWelcomeModal,
     showFolderSelectionModal, setShowFolderSelectionModal,
     editingId,
+    setEditingId,
     editingCategory, setEditingCategory,
     inlineEditId, setInlineEditId,
     deleteConfirm, setDeleteConfirm,
@@ -167,12 +181,28 @@ const ExpenseTracker: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [tempNames, setTempNames] = useState<PartnerNames>(defaultPartnerNames);
   const [tempHouseholdSettings, setTempHouseholdSettings] = useState<HouseholdSettings>(defaultSettings);
+  const [showRecurringRuleModal, setShowRecurringRuleModal] = useState(false);
+  const [editingRecurringId, setEditingRecurringId] = useState<number | null>(null);
+  const [recurringRuleDraft, setRecurringRuleDraft] = useState<RecurringRuleDraft>(() =>
+    createRecurringDraft({ recurringDay: parseDateParts(getLocalISODate()).day })
+  );
+  const [recurringSourceExpense, setRecurringSourceExpense] = useState<{
+    expenseId: number;
+    occurrenceDraft: FormData;
+  } | null>(null);
+  const [occurrenceChoiceExpense, setOccurrenceChoiceExpense] = useState<Expense | null>(null);
+  const [savingRecurringRule, setSavingRecurringRule] = useState(false);
+  const lastExpenseCategoryRef = useRef(lastExpenseCategory);
 
   useEffect(() => {
     const lang = i18n.language || 'en';
     document.documentElement.lang = lang;
     document.documentElement.dir = i18n.dir(lang);
   }, [i18n, i18n.language]);
+
+  useEffect(() => {
+    lastExpenseCategoryRef.current = lastExpenseCategory;
+  }, [lastExpenseCategory]);
 
   // Sync temp state with context when data loads
   useEffect(() => {
@@ -227,6 +257,26 @@ const ExpenseTracker: React.FC = () => {
     setTempNames(partnerNames);
     setTempHouseholdSettings(householdSettings);
   }, [householdSettings, partnerNames]);
+
+  const recurringLinkByExpenseId = useMemo(() => {
+    const entries = expenses.map(expense => [expense.id, resolveRecurringRuleLink(expense, recurring)] as const);
+    return new Map<number, ReturnType<typeof resolveRecurringRuleLink>>(entries);
+  }, [expenses, recurring]);
+
+  const currentEditingExpense = useMemo(
+    () => expenses.find(expense => expense.id === editingId) ?? null,
+    [editingId, expenses]
+  );
+
+  const currentEditingRecurringLink = useMemo(
+    () => (currentEditingExpense ? recurringLinkByExpenseId.get(currentEditingExpense.id) ?? null : null),
+    [currentEditingExpense, recurringLinkByExpenseId]
+  );
+
+  const occurrenceChoiceLink = useMemo(
+    () => (occurrenceChoiceExpense ? recurringLinkByExpenseId.get(occurrenceChoiceExpense.id) ?? null : null),
+    [occurrenceChoiceExpense, recurringLinkByExpenseId]
+  );
 
   const openSettingsModal = useCallback((tab: 'settings' | 'shortcuts' = 'settings') => {
     resetSettingsDrafts();
@@ -929,20 +979,237 @@ const ExpenseTracker: React.FC = () => {
    *
    * @param newExpenses Updated expenses list
    */
-  const saveExpenses = async (newExpenses: Expense[]) => {
+  const saveExpenses = useCallback(async (newExpenses: Expense[]) => {
     await persistExpenses(newExpenses);
     setExpenses(newExpenses);
-  };
+  }, [setExpenses]);
 
   /**
    * Save a new list of recurring transactions to storage and update state.
    *
    * @param newRecurring Updated recurring list
    */
-  const saveRecurring = async (newRecurring: RecurringTransaction[]) => {
+  const saveRecurring = useCallback(async (newRecurring: RecurringTransaction[]) => {
     await persistRecurring(newRecurring);
     setRecurring(newRecurring);
-  };
+  }, [setRecurring]);
+
+  const closeRecurringRuleModal = useCallback(
+    (options?: { reopenOccurrence?: boolean }) => {
+      const pendingSource = recurringSourceExpense;
+      const shouldReopenOccurrence = options?.reopenOccurrence ?? false;
+
+      setShowRecurringRuleModal(false);
+      setEditingRecurringId(null);
+      setRecurringSourceExpense(null);
+      setRecurringRuleDraft(
+        createRecurringDraft({
+          category: lastExpenseCategoryRef.current,
+          recurringDay: parseDateParts(getLocalISODate()).day,
+        })
+      );
+
+      if (shouldReopenOccurrence && pendingSource) {
+        setFormData(pendingSource.occurrenceDraft);
+        setEditingId(pendingSource.expenseId);
+        setShowAddModal(true);
+      }
+    },
+    [recurringSourceExpense, setEditingId, setFormData, setShowAddModal]
+  );
+
+  const openCreateRecurringRule = useCallback(
+    (overrides: Partial<RecurringRuleDraft> = {}) => {
+      setEditingRecurringId(null);
+      setRecurringSourceExpense(null);
+      setRecurringRuleDraft(
+        createRecurringDraft({
+          category: lastExpenseCategoryRef.current,
+          recurringDay: parseDateParts(getLocalISODate()).day,
+          ...overrides,
+        })
+      );
+      setShowRecurringRuleModal(true);
+    },
+    []
+  );
+
+  const openEditRecurringRule = useCallback((rule: RecurringTransaction) => {
+    setEditingRecurringId(rule.id);
+    setRecurringSourceExpense(null);
+    setRecurringRuleDraft({
+      description: rule.description,
+      amount: rule.amount.toString(),
+      category: rule.category,
+      type: rule.type,
+      paidBy: rule.paidBy,
+      recurringDay: rule.recurringDay,
+    });
+    setShowRecurringRuleModal(true);
+  }, []);
+
+  const openCreateRecurringRuleFromCurrentExpense = useCallback(() => {
+    if (editingId == null) return;
+
+    if (!formData.description.trim()) {
+      alert(t('errors.descriptionRequired'));
+      return;
+    }
+
+    const amount = parseFloat(formData.amount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      alert(t('errors.amountGreaterThanZero'));
+      return;
+    }
+
+    const occurrenceDraft: FormData = { ...formData };
+    setRecurringSourceExpense({
+      expenseId: editingId,
+      occurrenceDraft,
+    });
+    setEditingRecurringId(null);
+    setRecurringRuleDraft(
+      buildRecurringDraftFromExpense({
+        description: occurrenceDraft.description,
+        amount: parseFloat(occurrenceDraft.amount) || 0,
+        category: occurrenceDraft.category,
+        type: occurrenceDraft.type,
+        paidBy: occurrenceDraft.paidBy,
+        date: occurrenceDraft.date,
+      })
+    );
+    setShowAddModal(false);
+    setEditingId(null);
+    setShowRecurringRuleModal(true);
+  }, [editingId, formData, setEditingId, setShowAddModal, t]);
+
+  const saveRecurringRule = useCallback(async () => {
+    const description = recurringRuleDraft.description.trim();
+    const amount = parseFloat(recurringRuleDraft.amount);
+
+    if (!description) {
+      alert(t('errors.descriptionRequired'));
+      return;
+    }
+
+    if (Number.isNaN(amount) || amount <= 0) {
+      alert(t('errors.amountGreaterThanZero'));
+      return;
+    }
+
+    if (recurringRuleDraft.recurringDay < 1 || recurringRuleDraft.recurringDay > 31) {
+      alert(t('errors.recurringDayInvalid'));
+      return;
+    }
+
+    setSavingRecurringRule(true);
+    try {
+      if (editingRecurringId != null) {
+        const updatedRecurring = recurring.map(rule =>
+          rule.id === editingRecurringId
+            ? {
+                ...rule,
+                description,
+                amount,
+                category: recurringRuleDraft.category,
+                type: recurringRuleDraft.type,
+                paidBy: recurringRuleDraft.paidBy,
+                recurringDay: recurringRuleDraft.recurringDay,
+              }
+            : rule
+        );
+
+        await saveRecurring(updatedRecurring);
+        setDirty(true);
+        showToast(t('toasts.recurringRuleUpdated'), 'success');
+        closeRecurringRuleModal({ reopenOccurrence: false });
+        return;
+      }
+
+      const recurringId = createNumericId();
+      const newRecurringRule = buildRecurringRuleFromDraft(
+        {
+          ...recurringRuleDraft,
+          description,
+          amount: amount.toString(),
+        },
+        recurringId,
+        recurringSourceExpense
+          ? getRecurringProcessedMonthIso(recurringSourceExpense.occurrenceDraft.date)
+          : getCurrentMonthProcessedIso()
+      );
+
+      if (recurringSourceExpense) {
+        const { occurrenceDraft, expenseId } = recurringSourceExpense;
+        const updatedExpenses = expenses.map(expense =>
+          expense.id === expenseId
+            ? {
+                ...expense,
+                description: occurrenceDraft.description.trim(),
+                amount: parseFloat(occurrenceDraft.amount),
+                category: occurrenceDraft.category,
+                type: occurrenceDraft.type,
+                date: occurrenceDraft.date,
+                paidBy: occurrenceDraft.paidBy,
+                isAuto: false,
+                recurringId,
+              }
+            : expense
+        );
+
+        await saveExpenses(updatedExpenses);
+      }
+
+      await saveRecurring([...recurring, newRecurringRule]);
+      setDirty(true);
+      showToast(t('toasts.recurringRuleCreated'), 'success');
+      closeRecurringRuleModal({ reopenOccurrence: false });
+    } finally {
+      setSavingRecurringRule(false);
+    }
+  }, [
+    closeRecurringRuleModal,
+    editingRecurringId,
+    expenses,
+    recurring,
+    recurringRuleDraft,
+    recurringSourceExpense,
+    saveExpenses,
+    saveRecurring,
+    setDirty,
+    showToast,
+    t,
+  ]);
+
+  const openExpenseAction = useCallback(
+    (expense: Expense) => {
+      const recurringLink = recurringLinkByExpenseId.get(expense.id);
+      if (recurringLink?.isRecurringOccurrence) {
+        setOccurrenceChoiceExpense(expense);
+        return;
+      }
+
+      editExpense(expense);
+    },
+    [editExpense, recurringLinkByExpenseId]
+  );
+
+  const closeOccurrenceChoice = useCallback(() => {
+    setOccurrenceChoiceExpense(null);
+  }, []);
+
+  const editOccurrenceFromChoice = useCallback(() => {
+    if (!occurrenceChoiceExpense) return;
+    const expense = occurrenceChoiceExpense;
+    setOccurrenceChoiceExpense(null);
+    editExpense(expense);
+  }, [editExpense, occurrenceChoiceExpense]);
+
+  const editRecurringRuleFromChoice = useCallback(() => {
+    if (!occurrenceChoiceExpense || !occurrenceChoiceLink?.recurring) return;
+    setOccurrenceChoiceExpense(null);
+    openEditRecurringRule(occurrenceChoiceLink.recurring);
+  }, [occurrenceChoiceExpense, occurrenceChoiceLink, openEditRecurringRule]);
 
   /**
    * Format currency using Intl.NumberFormat with household settings
@@ -1773,7 +2040,9 @@ const ExpenseTracker: React.FC = () => {
           bulkCategorize={bulkCategorize}
           bulkDelete={bulkDelete}
           saveInlineEdit={saveInlineEdit}
-          editExpense={editExpense}
+          openCreateRecurringRule={() => openCreateRecurringRule()}
+          openEditRecurringRule={openEditRecurringRule}
+          openExpenseAction={openExpenseAction}
           confirmDeleteExpense={confirmDeleteExpense}
           confirmDeleteRecurring={confirmDeleteRecurring}
           deleteSettlement={deleteSettlement}
@@ -1974,7 +2243,7 @@ const ExpenseTracker: React.FC = () => {
                         }
                         className="w-4 h-4"
                       />
-                      <label className="text-sm">{t('labels.recurringToggle')}</label>
+                      <label className="text-sm">{t('labels.createRecurringRuleFromTransaction')}</label>
                     </div>
                     {formData.isRecurring && (
                       <div>
@@ -1998,6 +2267,20 @@ const ExpenseTracker: React.FC = () => {
                     )}
                   </>
                 )}
+                {editingId && currentEditingRecurringLink?.isRecurringOccurrence && (
+                  <div className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-sm text-purple-100">
+                    {t('messages.recurringOccurrenceEditOnly')}
+                  </div>
+                )}
+                {editingId && !currentEditingRecurringLink?.isRecurringOccurrence && (
+                  <Button
+                    onClick={openCreateRecurringRuleFromCurrentExpense}
+                    variant="ghost"
+                    className="w-full"
+                  >
+                    {t('buttons.createRecurringRuleFromExpense')}
+                  </Button>
+                )}
                 <div className="flex gap-2 pt-4">
                   <Button
                     onClick={resetForm}
@@ -2019,6 +2302,31 @@ const ExpenseTracker: React.FC = () => {
             </div>
           </div>
         )}
+
+        <RecurringRuleModal
+          isOpen={showRecurringRuleModal}
+          draft={recurringRuleDraft}
+          categories={categories}
+          partnerNames={partnerNames}
+          saving={savingRecurringRule}
+          isEditing={editingRecurringId != null}
+          getCategoryLabel={getCategoryLabel}
+          getFocusClasses={getFocusClasses}
+          onClose={() => closeRecurringRuleModal({ reopenOccurrence: recurringSourceExpense != null })}
+          onChange={setRecurringRuleDraft}
+          onSave={saveRecurringRule}
+        />
+
+        <RecurringOccurrenceModal
+          isOpen={occurrenceChoiceExpense != null}
+          expense={occurrenceChoiceExpense}
+          canEditRule={occurrenceChoiceLink?.canEditRule ?? false}
+          isAmbiguousLegacyMatch={occurrenceChoiceLink?.isAmbiguousLegacyMatch ?? false}
+          missingExplicitRule={occurrenceChoiceLink?.missingExplicitRule ?? false}
+          onClose={closeOccurrenceChoice}
+          onEditOccurrence={editOccurrenceFromChoice}
+          onEditRecurringRule={editRecurringRuleFromChoice}
+        />
 
         {/* Delete confirmation modal */}
         {deleteConfirm && (

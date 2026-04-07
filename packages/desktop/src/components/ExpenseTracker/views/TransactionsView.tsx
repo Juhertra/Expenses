@@ -114,7 +114,8 @@ export function TransactionsView({
   confirmDeleteExpense,
 }: TransactionsViewProps) {
   const { t, i18n } = useTranslation();
-  const isRTL = i18n.dir() === 'rtl';
+  const dir = (i18n.dir && i18n.dir()) || (typeof document !== 'undefined' ? document.documentElement.dir : 'ltr') || 'ltr';
+  const isRTL = dir === 'rtl';
 
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-2xl">
@@ -438,10 +439,17 @@ export function TransactionsView({
                 editExpense(exp);
               }}
               onDoubleClick={() => {
+                if (exp.isAuto || exp.recurringId != null) return;
                 setInlineEditId(exp.id);
                 setInlineEditData({});
               }}
-              title={bulkMode ? t('tooltips.selectTransaction') : t('tooltips.transactionRow')}
+              title={
+                bulkMode
+                  ? t('tooltips.selectTransaction')
+                  : exp.isAuto || exp.recurringId != null
+                    ? t('tooltips.manageRecurringOccurrence')
+                    : t('tooltips.transactionRow')
+              }
             >
             {/* Checkbox (Bulk Mode - Phase 2 Feature #10) */}
             {bulkMode && (
@@ -464,6 +472,11 @@ export function TransactionsView({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate flex items-center gap-2">
                   {exp.description}
+                  {(exp.isAuto || exp.recurringId != null) && (
+                    <span className="inline-flex items-center rounded-full bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] uppercase tracking-wide text-purple-200">
+                      {t('labels.recurringRuleBadge')}
+                    </span>
+                  )}
                   <Edit2 className="w-3 h-3 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 <div className="text-xs sm:text-sm text-slate-400 flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5">
@@ -491,7 +504,7 @@ export function TransactionsView({
               >
                 {formatSigned(exp.amount, exp.type)}
               </div>
-              {!exp.isAuto && (
+              {!(exp.isAuto || exp.recurringId != null) && (
                 <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                   <button
                     data-action="inline-edit"
