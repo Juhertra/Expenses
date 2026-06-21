@@ -32,6 +32,14 @@ Read this first on every re-sync.
 - Re-running `npx playwright install chromium` from `.ds-sync/` on a fresh
   clone if the cache is absent.
 
+## Grouping
+- The 6 `ui` primitives are forced into the **"primitives"** group via
+  `cfg.docsMap` → tiny `category: Primitives` stubs in `.design-sync/groups/`
+  (the `ui`/`components` dirs are filtered as generic, so they'd otherwise land
+  in "general"). The 6 `shared` components keep the auto-derived "shared" group.
+  Keep a stub per ui component if you add more; remove the docsMap entry to
+  revert a component to its auto group.
+
 ## Gotchas
 - **IconButton collision**: `src/components/ui/IconButton.tsx` (the real button)
   and `src/components/shared/IconButton.tsx` (a thin `LucideIcon`-typed variant)

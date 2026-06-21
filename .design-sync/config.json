@@ -26,6 +26,14 @@
     "ShowMoreButton": "src/components/shared/ShowMoreButton.tsx",
     "ExternalChangeBanner": "src/components/shared/ExternalChangeBanner.tsx"
   },
+  "docsMap": {
+    "Button": "../../.design-sync/groups/Button.md",
+    "Card": "../../.design-sync/groups/Card.md",
+    "IconButton": "../../.design-sync/groups/IconButton.md",
+    "Input": "../../.design-sync/groups/Input.md",
+    "ModalShell": "../../.design-sync/groups/ModalShell.md",
+    "Select": "../../.design-sync/groups/Select.md"
+  },
   "overrides": {
     "ModalShell": {
       "cardMode": "single",
