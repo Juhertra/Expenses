@@ -1,0 +1,78 @@
+{
+  "projectId": "960fcc0e-f09c-4c52-b469-fb4e50902bda",
+  "pkg": "expense-tracker",
+  "globalName": "ExpenseTrackerUI",
+  "shape": "package",
+  "entry": "./packages/desktop/.ds-sync-build/entry.tsx",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".ds-sync-build/styles.css",
+  "runtimeFontPrefixes": ["Rubik", "Heebo", "Assistant"],
+  "readmeHeader": ".design-sync/conventions.md",
+  "provider": {
+    "component": "ThemeProvider"
+  },
+  "componentSrcMap": {
+    "Button": "src/components/ui/Button.tsx",
+    "Card": "src/components/ui/Card.tsx",
+    "IconButton": "src/components/ui/IconButton.tsx",
+    "Input": "src/components/ui/Input.tsx",
+    "ModalShell": "src/components/ui/ModalShell.tsx",
+    "Select": "src/components/ui/Select.tsx",
+    "ConfirmDialog": "src/components/shared/ConfirmDialog.tsx",
+    "Toast": "src/components/shared/Toast.tsx",
+    "ModalBase": "src/components/shared/ModalBase.tsx",
+    "SaveStatusIndicator": "src/components/shared/SaveStatusIndicator.tsx",
+    "ShowMoreButton": "src/components/shared/ShowMoreButton.tsx",
+    "ExternalChangeBanner": "src/components/shared/ExternalChangeBanner.tsx"
+  },
+  "docsMap": {
+    "Button": "../../.design-sync/groups/Button.md",
+    "Card": "../../.design-sync/groups/Card.md",
+    "IconButton": "../../.design-sync/groups/IconButton.md",
+    "Input": "../../.design-sync/groups/Input.md",
+    "ModalShell": "../../.design-sync/groups/ModalShell.md",
+    "Select": "../../.design-sync/groups/Select.md"
+  },
+  "overrides": {
+    "ModalShell": {
+      "cardMode": "single",
+      "primaryStory": "Default",
+      "viewport": "820x560"
+    },
+    "ConfirmDialog": {
+      "cardMode": "single",
+      "primaryStory": "Danger",
+      "viewport": "520x400"
+    },
+    "ModalBase": {
+      "cardMode": "single",
+      "primaryStory": "Default",
+      "viewport": "720x520"
+    },
+    "Toast": {
+      "cardMode": "single",
+      "primaryStory": "Success",
+      "viewport": "480x200"
+    },
+    "ExternalChangeBanner": {
+      "cardMode": "single",
+      "primaryStory": "Default",
+      "viewport": "840x180"
+    }
+  },
+  "dtsPropsFor": {
+    "Button": "// Extends React.ButtonHTMLAttributes<HTMLButtonElement>.\n/** Visual style. `accent/income/expense` use theme gradients. */\nvariant?: \"primary\" | \"secondary\" | \"ghost\" | \"danger\" | \"accent\" | \"success\" | \"income\" | \"expense\";\nsize?: \"sm\" | \"md\";\n/** Icon rendered before the label (after it, in RTL). */\niconStart?: React.ReactNode;\niconEnd?: React.ReactNode;\ndir?: \"rtl\" | \"ltr\";\nchildren?: React.ReactNode;\nonClick?: React.MouseEventHandler<HTMLButtonElement>;\ndisabled?: boolean;\ntype?: \"button\" | \"submit\" | \"reset\";\nclassName?: string;",
+    "Card": "// Extends React.HTMLAttributes<HTMLDivElement> (onClick, style, id, …).\nchildren?: React.ReactNode;\nclassName?: string;",
+    "IconButton": "// Square icon-only button. Extends React.ButtonHTMLAttributes<HTMLButtonElement>.\nsize?: \"sm\" | \"md\";\nvariant?: \"primary\" | \"secondary\" | \"ghost\" | \"danger\";\ndir?: \"rtl\" | \"ltr\";\n/** The icon element to render. */\nchildren?: React.ReactNode;\nonClick?: React.MouseEventHandler<HTMLButtonElement>;\ndisabled?: boolean;\n\"aria-label\"?: string;\nclassName?: string;",
+    "Input": "// Extends React.InputHTMLAttributes<HTMLInputElement> (except size/dir).\nsize?: \"sm\" | \"md\";\ndir?: \"rtl\" | \"ltr\";\nvalue?: string | number;\ndefaultValue?: string | number;\nplaceholder?: string;\ntype?: string;\ndisabled?: boolean;\nonChange?: React.ChangeEventHandler<HTMLInputElement>;\nclassName?: string;",
+    "ModalShell": "/** Controls visibility; renders null when false. */\nisOpen: boolean;\nonClose: () => void;\ntitle?: string;\nsubtitle?: string;\nchildren: React.ReactNode;\ndir?: \"rtl\" | \"ltr\";\nclassName?: string;",
+    "Select": "// Native <select> with a chevron. Extends React.SelectHTMLAttributes (except size/dir).\nsize?: \"sm\" | \"md\";\ndir?: \"rtl\" | \"ltr\";\nvalue?: string | number;\ndefaultValue?: string | number;\nonChange?: React.ChangeEventHandler<HTMLSelectElement>;\ndisabled?: boolean;\n/** <option> elements. */\nchildren?: React.ReactNode;\nclassName?: string;",
+    "ConfirmDialog": "/** Controls visibility; renders null when false. */\nisOpen: boolean;\ntitle: string;\nmessage: string;\nconfirmLabel?: string;\ncancelLabel?: string;\nonConfirm: () => void;\nonCancel: () => void;\nvariant?: \"danger\" | \"warning\" | \"info\";\n/** Disables both buttons and shows a processing label on confirm. */\nisProcessing?: boolean;",
+    "Toast": "message: string;\ntype: \"success\" | \"error\";\nonClose: () => void;\n/** Auto-dismiss delay in ms (default 3000). */\nduration?: number;",
+    "ModalBase": "/** Controls visibility (animates in/out). */\nisOpen: boolean;\nonClose: () => void;\ntitle: string;\nchildren: React.ReactNode;\n/** CSS max-height for the panel (default \"90vh\"). */\nmaxHeight?: string;\nmaxWidth?: \"sm\" | \"md\" | \"lg\" | \"xl\" | \"2xl\" | \"3xl\";",
+    "SaveStatusIndicator": "/** Unsaved changes pending. */\ndirty: boolean;\n/** A save is in progress. */\nsaving: boolean;\nlastSaveDate: string | null;\nsaveDirectory: FileSystemDirectoryHandle | null;\nonSelectFolder?: () => void;",
+    "ShowMoreButton": "/** The full list to paginate (generic over item type). */\nitems: unknown[];\n/** Items shown before the first \"Show more\" (default 50). */\ninitialDisplay?: number;\n/** Additional items revealed per click (default 50). */\nincrement?: number;\n/** Renders one item. */\nrenderItem: (item: unknown, index: number) => React.ReactNode;\n/** Shown when items is empty. */\nemptyMessage?: string;",
+    "ExternalChangeBanner": "/** Controls visibility; renders null when false. */\nshow: boolean;\n/** ISO timestamp of the external change, or null. */\nchangedAt: string | null;\nonReload: () => void;\nonDismiss: () => void;"
+  }
+}

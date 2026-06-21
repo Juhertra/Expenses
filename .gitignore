@@ -31,3 +31,9 @@ dist-ssr
 .codex/
 
 nul
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+packages/desktop/.ds-sync-build/styles.css
